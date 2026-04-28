@@ -68,7 +68,7 @@ struct EnhancementSettingsView: View {
                         icon: "wand.and.stars",
                         title: "Enhancement",
                         subtitle: "Pass transcripts through an LLM before pasting.",
-                        accent: Palette.enhance,
+                        accent: Palette.accent,
                         statusText: enhancementService.isEnhancementEnabled ? "On" : "Off",
                         statusTone: enhancementService.isEnhancementEnabled ? .positive : .neutral
                     )
@@ -81,7 +81,7 @@ struct EnhancementSettingsView: View {
                     } label: {
                         Image(systemName: "gear")
                             .font(.system(size: 14, weight: .medium))
-                            .foregroundColor(isShowingSettings ? Palette.enhance : .secondary)
+                            .foregroundColor(isShowingSettings ? Palette.accent : .secondary)
                             .frame(width: 28, height: 28)
                             .background(
                                 RoundedRectangle(cornerRadius: 7, style: .continuous)
@@ -119,7 +119,7 @@ struct EnhancementSettingsView: View {
                         icon: "text.bubble",
                         title: "Enhancement Prompts",
                         subtitle: "Pick the active style; reorder by drag.",
-                        accent: Palette.transcribe,
+                        accent: Palette.accent,
                         statusText: "\(enhancementService.customPrompts.count)",
                         statusTone: .neutral
                     )
@@ -131,15 +131,15 @@ struct EnhancementSettingsView: View {
                     } label: {
                         Image(systemName: "plus")
                             .font(.system(size: 13, weight: .semibold))
-                            .foregroundColor(Palette.transcribe)
+                            .foregroundColor(Palette.accent)
                             .frame(width: 28, height: 28)
                             .background(
                                 RoundedRectangle(cornerRadius: 7, style: .continuous)
-                                    .fill(Palette.transcribe.opacity(0.16))
+                                    .fill(Palette.accent.opacity(0.16))
                             )
                             .overlay(
                                 RoundedRectangle(cornerRadius: 7, style: .continuous)
-                                    .stroke(Palette.transcribe.opacity(0.32), lineWidth: 0.5)
+                                    .stroke(Palette.accent.opacity(0.32), lineWidth: 0.5)
                             )
                     }
                     .buttonStyle(.plain)

@@ -220,9 +220,9 @@ private struct HaloMotionPreview: View {
                 .foregroundStyle(.secondary)
 
             HStack(spacing: 32) {
-                Circle().fill(Palette.recording).frame(width: 24, height: 24)
+                Circle().fill(Palette.accent).frame(width: 24, height: 24)
                     .haloPulse()
-                Circle().fill(Palette.enhance).frame(width: 24, height: 24)
+                Circle().fill(Palette.accent).frame(width: 24, height: 24)
                     .haloBreathOrb()
             }
 
@@ -230,7 +230,7 @@ private struct HaloMotionPreview: View {
                 Rectangle()
                     .fill(LinearGradient(stops: [
                         .init(color: .clear,                       location: max(0, phase - 0.3)),
-                        .init(color: Palette.transcribe.a(0.7),    location: phase),
+                        .init(color: Palette.accent.a(0.7),        location: phase),
                         .init(color: .clear,                       location: min(1, phase + 0.3))
                     ], startPoint: .leading, endPoint: .trailing))
                     .frame(width: 220, height: 24)

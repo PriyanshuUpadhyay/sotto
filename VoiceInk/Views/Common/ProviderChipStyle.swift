@@ -33,22 +33,26 @@ enum ProviderChipStyle {
         }
     }
 
+    /// Single-accent post-redesign 2026-04. All providers chip in tangerine;
+    /// brand identity moves to the icon glyph, not the color. To restore
+    /// per-provider visual identity, introduce a `ProviderBrand.color` enum
+    /// in W6 (out of W1 scope).
     static func tint(for provider: AIProvider) -> Color {
         switch provider {
-        case .openAI:           return Palette.neutral
-        case .anthropic:        return Palette.warn
-        case .gemini:           return Palette.transcribe
-        case .groq:             return Palette.warn
-        case .cerebras:         return Palette.recording
-        case .openRouter:       return Palette.enhance
-        case .mistral:          return Palette.transcribe
-        case .ollama:           return Palette.enhance
-        case .localCLI:         return Palette.success
-        case .foundationModels: return Palette.neutral
-        case .mlx:              return Palette.success
-        case .custom:           return Palette.neutral
+        case .openAI:           return Palette.accent
+        case .anthropic:        return Palette.accent
+        case .gemini:           return Palette.accent
+        case .groq:             return Palette.accent
+        case .cerebras:         return Palette.accent
+        case .openRouter:       return Palette.accent
+        case .mistral:          return Palette.accent
+        case .ollama:           return Palette.accent
+        case .localCLI:         return Palette.accent
+        case .foundationModels: return Palette.accent
+        case .mlx:              return Palette.accent
+        case .custom:           return Palette.accent
         case .elevenLabs, .deepgram, .soniox, .speechmatics:
-            return Palette.transcribe
+            return Palette.accent
         }
     }
 

@@ -342,7 +342,7 @@ struct ProviderCard: View {
         if verifyState == .failure, let msg = verifyMessage {
             Text(msg)
                 .font(.caption)
-                .foregroundColor(Palette.recording)
+                .foregroundColor(Palette.accent)
                 .fixedSize(horizontal: false, vertical: true)
         } else if verifyState == .success {
             Text("API key verified.")
@@ -442,7 +442,7 @@ struct ProviderCard: View {
         if let msg = verifyMessage, verifyState == .failure {
             Text(msg)
                 .font(.caption)
-                .foregroundColor(Palette.recording)
+                .foregroundColor(Palette.accent)
                 .fixedSize(horizontal: false, vertical: true)
         }
     }
@@ -528,7 +528,7 @@ struct ProviderCard: View {
         } else {
             HStack(spacing: 8) {
                 Circle()
-                    .fill(Palette.recording)
+                    .fill(Palette.accent)
                     .frame(width: 8, height: 8)
                 Text("Requires macOS 26 or later.")
                     .font(.system(size: 12))

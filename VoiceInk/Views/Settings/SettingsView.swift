@@ -86,7 +86,7 @@ struct SettingsView: View {
     private var shortcutsCard: some View {
         SettingsCard(
             iconSystemName: "command",
-            iconTint: Palette.enhance,
+            iconTint: Palette.accent,
             title: "Shortcuts",
             subtitle: "Trigger recording from anywhere.",
             statusText: hotkeyManager.selectedHotkey2 != .none ? "2 active" : "1 active",
@@ -95,7 +95,7 @@ struct SettingsView: View {
             SettingsRow(
                 iconSystemName: "1.circle",
                 label: "Shortcut 1",
-                iconTint: Palette.enhance
+                iconTint: Palette.accent
             ) {
                 HStack(spacing: 8) {
                     if hotkeyManager.selectedHotkey1 != .none {
@@ -122,7 +122,7 @@ struct SettingsView: View {
                 SettingsRow(
                     iconSystemName: "2.circle",
                     label: "Shortcut 2",
-                    iconTint: Palette.enhance
+                    iconTint: Palette.accent
                 ) {
                     HStack(spacing: 8) {
                         hotkeyModePicker(binding: $hotkeyManager.hotkeyMode2)
@@ -165,14 +165,14 @@ struct SettingsView: View {
     private var additionalShortcutsCard: some View {
         SettingsCard(
             iconSystemName: "keyboard",
-            iconTint: Palette.enhance,
+            iconTint: Palette.accent,
             title: "Additional Shortcuts",
             subtitle: "Paste, retry, cancel, middle-click."
         ) {
             SettingsRow(
                 iconSystemName: "doc.on.clipboard",
                 label: "Paste Last Transcription (Original)",
-                iconTint: Palette.enhance
+                iconTint: Palette.accent
             ) {
                 KeyboardShortcuts.Recorder(for: .pasteLastTranscription)
                     .controlSize(.small)
@@ -181,7 +181,7 @@ struct SettingsView: View {
             SettingsRow(
                 iconSystemName: "wand.and.rays",
                 label: "Paste Last Transcription (Enhanced)",
-                iconTint: Palette.enhance
+                iconTint: Palette.accent
             ) {
                 KeyboardShortcuts.Recorder(for: .pasteLastEnhancement)
                     .controlSize(.small)
@@ -190,7 +190,7 @@ struct SettingsView: View {
             SettingsRow(
                 iconSystemName: "arrow.clockwise",
                 label: "Retry Last Transcription",
-                iconTint: Palette.enhance
+                iconTint: Palette.accent
             ) {
                 KeyboardShortcuts.Recorder(for: .retryLastTranscription)
                     .controlSize(.small)
@@ -205,7 +205,7 @@ struct SettingsView: View {
                 SettingsRow(
                     iconSystemName: "xmark.circle",
                     label: "Shortcut",
-                    iconTint: Palette.enhance
+                    iconTint: Palette.accent
                 ) {
                     KeyboardShortcuts.Recorder(for: .cancelRecorder)
                         .controlSize(.small)
@@ -227,7 +227,7 @@ struct SettingsView: View {
                 SettingsRow(
                     iconSystemName: "timer",
                     label: "Activation Delay",
-                    iconTint: Palette.enhance
+                    iconTint: Palette.accent
                 ) {
                     HStack {
                         TextField("", value: $hotkeyManager.middleClickActivationDelay, formatter: {
@@ -250,7 +250,7 @@ struct SettingsView: View {
     private var recordingFeedbackCard: some View {
         SettingsCard(
             iconSystemName: "waveform",
-            iconTint: Palette.recording,
+            iconTint: Palette.accent,
             title: "Recording Feedback",
             subtitle: "Sound, mute, clipboard restore."
         ) {
@@ -297,7 +297,7 @@ struct SettingsView: View {
                 iconSystemName: "terminal.fill",
                 label: "Use AppleScript Paste",
                 subtitle: "Enable if pasting fails on alternative layouts (e.g. Neo2). Uses AppleScript instead of simulated key events.",
-                iconTint: Palette.recording
+                iconTint: Palette.accent
             ) {
                 Toggle("", isOn: $useAppleScriptPaste)
                     .labelsHidden()
@@ -310,7 +310,7 @@ struct SettingsView: View {
     private var interfaceCard: some View {
         SettingsCard(
             iconSystemName: "rectangle.on.rectangle",
-            iconTint: Palette.transcribe,
+            iconTint: Palette.accent,
             title: "Interface",
             subtitle: "Where the Halo recorder appears."
         ) {

@@ -283,7 +283,7 @@ struct ConfigurationView: View {
     private var triggerScenariosCard: some View {
         SettingsCard(
             iconSystemName: "scope",
-            iconTint: Palette.transcribe,
+            iconTint: Palette.accent,
             title: "Trigger Scenarios",
             subtitle: "Match the active app or website."
         ) {
@@ -433,7 +433,7 @@ struct ConfigurationView: View {
     private var transcriptionCard: some View {
         SettingsCard(
             iconSystemName: "waveform",
-            iconTint: Palette.transcribe,
+            iconTint: Palette.accent,
             title: "Transcription",
             subtitle: "Pick the model and language for this Power Mode."
         ) {
@@ -516,13 +516,13 @@ struct ConfigurationView: View {
     private var aiEnhancementCard: some View {
         SettingsCard(
             iconSystemName: "sparkles",
-            iconTint: Palette.enhance,
+            iconTint: Palette.accent,
             title: "AI Enhancement",
             subtitle: "Reshape transcripts with the model of your choice."
         ) {
             VStack(alignment: .leading, spacing: 12) {
                 Toggle("AI Enhancement", isOn: $isAIEnhancementEnabled)
-                    .toggleStyle(SwitchToggleStyle(tint: Palette.enhance))
+                    .toggleStyle(SwitchToggleStyle(tint: Palette.accent))
                     .onChange(of: isAIEnhancementEnabled) { _, newValue in
                         if newValue {
                             if selectedAIProvider == nil {
@@ -542,7 +542,7 @@ struct ConfigurationView: View {
                     aiModelPicker
                     enhancementPromptPicker
                     Toggle("Context Awareness", isOn: $useScreenCapture)
-                        .toggleStyle(SwitchToggleStyle(tint: Palette.enhance))
+                        .toggleStyle(SwitchToggleStyle(tint: Palette.accent))
                 }
             }
         }

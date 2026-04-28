@@ -9,9 +9,9 @@ import SwiftUI
 // tasks update state after a newer edit lands.
 //
 // Status grammar matches the Constellation pipeline (spec §2.2):
-//   - violet (`Palette.enhance`) + `haloBreathOrb` while enhancing
+//   - tangerine (`Palette.accent`) + `haloBreathOrb` while enhancing
 //   - green flash (`Palette.success`) + scale keyframe on result
-//   - red (`Palette.recording`) on failure
+//   - tangerine (`Palette.accent`) on failure — motion distinguishes from enhancing
 //   - neutral grey idle / debouncing
 //
 // Reduce Motion (via `AccessibilityMotionMonitor`) collapses the dot to a
@@ -141,7 +141,7 @@ struct PromptLivePreview: View {
         if let errorMessage {
             Text(errorMessage)
                 .font(.system(.body))
-                .foregroundColor(Palette.recording)
+                .foregroundColor(Palette.accent)
                 .fixedSize(horizontal: false, vertical: true)
         } else if output.isEmpty {
             Text(emptyPlaceholder)
@@ -205,9 +205,9 @@ struct PromptLivePreview: View {
     private var dotColor: Color {
         switch phase {
         case .idle, .debouncing: return Palette.neutral
-        case .enhancing:         return Palette.enhance
+        case .enhancing:         return Palette.accent
         case .done:              return Palette.success
-        case .failed:            return Palette.recording
+        case .failed:            return Palette.accent
         }
     }
 

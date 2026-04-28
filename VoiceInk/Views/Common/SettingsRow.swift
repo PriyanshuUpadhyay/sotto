@@ -81,7 +81,7 @@ private struct SettingsRowPreviewBody: View {
                 iconSystemName: "1.circle",
                 label: "Shortcut 1",
                 subtitle: "Hold to record, release to send.",
-                iconTint: Palette.enhance
+                iconTint: Palette.accent
             ) {
                 Text("⌘⇧V")
                     .font(.system(size: 12, design: .monospaced))
@@ -91,7 +91,7 @@ private struct SettingsRowPreviewBody: View {
             SettingsRow(
                 iconSystemName: "speaker.wave.2.fill",
                 label: "Sound Feedback",
-                iconTint: Palette.recording
+                iconTint: Palette.accent
             ) {
                 Toggle("", isOn: $toggleA).labelsHidden()
             }

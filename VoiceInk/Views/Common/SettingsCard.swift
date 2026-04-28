@@ -65,7 +65,7 @@ private struct SettingsCardPreviewBody: View {
         VStack(alignment: .leading, spacing: 12) {
             SettingsCard(
                 iconSystemName: "command",
-                iconTint: Palette.enhance,
+                iconTint: Palette.accent,
                 title: "Shortcuts",
                 subtitle: "Trigger recording from anywhere.",
                 statusText: "1 active",

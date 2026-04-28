@@ -95,7 +95,7 @@ struct OnboardingModelDownloadView: View {
 
                 // Performance metrics row.
                 HStack(spacing: 24) {
-                    metric(label: "Speed", value: turboModel.speed, tint: Palette.transcribe)
+                    metric(label: "Speed", value: turboModel.speed, tint: Palette.accent)
                     metric(label: "Accuracy", value: turboModel.accuracy, tint: Palette.success)
                     ramMetric(gb: turboModel.ramUsage)
                 }
@@ -112,15 +112,15 @@ struct OnboardingModelDownloadView: View {
 
     private var iconTile: some View {
         RoundedRectangle(cornerRadius: 10, style: .continuous)
-            .fill(Palette.enhance.opacity(0.16))
+            .fill(Palette.accent.opacity(0.16))
             .overlay(
                 RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .stroke(Palette.enhance.opacity(0.32), lineWidth: 0.5)
+                    .stroke(Palette.accent.opacity(0.32), lineWidth: 0.5)
             )
             .overlay(
                 Image(systemName: isModelSet ? "checkmark.seal.fill" : "brain.head.profile")
                     .font(.system(size: 20, weight: .semibold))
-                    .foregroundColor(isModelSet ? Palette.success : Palette.enhance)
+                    .foregroundColor(isModelSet ? Palette.success : Palette.accent)
             )
             .frame(width: 44, height: 44)
     }
@@ -170,15 +170,15 @@ struct OnboardingModelDownloadView: View {
                         .fill(
                             LinearGradient(
                                 colors: [
-                                    Palette.enhance,
-                                    Palette.enhance.opacity(0.85)
+                                    Palette.accent,
+                                    Palette.accent.opacity(0.85)
                                 ],
                                 startPoint: .leading,
                                 endPoint: .trailing
                             )
                         )
                         .frame(width: max(8, geometry.size.width * progress))
-                        .shadow(color: Palette.enhance.opacity(0.45), radius: 6, x: 0, y: 0)
+                        .shadow(color: Palette.accent.opacity(0.45), radius: 6, x: 0, y: 0)
                         .animation(motion.reduceMotion ? nil : .easeOut(duration: 0.2), value: progress)
                 }
             }

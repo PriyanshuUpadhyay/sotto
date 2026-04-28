@@ -69,7 +69,7 @@ struct APIKeyManagementView: View {
                 icon: "sparkles.rectangle.stack",
                 title: "AI Provider Integration",
                 subtitle: "Pick the model that shapes enhanced transcripts.",
-                accent: Palette.enhance,
+                accent: Palette.accent,
                 statusText: providerStatusText,
                 statusTone: providerStatusTone
             )
@@ -151,7 +151,7 @@ struct StatusPill: View {
         var color: Color {
             switch self {
             case .positive: return Palette.success
-            case .negative: return Palette.recording
+            case .negative: return Palette.accent
             case .neutral:  return Palette.neutral
             case .warning:  return Palette.warn
             }

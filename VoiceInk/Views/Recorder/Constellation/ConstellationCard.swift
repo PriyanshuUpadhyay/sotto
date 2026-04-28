@@ -221,7 +221,7 @@ struct ConstellationCard: View {
     private var transcribingContent: some View {
         twoLineRow(
             icon: "waveform.badge.magnifyingglass",
-            iconColor: Palette.transcribe,
+            iconColor: Palette.accent,
             displayText: "Transcribing",
             monoText: transcriptionEngineLabel
         )
@@ -230,7 +230,7 @@ struct ConstellationCard: View {
     private var enhancingContent: some View {
         twoLineRow(
             icon: activePromptIcon,
-            iconColor: Palette.enhance,
+            iconColor: Palette.accent,
             displayText: "Enhancing with \(activePromptName)",
             monoText: enhancementProviderLabel
         )
@@ -353,7 +353,7 @@ struct ConstellationCard: View {
                 LinearGradient(
                     stops: [
                         .init(color: .clear, location: 0.0),
-                        .init(color: Palette.transcribe.opacity(0.32), location: 0.5),
+                        .init(color: Palette.accent.opacity(0.32), location: 0.5),
                         .init(color: .clear, location: 1.0)
                     ],
                     startPoint: .leading,

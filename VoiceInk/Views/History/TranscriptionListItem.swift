@@ -65,10 +65,10 @@ struct TranscriptionListItem: View {
                 .fill(rowFill)
         }
         .overlay {
-            // Selection ring matches the halo's enhance accent — keeps visual
+            // Selection ring matches the halo's accent — keeps visual
             // language consistent between recorder and history list.
             RoundedRectangle(cornerRadius: 10, style: .continuous)
-                .stroke(isSelected ? Palette.enhance.opacity(0.45) : Color.clear,
+                .stroke(isSelected ? Palette.accent.opacity(0.45) : Color.clear,
                         lineWidth: 1)
         }
         .offset(y: isHovering && !isSelected ? -2 : 0)
@@ -83,7 +83,7 @@ struct TranscriptionListItem: View {
     /// over alternation so the picked row reads as the focal element.
     private var rowFill: Color {
         if isSelected {
-            return Palette.enhance.opacity(0.10)
+            return Palette.accent.opacity(0.10)
         }
         return rowIndex.isMultiple(of: 2)
             ? Color.primary.opacity(0.045)

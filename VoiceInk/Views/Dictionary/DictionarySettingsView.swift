@@ -121,14 +121,7 @@ struct SectionCard: View {
     let isSelected: Bool
     let action: () -> Void
 
-    /// Per-section accent — keeps the dictionary's two cards visually distinct
-    /// while staying inside the halo palette.
-    private var accent: Color {
-        switch section {
-        case .replacements: return Palette.transcribe
-        case .spellings:    return Palette.enhance
-        }
-    }
+    let accent: Color = Palette.accent
 
     var body: some View {
         Button(action: action) {

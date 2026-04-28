@@ -22,13 +22,13 @@ extension HaloPhase {
     var glowColor: Color {
         switch self {
         case .hidden, .armed:           return Palette.neutral
-        case .recording, .liveText:     return Palette.recording
-        case .transcribing:             return Palette.transcribe
-        case .enhancing:                return Palette.enhance
-        // `.failed` is the initial red flash; the amber dwell that follows is
+        case .recording, .liveText:     return Palette.accent
+        case .transcribing:             return Palette.accent
+        case .enhancing:                return Palette.accent
+        // `.failed` is the initial accent flash; the amber dwell that follows is
         // rendered at the view layer (P1.D) — `HaloPhase` only encodes the
         // first beat of the failure state, not the two-part flash→dwell.
-        case .failed:                   return Palette.recording
+        case .failed:                   return Palette.accent
         case .done:                     return Palette.success
         }
     }

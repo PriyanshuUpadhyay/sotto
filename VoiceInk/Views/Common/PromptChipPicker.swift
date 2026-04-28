@@ -4,7 +4,7 @@ import SwiftUI
 //
 // Horizontal scroller of 56×56pt prompt chips. Spec §3.2 "Prompt chips":
 // rounded-square glass background, prompt icon + name. Selected chip carries
-// a 2pt `Palette.enhance` ring (named token — reviewer focus, NOT a hex).
+// a 2pt `Palette.accent` ring (named token — reviewer focus, NOT a hex).
 //
 // Selection-change pulse — spec §4 "Provider chip glow on switch":
 // the newly selected chip pulses a single time over 0.4s. Approach: the
@@ -79,7 +79,7 @@ private struct PromptChip: View {
         .overlay(
             // Selection ring — 2pt named-token tint, NOT a hex (reviewer focus).
             shape.stroke(
-                isSelected ? Palette.enhance : Color.clear,
+                isSelected ? Palette.accent : Color.clear,
                 lineWidth: 2
             )
         )
@@ -115,7 +115,7 @@ private struct PromptChipPulseModifier: ViewModifier {
         content
             .scaleEffect(1.0 + 0.06 * phase)
             .shadow(
-                color: Palette.enhance.opacity(0.55 * Double(phase)),
+                color: Palette.accent.opacity(0.55 * Double(phase)),
                 radius: 18 * phase
             )
             .onChange(of: triggerID) { _, _ in

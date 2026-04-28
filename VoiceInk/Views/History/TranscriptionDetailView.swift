@@ -66,7 +66,7 @@ struct TranscriptionDetailView: View {
                     if let msg = statusMessage {
                         Text(msg.text)
                             .font(.system(size: 11, weight: .medium))
-                            .foregroundColor(msg.isError ? Palette.recording : Palette.success)
+                            .foregroundColor(msg.isError ? Palette.accent : Palette.success)
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .transition(.opacity)
                     }
@@ -104,7 +104,7 @@ struct TranscriptionDetailView: View {
                         HStack(spacing: 6) {
                             Image(systemName: "waveform")
                                 .font(.system(size: 10, weight: .semibold))
-                                .foregroundColor(Palette.transcribe)
+                                .foregroundColor(Palette.accent)
                             Text(modelName)
                                 .font(.system(size: 11, weight: .medium))
                                 .foregroundColor(.primary)
@@ -135,15 +135,15 @@ struct TranscriptionDetailView: View {
     private var thumbnail: some View {
         ZStack {
             RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .fill(Palette.enhance.opacity(0.16))
+                .fill(Palette.accent.opacity(0.16))
                 .overlay(
                     RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .stroke(Palette.enhance.opacity(0.28), lineWidth: 0.5)
+                        .stroke(Palette.accent.opacity(0.28), lineWidth: 0.5)
                 )
                 .frame(width: 48, height: 48)
             Image(systemName: audioURL != nil ? "waveform" : "doc.text.fill")
                 .font(.system(size: 20, weight: .semibold))
-                .foregroundColor(Palette.enhance)
+                .foregroundColor(Palette.accent)
         }
     }
 
@@ -164,11 +164,11 @@ struct TranscriptionDetailView: View {
         VStack(alignment: .leading, spacing: 12) {
             textPane(label: "Original",
                      text: transcription.text,
-                     accent: Palette.transcribe)
+                     accent: Palette.accent)
             if let enhanced = transcription.enhancedText, !enhanced.isEmpty {
                 textPane(label: "Enhanced",
                          text: enhanced,
-                         accent: Palette.enhance)
+                         accent: Palette.accent)
             }
         }
     }
@@ -258,11 +258,11 @@ struct TranscriptionDetailView: View {
             .padding(.vertical, 7)
             .background(
                 RoundedRectangle(cornerRadius: 8, style: .continuous)
-                    .fill(Palette.enhance.opacity(0.10))
+                    .fill(Palette.accent.opacity(0.10))
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 8, style: .continuous)
-                    .stroke(Palette.enhance.opacity(0.25), lineWidth: 0.5)
+                    .stroke(Palette.accent.opacity(0.25), lineWidth: 0.5)
             )
             .foregroundColor(.primary)
         }
@@ -295,17 +295,17 @@ struct TranscriptionDetailView: View {
             .background(
                 RoundedRectangle(cornerRadius: 8, style: .continuous)
                     .fill(isDestructive
-                          ? Palette.recording.opacity(0.10)
+                          ? Palette.accent.opacity(0.10)
                           : Color.primary.opacity(0.06))
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 8, style: .continuous)
                     .stroke(isDestructive
-                            ? Palette.recording.opacity(0.25)
+                            ? Palette.accent.opacity(0.25)
                             : Color.primary.opacity(0.10),
                             lineWidth: 0.5)
             )
-            .foregroundColor(isDestructive ? Palette.recording : .primary)
+            .foregroundColor(isDestructive ? Palette.accent : .primary)
         }
         .buttonStyle(.plain)
     }

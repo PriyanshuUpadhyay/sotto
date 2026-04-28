@@ -42,7 +42,7 @@ struct LicenseView: View {
 
                     if let message = licenseViewModel.validationMessage {
                         Text(message)
-                            .foregroundColor(licenseViewModel.validationSuccess ? Palette.success : Palette.recording)
+                            .foregroundColor(licenseViewModel.validationSuccess ? Palette.success : Palette.accent)
                             .font(.callout)
                             .multilineTextAlignment(.center)
                     }
@@ -109,7 +109,7 @@ struct LicenseHero: View {
             .font(.system(size: 80, weight: .semibold))
             .foregroundStyle(
                 LinearGradient(
-                    colors: [Palette.warn, Palette.enhance],
+                    colors: [Palette.warn, Palette.accent],
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing
                 )
@@ -138,7 +138,7 @@ struct LicensePill: View {
     private var tint: Color {
         switch state {
         case .licensed: return Palette.success
-        case .trial: return Palette.transcribe
+        case .trial: return Palette.accent
         case .trialExpired: return Palette.warn
         }
     }

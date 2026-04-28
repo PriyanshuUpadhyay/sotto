@@ -59,7 +59,7 @@ struct LicenseManagementView: View {
 
                 if let message = licenseViewModel.validationMessage {
                     Text(message)
-                        .foregroundColor(licenseViewModel.validationSuccess ? Palette.success : Palette.recording)
+                        .foregroundColor(licenseViewModel.validationSuccess ? Palette.success : Palette.accent)
                         .font(.callout)
                         .multilineTextAlignment(.center)
                 }
@@ -138,13 +138,13 @@ struct LicenseManagementView: View {
                 resourceLink(
                     icon: "list.bullet.clipboard.fill",
                     title: "Changelog",
-                    tint: Palette.transcribe,
+                    tint: Palette.accent,
                     url: "https://github.com/Beingpax/VoiceInk/releases"
                 )
                 resourceLink(
                     icon: "bubble.left.and.bubble.right.fill",
                     title: "Discord",
-                    tint: Palette.enhance,
+                    tint: Palette.accent,
                     url: "https://discord.gg/xryDy57nYD"
                 )
                 Button {
@@ -162,7 +162,7 @@ struct LicenseManagementView: View {
                 resourceLink(
                     icon: "heart.fill",
                     title: "Tip Jar",
-                    tint: Palette.recording,
+                    tint: Palette.accent,
                     url: "https://buymeacoffee.com/beingpax"
                 )
             }

@@ -16,7 +16,7 @@ import SwiftUI
 
 struct GlassSwitch: View {
     @Binding var isOn: Bool
-    var tint: Color = Palette.enhance
+    var tint: Color = Palette.accent
 
     @ObservedObject private var motion = AccessibilityMotionMonitor.shared
 

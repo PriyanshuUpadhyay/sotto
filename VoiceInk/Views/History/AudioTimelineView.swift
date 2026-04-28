@@ -52,11 +52,11 @@ struct AudioTimelineView: View {
     private var playPauseButton: some View {
         Button(action: onPlayPause) {
             Circle()
-                .fill(Palette.transcribe.opacity(0.16))
+                .fill(Palette.accent.opacity(0.16))
                 .frame(width: 36, height: 36)
                 .overlay(
                     Circle()
-                        .stroke(Palette.transcribe.opacity(0.32), lineWidth: 0.5)
+                        .stroke(Palette.accent.opacity(0.32), lineWidth: 0.5)
                 )
                 .overlay(
                     Image(systemName: isPlaying ? "pause.fill" : "play.fill")
@@ -90,7 +90,7 @@ struct AudioTimelineView: View {
 
                     if let h = hoverFraction, scrubFraction == nil {
                         Rectangle()
-                            .fill(Palette.transcribe.opacity(0.6))
+                            .fill(Palette.accent.opacity(0.6))
                             .frame(width: 1)
                             .frame(maxHeight: .infinity)
                             .offset(x: h * geo.size.width)
@@ -136,8 +136,8 @@ struct AudioTimelineView: View {
                     .fill(
                         LinearGradient(
                             colors: [
-                                isPlayed ? Palette.transcribe : Color.primary.opacity(0.30),
-                                isPlayed ? Palette.transcribe.opacity(0.7) : Color.primary.opacity(0.18)
+                                isPlayed ? Palette.accent : Color.primary.opacity(0.30),
+                                isPlayed ? Palette.accent.opacity(0.7) : Color.primary.opacity(0.18)
                             ],
                             startPoint: .bottom,
                             endPoint: .top

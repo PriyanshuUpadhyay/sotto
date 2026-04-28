@@ -460,7 +460,7 @@ private struct ReplacementGlassCard: View {
             Button(action: onBeginEdit) {
                 Image(systemName: "pencil.circle.fill")
                     .symbolRenderingMode(.hierarchical)
-                    .foregroundStyle(Palette.transcribe)
+                    .foregroundStyle(Palette.accent)
                     .font(.system(size: 16, weight: .medium))
             }
             .buttonStyle(.borderless)
@@ -469,7 +469,7 @@ private struct ReplacementGlassCard: View {
             Button(action: onDelete) {
                 Image(systemName: "xmark.circle.fill")
                     .symbolRenderingMode(.hierarchical)
-                    .foregroundStyle(Palette.recording)
+                    .foregroundStyle(Palette.accent)
                     .font(.system(size: 16, weight: .medium))
             }
             .buttonStyle(.borderless)

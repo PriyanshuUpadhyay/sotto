@@ -81,7 +81,7 @@ private struct RecorderStyleCard<Preview: View>: View {
             .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
             .overlay(
                 RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .stroke(isSelected ? Palette.recording : Color.white.opacity(0.12),
+                    .stroke(isSelected ? Palette.accent : Color.white.opacity(0.12),
                              lineWidth: isSelected ? 2 : 0.5)
             )
 
@@ -122,7 +122,7 @@ private struct NotchPreview: View {
                     HStack(spacing: 1) {
                         ForEach(0..<5, id: \.self) { i in
                             Capsule()
-                                .fill(Palette.recording.opacity(0.85))
+                                .fill(Palette.accent.opacity(0.85))
                                 .frame(width: 1.5, height: CGFloat(3 + i % 3 * 2))
                         }
                     }
@@ -150,7 +150,7 @@ private struct FloatingPreview: View {
                 Capsule()
                     .fill(Color.black)
                     .frame(width: 70, height: 16)
-                    .shadow(color: Palette.recording.opacity(0.45), radius: 8)
+                    .shadow(color: Palette.accent.opacity(0.45), radius: 8)
                 HStack(spacing: 1.5) {
                     ForEach(0..<7, id: \.self) { i in
                         Capsule()
@@ -168,7 +168,7 @@ private struct FloatingPreview: View {
 // MARK: - Constellation preview
 //
 // Static miniature of the real Constellation recorder (spec §3.1):
-//   • Orb (red @ .recording)  — small filled circle with white@0.25 ring
+//   • Orb (accent @ .recording)  — small filled circle with white@0.25 ring
 //     + dual color glows, mirroring `ConstellationOrb` at the recording phase.
 //   • Chip — capsule with leading color dot + mono `CLAUDE · SONNET` label,
 //     mirroring `ConstellationChip` proportions.
@@ -207,15 +207,15 @@ private struct ConstellationPreview: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
-    /// Miniature `ConstellationOrb` at `.recording`: 8pt red disc with white
-    /// halo ring + dual red glows.
+    /// Miniature `ConstellationOrb` at `.recording`: 8pt tangerine disc with
+    /// white halo ring + dual accent glows.
     private var miniOrb: some View {
         ZStack {
             Circle()
-                .fill(Palette.recording)
+                .fill(Palette.accent)
                 .frame(width: 8, height: 8)
-                .shadow(color: Palette.recording.opacity(0.85), radius: 4)
-                .shadow(color: Palette.recording.opacity(0.50), radius: 8)
+                .shadow(color: Palette.accent.opacity(0.85), radius: 4)
+                .shadow(color: Palette.accent.opacity(0.50), radius: 8)
             Circle()
                 .strokeBorder(Color.white.opacity(0.25), lineWidth: 1)
                 .frame(width: 12, height: 12)
@@ -228,7 +228,7 @@ private struct ConstellationPreview: View {
     private var miniChip: some View {
         HStack(spacing: 3) {
             Circle()
-                .fill(Palette.recording)
+                .fill(Palette.accent)
                 .frame(width: 3, height: 3)
             Text("CLAUDE")
                 .font(.system(size: 5, weight: .medium, design: .monospaced))
@@ -244,7 +244,7 @@ private struct ConstellationPreview: View {
                     Capsule().stroke(Color.white.opacity(0.16), lineWidth: 0.5)
                 )
         )
-        .shadow(color: Palette.recording.opacity(0.30), radius: 4)
+        .shadow(color: Palette.accent.opacity(0.30), radius: 4)
     }
 
     /// Miniature `ConstellationCard`: rounded glass plaque with two faint

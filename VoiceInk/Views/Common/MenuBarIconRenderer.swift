@@ -10,8 +10,8 @@ import SwiftUI
 // All glyphs render at 18×18pt — the canvas the spec mandates so the menu bar
 // row never jitters on state change. Idle / transcribing / enhancing stay
 // template (auto-tinted by macOS in light + dark menu bars). Recording bakes
-// `Palette.recording` directly so the loudest signal in the system reads as
-// red regardless of menu bar appearance.
+// `Palette.accent` directly so the loudest signal in the system reads as
+// tangerine regardless of menu bar appearance.
 
 enum MenuBarIconRenderer {
     /// Canvas size — 18×18pt, the spec-pinned non-jitter footprint.
@@ -48,7 +48,7 @@ enum MenuBarIconRenderer {
             return tinted(
                 "waveform",
                 weight: .semibold,
-                color: NSColor(Palette.recording),
+                color: NSColor(Palette.accent),
                 label: "VoiceInk recording"
             )
         case .transcribing:
