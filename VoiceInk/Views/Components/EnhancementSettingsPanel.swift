@@ -24,11 +24,17 @@ struct EnhancementSettingsPanel: View {
 
                 Button(action: onDismiss) {
                     Image(systemName: "xmark")
-                        .font(.system(size: 14, weight: .medium))
+                        .font(.system(size: 12, weight: .semibold))
                         .foregroundColor(.secondary)
-                        .padding(6)
-                        .background(Color.secondary.opacity(0.1))
-                        .clipShape(Circle())
+                        .frame(width: 24, height: 24)
+                        .background(
+                            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                .fill(.ultraThinMaterial)
+                        )
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                .stroke(Palette.hairline, lineWidth: 1)
+                        )
                 }
                 .buttonStyle(.plain)
                 .help("Close")
@@ -37,7 +43,10 @@ struct EnhancementSettingsPanel: View {
             .padding(.vertical, 16)
             .background(Color(NSColor.windowBackgroundColor))
             .overlay(
-                Divider().opacity(0.5), alignment: .bottom
+                Rectangle()
+                    .fill(Palette.hairlineSoft)
+                    .frame(height: 1),
+                alignment: .bottom
             )
 
             // Content

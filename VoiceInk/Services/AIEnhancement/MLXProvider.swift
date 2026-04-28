@@ -130,6 +130,9 @@ actor MLXProvider {
             try Task.checkCancellation()
             let totalElapsed = Date().timeIntervalSince(totalStart)
             Self.logger.notice("🦾 enhance: total=\(totalElapsed, format: .fixed(precision: 2), privacy: .public)s")
+            if totalElapsed > 10.0 {
+                Self.logger.warning("🦾 enhance: WARN total=\(totalElapsed, format: .fixed(precision: 2), privacy: .public)s exceeds 10s ceiling for model=\(self.modelId, privacy: .public)")
+            }
             return output
         } catch is CancellationError {
             throw CancellationError()

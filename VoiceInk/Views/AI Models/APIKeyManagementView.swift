@@ -42,6 +42,49 @@ struct APIKeyManagementView: View {
         }
     }
 
+    /// Subset of `galleryProviders` that the user has configured (API key
+    /// present, MLX model downloaded, ollama reachable, etc.). Driven by
+    /// `aiService.connectedProviders` — the existing single source of truth
+    /// in `AIService.swift:289-309`. Sorted: the active provider first if
+    /// it's in the configured set, then alphabetical by display name.
+    private var configuredProviders: [AIProvider] {
+        let connectedSet = Set(aiService.connectedProviders)
+        let gallery = APIKeyManagementView.galleryProviders.filter { connectedSet.contains($0) }
+        let active = aiService.selectedProvider
+        if gallery.contains(active) {
+            let rest = gallery.filter { $0 != active }
+                .sorted { ProviderChipStyle.displayName(for: $0) < ProviderChipStyle.displayName(for: $1) }
+            return [active] + rest
+        }
+        return gallery.sorted { ProviderChipStyle.displayName(for: $0) < ProviderChipStyle.displayName(for: $1) }
+    }
+
+    /// Complement of `configuredProviders` over `galleryProviders`. Sorted
+    /// alphabetical by display name.
+    private var unconfiguredProviders: [AIProvider] {
+        let connectedSet = Set(aiService.connectedProviders)
+        return APIKeyManagementView.galleryProviders
+            .filter { !connectedSet.contains($0) }
+            .sorted { ProviderChipStyle.displayName(for: $0) < ProviderChipStyle.displayName(for: $1) }
+    }
+
+    /// Section label rendered above each grid. SF Mono uppercase tracking
+    /// 0.06em — same vocabulary as the cluster's chip keys (spec §1).
+    private func sectionLabel(_ text: String, count: Int) -> some View {
+        HStack(spacing: 6) {
+            Text(text)
+                .font(.system(size: 10.5, weight: .semibold, design: .monospaced))
+                .tracking(0.06 * 10.5)
+                .foregroundColor(Palette.onyxMute)
+            Text("\(count)")
+                .font(.system(size: 10.5, weight: .medium, design: .monospaced))
+                .tracking(0.06 * 10.5)
+                .foregroundColor(Palette.onyxMute.opacity(0.7))
+            Spacer()
+        }
+        .padding(.top, 6)
+    }
+
     var body: some View {
         Section {
             VStack(alignment: .leading, spacing: 12) {
@@ -53,13 +96,39 @@ struct APIKeyManagementView: View {
                 )
                 .padding(.bottom, 4)
 
-                LazyVGrid(columns: APIKeyManagementView.columns, spacing: 12) {
-                    ForEach(APIKeyManagementView.galleryProviders, id: \.self) { provider in
-                        ProviderCard(
-                            provider: provider,
-                            expandedProvider: $expandedProvider,
-                            onActivate: { aiService.selectedProvider = provider }
-                        )
+                // CONFIGURED — providers with credentials / downloaded models.
+                let configured = configuredProviders
+                if !configured.isEmpty {
+                    sectionLabel("CONFIGURED", count: configured.count)
+                    LazyVGrid(columns: APIKeyManagementView.columns, spacing: 12) {
+                        ForEach(configured, id: \.self) { provider in
+                            ProviderCard(
+                                provider: provider,
+                                expandedProvider: $expandedProvider,
+                                onActivate: { aiService.selectedProvider = provider }
+                            )
+                        }
+                    }
+                } else {
+                    Text("No providers configured yet. Pick one below to add a key or download a local model.")
+                        .font(.system(size: 11))
+                        .foregroundColor(.secondary)
+                        .padding(.vertical, 8)
+                }
+
+                // UNCONFIGURED — providers without credentials / no model downloaded.
+                let unconfigured = unconfiguredProviders
+                if !unconfigured.isEmpty {
+                    sectionLabel("AVAILABLE", count: unconfigured.count)
+                    LazyVGrid(columns: APIKeyManagementView.columns, spacing: 12) {
+                        ForEach(unconfigured, id: \.self) { provider in
+                            ProviderCard(
+                                provider: provider,
+                                expandedProvider: $expandedProvider,
+                                onActivate: { aiService.selectedProvider = provider }
+                            )
+                            .opacity(0.85)
+                        }
                     }
                 }
             }

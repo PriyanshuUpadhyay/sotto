@@ -84,8 +84,12 @@ struct EnhancementSettingsView: View {
                             .foregroundColor(isShowingSettings ? Palette.accent : .secondary)
                             .frame(width: 28, height: 28)
                             .background(
-                                RoundedRectangle(cornerRadius: 7, style: .continuous)
-                                    .fill(Color.secondary.opacity(0.08))
+                                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                    .fill(.ultraThinMaterial)
+                            )
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                    .stroke(Palette.hairline, lineWidth: 1)
                             )
                     }
                     .buttonStyle(.plain)
@@ -134,12 +138,16 @@ struct EnhancementSettingsView: View {
                             .foregroundColor(Palette.accent)
                             .frame(width: 28, height: 28)
                             .background(
-                                RoundedRectangle(cornerRadius: 7, style: .continuous)
-                                    .fill(Palette.accent.opacity(0.16))
+                                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                    .fill(Palette.accent.opacity(0.14))
+                                    .background(
+                                        RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                            .fill(.ultraThinMaterial)
+                                    )
                             )
                             .overlay(
-                                RoundedRectangle(cornerRadius: 7, style: .continuous)
-                                    .stroke(Palette.accent.opacity(0.32), lineWidth: 0.5)
+                                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                    .stroke(Palette.accent.opacity(0.42), lineWidth: 1)
                             )
                     }
                     .buttonStyle(.plain)

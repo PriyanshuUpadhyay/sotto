@@ -88,19 +88,24 @@ struct PromptEditorView: View {
     private var headerBar: some View {
         HStack(spacing: 12) {
             Text(headerTitle)
-                .font(.headline)
-                .fontWeight(.semibold)
+                .font(.system(size: 14, weight: .semibold))
                 .foregroundColor(.primary)
 
             Spacer()
 
             Button(action: dismissPanel) {
                 Image(systemName: "xmark")
-                    .font(.system(size: 14, weight: .medium))
+                    .font(.system(size: 12, weight: .semibold))
                     .foregroundColor(.secondary)
-                    .padding(6)
-                    .background(Color.secondary.opacity(0.1))
-                    .clipShape(Circle())
+                    .frame(width: 24, height: 24)
+                    .background(
+                        RoundedRectangle(cornerRadius: 8, style: .continuous)
+                            .fill(.ultraThinMaterial)
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 8, style: .continuous)
+                            .stroke(Palette.hairline, lineWidth: 1)
+                    )
             }
             .buttonStyle(.plain)
             .help("Close")
@@ -108,7 +113,12 @@ struct PromptEditorView: View {
         .padding(.horizontal, 20)
         .padding(.vertical, 16)
         .background(Color(NSColor.windowBackgroundColor))
-        .overlay(Divider().opacity(0.5), alignment: .bottom)
+        .overlay(
+            Rectangle()
+                .fill(Palette.hairlineSoft)
+                .frame(height: 1),
+            alignment: .bottom
+        )
     }
 
     // MARK: - 50/50 split content (spec §3.9 / plan §P3.E)
@@ -190,15 +200,24 @@ struct PromptEditorView: View {
                 save()
                 dismissPanel()
             } label: {
-                Text("Save Changes").frame(minWidth: 100)
+                Text("Save Changes")
+                    .font(.system(size: 12, weight: .semibold))
+                    .frame(minWidth: 100)
             }
             .buttonStyle(.borderedProminent)
+            .tint(Palette.accent)
             .disabled(isEditingPredefinedPrompt ? false : (title.isEmpty || promptText.isEmpty))
             .keyboardShortcut(.return, modifiers: .command)
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 16)
         .background(Color(NSColor.windowBackgroundColor))
+        .overlay(
+            Rectangle()
+                .fill(Palette.hairlineSoft)
+                .frame(height: 1),
+            alignment: .top
+        )
     }
 
     // MARK: - Predefined Prompt Form
@@ -530,12 +549,12 @@ struct IconPickerPopover: View {
                         }
                     }) {
                         ZStack {
-                            RoundedRectangle(cornerRadius: 12)
-                                .fill(selectedIcon == icon ? Color(NSColor.windowBackgroundColor) : Color(NSColor.controlBackgroundColor))
+                            RoundedRectangle(cornerRadius: 10)
+                                .fill(selectedIcon == icon ? Palette.accent.opacity(0.14) : Color(NSColor.controlBackgroundColor))
                                 .frame(width: 52, height: 52)
                                 .overlay(
-                                    RoundedRectangle(cornerRadius: 12)
-                                        .stroke(selectedIcon == icon ? Color(NSColor.separatorColor) : Color.secondary.opacity(0.2), lineWidth: selectedIcon == icon ? 2 : 1)
+                                    RoundedRectangle(cornerRadius: 10)
+                                        .stroke(selectedIcon == icon ? Palette.accent.opacity(0.55) : Palette.hairlineSoft, lineWidth: selectedIcon == icon ? 1.5 : 1)
                                 )
                             
                             Image(systemName: icon)

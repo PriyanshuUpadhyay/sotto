@@ -27,6 +27,7 @@ struct VoiceInkApp: App {
     @StateObject private var activeWindowService = ActiveWindowService.shared
     @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
     @AppStorage("enableAnnouncements") private var enableAnnouncements = true
+    @AppStorage("legacyMLXDirPurged") private var legacyMLXDirPurged: Bool = false
     @State private var showMenuBarIcon = true
 
     // Audio cleanup manager for automatic deletion of old audio files
@@ -179,6 +180,29 @@ struct VoiceInkApp: App {
         // via Combine on `engine.$recordingState`.
         appDelegate.recordingStateObserver.bind(to: engine)
         appDelegate.recordingStateObserver.bind(toRegistry: failureRegistry)
+
+        // One-time migration: reclaim the legacy `MLXModels/` cache from the
+        // mlx-swift 2.x era. Sentinel-guarded so it only runs once per install.
+        // `swift-huggingface` 0.9.0 lands snapshots under `~/Library/Caches/`
+        // instead, leaving the legacy dir orphaned. Spec §5 row W6 + W6 plan.
+        // Only flip the sentinel on success — failure path retries next launch
+        // (idempotent + bounded by the helper's path sentinel guard).
+        if !legacyMLXDirPurged {
+            let succeeded = MLXModelRegistry.purgeLegacyApplicationSupportModelsIfPresent()
+            if succeeded { legacyMLXDirPurged = true }
+        }
+
+        // Wipe stale `mlx_selected_model_id` for entries dropped from the W6
+        // curated registry. Idempotent: once cleared, subsequent launches
+        // see `nil` and the if-let fails. Independent of the dir purge above.
+        let staleMLXIds: Set<String> = [
+            "mlx-community/gemma-3-1b-it-qat-4bit",
+            "mlx-community/Qwen3.6-27B-4bit"
+        ]
+        if let current = UserDefaults.standard.string(forKey: "mlx_selected_model_id"),
+           staleMLXIds.contains(current) {
+            UserDefaults.standard.removeObject(forKey: "mlx_selected_model_id")
+        }
 
         // P3.F: warm up the AVAudioEngine that powers synthesized cues. Starts
         // the audio graph + schedules a silent pre-roll so the first user cue

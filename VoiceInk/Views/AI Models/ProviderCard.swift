@@ -121,7 +121,7 @@ struct ProviderCard: View {
     }
 
     var body: some View {
-        let shape = RoundedRectangle(cornerRadius: 16, style: .continuous)
+        let shape = RoundedRectangle(cornerRadius: 14, style: .continuous)
         VStack(alignment: .leading, spacing: 0) {
             header
                 .padding(14)
@@ -130,6 +130,7 @@ struct ProviderCard: View {
 
             if isExpanded {
                 Divider()
+                    .background(Palette.hairlineSoft)
                     .padding(.horizontal, 14)
                 expanded
                     .padding(14)
@@ -141,13 +142,11 @@ struct ProviderCard: View {
         )
         .overlay(
             shape.stroke(
-                isActive ? tint.opacity(0.55) : tint.opacity(0.18),
-                lineWidth: isActive ? 1.5 : 0.5
+                isActive ? Palette.accent.opacity(0.55) : Palette.hairline,
+                lineWidth: isActive ? 1.5 : 1
             )
         )
         .clipShape(shape)
-        .offset(y: hovering ? -4 : 0)
-        .animation(motion.reduceMotion ? nil : .easeOut(duration: 0.18), value: hovering)
         .animation(motion.reduceMotion ? nil : .spring(response: 0.32, dampingFraction: 0.85), value: isExpanded)
         .onHover { hovering = $0 }
         .onAppear { onCardAppear() }
@@ -160,12 +159,12 @@ struct ProviderCard: View {
             // Provider tile — same language as ProviderChip but at 36pt scale.
             ZStack {
                 RoundedRectangle(cornerRadius: 9, style: .continuous)
-                    .fill(tint.opacity(0.18))
+                    .fill(Palette.accent.opacity(0.18))
                 RoundedRectangle(cornerRadius: 9, style: .continuous)
-                    .stroke(tint.opacity(0.36), lineWidth: 0.5)
+                    .stroke(Palette.accent.opacity(0.36), lineWidth: 0.5)
                 Image(systemName: symbol)
                     .font(.system(size: 16, weight: .semibold))
-                    .foregroundColor(tint)
+                    .foregroundColor(Palette.accent)
             }
             .frame(width: 36, height: 36)
             .overlay(alignment: .topTrailing) {
@@ -187,13 +186,13 @@ struct ProviderCard: View {
 
                     if isActive {
                         Text("ACTIVE")
-                            .font(.system(size: 9, weight: .bold, design: .rounded))
-                            .tracking(0.5)
-                            .foregroundColor(tint)
-                            .padding(.horizontal, 5)
-                            .padding(.vertical, 1.5)
-                            .background(Capsule().fill(tint.opacity(0.16)))
-                            .overlay(Capsule().stroke(tint.opacity(0.32), lineWidth: 0.5))
+                            .font(.system(size: 9.5, weight: .semibold, design: .monospaced))
+                            .tracking(0.06 * 9.5)
+                            .foregroundColor(Palette.accent)
+                            .padding(.horizontal, 7)
+                            .padding(.vertical, 2.5)
+                            .background(Capsule().fill(Palette.accent.opacity(0.16)))
+                            .overlay(Capsule().stroke(Palette.accent.opacity(0.42), lineWidth: 0.5))
                     }
                 }
 
@@ -206,20 +205,8 @@ struct ProviderCard: View {
 
             Spacer(minLength: 0)
 
-            // Status dot + chevron
             HStack(spacing: 8) {
-                Text(statusText)
-                    .font(.system(size: 10, weight: .semibold, design: .rounded))
-                    .tracking(0.4)
-                    .foregroundColor(isConnected ? Palette.success : Palette.neutral)
-                    .padding(.horizontal, 7)
-                    .padding(.vertical, 2.5)
-                    .background(
-                        Capsule().fill((isConnected ? Palette.success : Palette.neutral).opacity(0.14))
-                    )
-                    .overlay(
-                        Capsule().stroke((isConnected ? Palette.success : Palette.neutral).opacity(0.32), lineWidth: 0.5)
-                    )
+                StatusPill(text: statusText, tone: isConnected ? .positive : .neutral)
 
                 Image(systemName: "chevron.down")
                     .font(.system(size: 10, weight: .semibold))
