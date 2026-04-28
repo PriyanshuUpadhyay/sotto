@@ -46,12 +46,19 @@ struct ConstellationContainer<S: RecorderStateProvider & ObservableObject>: View
 
     var body: some View {
         let layout = ConstellationLayout.current(mode: mode)
+        let phase = derivedPhase
+        // Polish: pause the 60Hz timeline outside `.enhancing`. The breathe
+        // pulse is the only thing that needs frame-by-frame updates, and
+        // `breathePulse(at:)` already returns 0 for non-enhancing phases —
+        // so without this gate the recorder burns CPU re-driving the body
+        // while the panel is mounted but idle / recording / transcribing.
+        let timelinePaused = phase != .enhancing
 
         // Drive the breathe pulse with a TimelineView so we don't have to
         // own a repeating animation @State (avoids retain-cycle gotchas
         // noted in plan §P1.B). Pulse is gated to `.enhancing` and reduced
         // to 0.5 under Reduce Motion (still drives sheen at static mid).
-        TimelineView(.animation(minimumInterval: 1.0 / 60.0, paused: false)) { ctx in
+        TimelineView(.animation(minimumInterval: 1.0 / 60.0, paused: timelinePaused)) { ctx in
             let pulse = breathePulse(at: ctx.date)
             content(layout: layout, breathePulse: pulse)
         }
@@ -72,6 +79,11 @@ struct ConstellationContainer<S: RecorderStateProvider & ObservableObject>: View
             // Idle whisper — present below the notch when phase collapses
             // back to `.hidden`. Opacity is internally multiplied by
             // `proximity`; we just hand the value over.
+            // TODO(polish): the recorder panel is `orderOut`'d at idle, so
+            // the WhisperLine never actually renders ambient. Real fix is a
+            // separate always-mounted ambient-strip panel — deferred (needs
+            // design discussion). For now the WhisperLine still works
+            // correctly during phase transitions while the panel is alive.
             WhisperLine(
                 phase: phase,
                 appearance: appearance,
