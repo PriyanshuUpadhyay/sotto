@@ -100,6 +100,7 @@ class CustomSoundManager: ObservableObject {
             filenames[type] = UserDefaults.standard.string(forKey: type.filenameKey)
         }
         createCustomSoundsDirectoryIfNeeded()
+        cleanupLegacyStopSound()
     }
 
     /// One-shot migration: pre-P3.G builds stored a generic "stop" cue.
@@ -126,6 +127,49 @@ class CustomSoundManager: ObservableObject {
 
         defaults.removeObject(forKey: legacyIsUsingKey)
         defaults.removeObject(forKey: legacyFilenameKey)
+    }
+
+    /// Sweep + rename for the legacy `CustomStopSound.<ext>` file. Two cases:
+    ///
+    ///   1. `transcribeComplete`'s filename pointer still points at
+    ///      `CustomStopSound.<ext>` (typical post-migration state). Rename
+    ///      the file on disk to the new `CustomTranscribeCompleteSound.<ext>`
+    ///      stem and update the in-memory + UserDefaults pointers. Without
+    ///      this, the user's later override pick would copy a fresh file
+    ///      under the new stem and orphan the legacy one.
+    ///   2. Any leftover `CustomStopSound.*` files (e.g. user already had a
+    ///      transcribeComplete override pre-migration so the legacy pointer
+    ///      was dropped without touching the file) get deleted.
+    ///
+    /// Runs once per launch from `init`; cheap if nothing matches.
+    private func cleanupLegacyStopSound() {
+        guard let directory = customSoundsDirectory() else { return }
+        let target = SoundType.transcribeComplete
+
+        if let filename = filenames[target], filename.hasPrefix("CustomStopSound.") {
+            let ext = (filename as NSString).pathExtension
+            let newFilename = ext.isEmpty
+                ? target.standardName
+                : "\(target.standardName).\(ext)"
+            let oldURL = directory.appendingPathComponent(filename)
+            let newURL = directory.appendingPathComponent(newFilename)
+            if FileManager.default.fileExists(atPath: oldURL.path) {
+                if FileManager.default.fileExists(atPath: newURL.path) {
+                    try? FileManager.default.removeItem(at: newURL)
+                }
+                if (try? FileManager.default.moveItem(at: oldURL, to: newURL)) != nil {
+                    filenames[target] = newFilename
+                    UserDefaults.standard.set(newFilename, forKey: target.filenameKey)
+                }
+            }
+        }
+
+        // Sweep any remaining orphans.
+        if let entries = try? FileManager.default.contentsOfDirectory(atPath: directory.path) {
+            for entry in entries where entry.hasPrefix("CustomStopSound.") {
+                try? FileManager.default.removeItem(at: directory.appendingPathComponent(entry))
+            }
+        }
     }
 
     private func customSoundsDirectory() -> URL? {
@@ -207,8 +251,12 @@ class CustomSoundManager: ObservableObject {
     }
 
     /// Triggers an off-main render of the cue's waveform preview if not cached.
-    /// Idempotent — repeated calls during the in-flight render are coalesced
-    /// into a single computation by the cache check on completion.
+    /// Idempotent on the post-completion path: once the cache is populated,
+    /// subsequent calls short-circuit at the top check. During the in-flight
+    /// window the cache is still `nil`, so concurrent callers can each spawn
+    /// a Task — the redundant work is harmless because the synthesizer is
+    /// deterministic and the cache write produces identical samples either
+    /// way.
     ///
     /// `bins` should match the bar count rendered by the view. Default 48 →
     /// roughly one bar per 5 ms of cue at 230 ms duration.
@@ -217,8 +265,11 @@ class CustomSoundManager: ObservableObject {
         Task.detached(priority: .userInitiated) { [weak self] in
             let samples = CueSynthesizer.waveformPreview(for: type.synthCue, bins: bins)
             await MainActor.run { [weak self] in
-                self?.waveformCache[type] = samples
+                // Convention: announce the change BEFORE mutating state so
+                // observers see the new value on the next render pass rather
+                // than missing the just-written value.
                 self?.objectWillChange.send()
+                self?.waveformCache[type] = samples
             }
         }
     }
