@@ -79,6 +79,14 @@ struct WordReplacementView: View {
     }
 
     private func setManualSort() {
+        // If switching INTO manual from an alpha mode, snapshot the current
+        // displayed order into `sortOrder` so what the user sees is what
+        // sticks. Without this rebase the indices reflect whatever was last
+        // persisted (legacy 0s or stale manual order) and the visible order
+        // shifts at the moment Custom is re-engaged.
+        if sortMode != .manual {
+            rebaseManualOrder(from: sortedReplacements)
+        }
         sortMode = .manual
         persistSortMode()
     }
@@ -160,9 +168,10 @@ struct WordReplacementView: View {
                             .onDrag {
                                 draggedID = replacement.id
                                 if sortMode != .manual {
-                                    // Snapshot current display order as manual baseline,
-                                    // then switch to manual so drop persists.
-                                    rebaseManualOrder(from: sortedReplacements)
+                                    // setManualSort rebases from current
+                                    // displayed order before flipping mode,
+                                    // so the drop persists in the order the
+                                    // user was looking at.
                                     setManualSort()
                                 }
                                 return NSItemProvider(object: replacement.id.uuidString as NSString)

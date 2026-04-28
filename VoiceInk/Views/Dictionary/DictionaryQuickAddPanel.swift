@@ -332,7 +332,17 @@ struct DictionaryQuickAddView: View {
         let original = originalInput.trimmingCharacters(in: .whitespacesAndNewlines)
         let replacement = replacementInput.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !original.isEmpty, !replacement.isEmpty else { return }
-        if let error = DictionaryService.addWordReplacement(original: original, replacement: replacement, existing: Array(wordReplacements), context: modelContext) {
+        // Match the in-row Add path in WordReplacementView: push new entry to
+        // the bottom of the manual order (currentMax + 1) so quick-add rows
+        // don't collapse to sortOrder 0 alongside legacy/unordered entries.
+        let nextOrder = (wordReplacements.map(\.sortOrder).max() ?? 0) + 1
+        if let error = DictionaryService.addWordReplacement(
+            original: original,
+            replacement: replacement,
+            existing: Array(wordReplacements),
+            context: modelContext,
+            sortOrder: nextOrder
+        ) {
             errorMessage = error
             return
         }

@@ -249,6 +249,11 @@ class ImportExportService {
                             existingKeysSet.formUnion(tokens)
                         }
 
+                        // Append imported entries below the existing manual order
+                        // so import doesn't collapse new rows to sortOrder 0 mixed
+                        // with legacy unordered entries (matches in-row Add path).
+                        var nextSortOrder = (existingReplacements.map(\.sortOrder).max() ?? 0) + 1
+
                         for (original, replacement) in replacementsToImport {
                             let importTokens = original
                                 .split(separator: ",")
@@ -259,7 +264,12 @@ class ImportExportService {
                             let hasConflict = importTokens.contains { existingKeysSet.contains($0) }
 
                             if !hasConflict {
-                                let newReplacement = WordReplacement(originalText: original, replacementText: replacement)
+                                let newReplacement = WordReplacement(
+                                    originalText: original,
+                                    replacementText: replacement,
+                                    sortOrder: nextSortOrder
+                                )
+                                nextSortOrder += 1
                                 modelContext.insert(newReplacement)
                                 // Add these tokens to the set to prevent duplicates within the import
                                 existingKeysSet.formUnion(importTokens)
