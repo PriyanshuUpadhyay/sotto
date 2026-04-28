@@ -27,8 +27,9 @@ struct PasteEvent: Equatable {
     static let userInfoKey = "voiceInkPasteEvent"
 
     /// Spec §3.1 done content shows a single italic line under "Pasted to <app>".
-    /// 90 chars is generous for that single line at 13pt; ConstellationCard
-    /// also `lineLimit(1)`s + `truncationMode(.tail)`s as a belt-suspenders.
+    /// 90 chars is generous for that single line at 13pt; the done-state chip
+    /// in `ChipPanel` also `lineLimit(1)`s + `truncationMode(.tail)`s as a
+    /// belt-suspenders.
     static let previewMaxLength = 90
 
     /// Build a 1-line preview from arbitrary pasted text.
@@ -64,8 +65,8 @@ protocol RecorderStateProvider: AnyObject {
     var lastPasteEvent: PasteEvent? { get }
 
     /// Pretty label for the active transcription model (e.g.
-    /// `"WHISPER · LARGE-V3"`). Surfaced in ConstellationCard's
-    /// `.transcribing` content row. Nil → orchestrator falls back to the
-    /// card's default placeholder.
+    /// `"WHISPER · LARGE-V3"`). Surfaced in `ChipPanel` via
+    /// `ClusterChips.transcribingChips` during the `.transcribing` phase.
+    /// Nil → orchestrator falls back to a default chip label.
     var transcriptionModelLabel: String? { get }
 }

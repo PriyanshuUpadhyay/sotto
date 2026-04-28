@@ -48,8 +48,8 @@ struct KeyCapView: View {
         .accessibilityLabel(accessibilityLabel)
     }
 
-    /// Variant-keyed glyph color — onyx 0.92 white, light 0.82 black. Mirrors
-    /// `ConstellationChip` so mono labels read consistently across surfaces.
+    /// Variant-keyed glyph color — onyx 0.92 white, light 0.82 black. Tuned
+    /// so mono key glyphs stay legible against both the dark and light caps.
     private var textColor: Color {
         switch appearance {
         case .onyx:  return Color.white.opacity(0.92)

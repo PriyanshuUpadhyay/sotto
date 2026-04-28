@@ -37,10 +37,9 @@ struct HaloRecorderView<S: RecorderStateProvider & ObservableObject, WM: Observa
 
 // MARK: - Streaming caret transcript (live partial)
 //
-// Re-used by `ConstellationCard` for `.recording`/`.liveText`. Lives here
-// because v1 already exported it from this file; moving would require
-// touching the constellation card's import paths. Spec §3.1 recording
-// content row.
+// Renders partial-transcript text with a blinking caret for the live-text
+// affordance. Kept here from the v1 pill — file already exported it, so
+// moving would just churn import paths. Spec §3.1 recording content row.
 
 struct StreamingCaretTranscript: View {
     let text: String

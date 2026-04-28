@@ -4,9 +4,10 @@ import Foundation
 
 extension VoiceInkEngine: RecorderStateProvider {
     /// Pretty `"PROVIDER · MODEL"` label for the active transcription model
-    /// (e.g. `"WHISPER · LARGE-V3"`). Surfaced in ConstellationCard's
-    /// `.transcribing` row. Returns nil when no model is selected — the
-    /// orchestrator falls back to the card's default placeholder.
+    /// (e.g. `"WHISPER · LARGE-V3"`). Surfaced in `ChipPanel` via
+    /// `ClusterChips.transcribingChips` during the `.transcribing` phase.
+    /// Returns nil when no model is selected — the orchestrator falls back
+    /// to a default chip label.
     var transcriptionModelLabel: String? {
         guard let model = transcriptionModelManager.currentTranscriptionModel else {
             return nil
