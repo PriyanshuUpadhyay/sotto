@@ -8,7 +8,7 @@ import HuggingFace
 private let mlxRegistryLogger = Logger(subsystem: "com.prakashjoshipax.voiceink", category: "MLXModelDownloader")
 
 struct MLXModelEntry: Identifiable, Hashable {
-    let id: String              // HF repo, e.g. "mlx-community/gemma-4-e4b-it-4bit"
+    let id: String              // HF repo, e.g. "mlx-community/Qwen3-4B-Instruct-2507-4bit-DWQ-2510"
     let displayName: String
     let approximateSizeGB: Double
     let notes: String
@@ -58,15 +58,23 @@ struct MLXModelEntry: Identifiable, Hashable {
 }
 
 enum MLXModelRegistry {
-    /// Curated lineup as of W6 (April 2026). Filtered to entries that meet
-    /// the ≤10s wall-clock latency target on M-series base 32 GB for
-    /// typical dictation cleanup (50-200 token output). One entry kept
-    /// experimental for users who want big-model quality and accept the
-    /// swap-pressure cost. All entries verified loadable against the
-    /// bundled `mlx-swift-lm` 3.31.3 (gemma3 + gemma3_text + gemma4 +
-    /// qwen3_5 model types are registered; the new e2b entry shares the
-    /// gemma3 type with the existing e4b default). Ratings basis
-    /// documented at `docs/superpowers/plans/W6-mlx-quality-and-segregation.md`.
+    /// Curated lineup as of W10 (April 2026). Three-tier Qwen-only Apache 2.0
+    /// lineup. Filtered to entries that meet the ≤10s wall-clock latency
+    /// target on M-series base 32 GB for typical dictation cleanup (50-200
+    /// token output). The W6-era gemma entries (e2b, e4b) were swapped out
+    /// after user-reported real-world slowness; the 26B-A4B experimental
+    /// tier was dropped per user direction "smaller the model, the better
+    /// the speed". All entries verified loadable against the bundled
+    /// `mlx-swift-lm` 3.31.3 (qwen3 + qwen3_5 model types are registered).
+    /// Ratings basis: research at
+    /// `docs/superpowers/research/2026-04-29-mlx-rewriting-models.md` +
+    /// W6 plan at
+    /// `docs/superpowers/plans/W6-mlx-quality-and-segregation.md` (struct
+    /// shape) + W10 plan at
+    /// `docs/superpowers/plans/W10-mlx-registry-swap.md` (current lineup).
+    /// `expectedLatencySeconds` ranges are PLACEHOLDER post-merge — refine
+    /// from the user's `🦾 enhance: total=…s` log capture during the
+    /// sequential pre-merge test pass.
     static let curated: [MLXModelEntry] = [
         .init(
             id: "mlx-community/Qwen3-1.7B-4bit-DWQ",
@@ -78,13 +86,13 @@ enum MLXModelRegistry {
             expectedLatencySeconds: 1.0...3.0  // PLACEHOLDER — refine post sequential test (Task 6)
         ),
         .init(
-            id: "mlx-community/gemma-4-e4b-it-4bit",
-            displayName: "Gemma 4 E4B Instruct",
-            approximateSizeGB: 2.5,
-            notes: "Google. Default mid-tier. Strong instruction-following, ~30-50 tok/s on M-series base 32 GB.",
+            id: "mlx-community/Qwen3-4B-Instruct-2507-4bit-DWQ-2510",
+            displayName: "Qwen 3 4B Instruct 2507",
+            approximateSizeGB: 2.3,
+            notes: "Alibaba. Default mid-tier. Apache 2.0. IFEval 88.9 (vs gemma-E4B class ~70-75). Arena-Hard 43.4. DWQ-2510 quant minimizes 4-bit quality loss. qwen3 type registered in mlx-swift-lm 3.31.3.",
             speedRating: 7,
-            qualityRating: 6,
-            expectedLatencySeconds: 3.0...7.0
+            qualityRating: 8,
+            expectedLatencySeconds: 3.0...7.0  // PLACEHOLDER — refine post sequential test (Task 6)
         ),
         .init(
             id: "mlx-community/Qwen3.5-4B-MLX-4bit",
