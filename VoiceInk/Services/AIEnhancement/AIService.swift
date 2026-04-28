@@ -309,12 +309,28 @@ class AIService: ObservableObject {
     }
     
     var currentModel: String {
+        // MLX picker writes only to `mlx_selected_model_id` AppStorage and never
+        // routes through `selectModel(_:)`, so `selectedModels[.mlx]` can hold a
+        // stale value from a prior code path. Always read MLX selection from the
+        // canonical key so the cluster's MODEL chip + ProviderCard stay in sync
+        // with `enhanceWithMLX` (which already reads the same key on every call).
+        if selectedProvider == .mlx {
+            return UserDefaults.standard.string(forKey: "mlx_selected_model_id") ?? ""
+        }
         if let selectedModel = selectedModels[selectedProvider],
            !selectedModel.isEmpty,
            (selectedProvider == .ollama && !selectedModel.isEmpty) || availableModels.contains(selectedModel) {
             return selectedModel
         }
         return selectedProvider.defaultModel
+    }
+
+    /// Picker calls this after writing `mlx_selected_model_id`; AppStorage writes
+    /// don't auto-publish through ObservableObject, so SwiftUI consumers reading
+    /// `currentModel` (cluster MODEL chip, ProviderCard) wouldn't otherwise re-render.
+    func notifyMLXSelectionChanged() {
+        objectWillChange.send()
+        NotificationCenter.default.post(name: .AppSettingsDidChange, object: nil)
     }
     
     var availableModels: [String] {

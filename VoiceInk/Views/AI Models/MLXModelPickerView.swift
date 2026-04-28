@@ -68,6 +68,7 @@ struct MLXModelPickerView: View {
         } else if isDownloaded {
             Button("Use") {
                 selectedModelId = model.id
+                aiService.notifyMLXSelectionChanged()
                 aiService.refreshAPIKeyValidity()
             }
             .buttonStyle(.bordered)
@@ -107,6 +108,7 @@ struct MLXModelPickerView: View {
         if selectedModelId.isEmpty {
             if let firstDownloaded = MLXModelRegistry.curated.first(where: { statuses[$0.id] == .downloaded }) {
                 selectedModelId = firstDownloaded.id
+                aiService.notifyMLXSelectionChanged()
                 aiService.refreshAPIKeyValidity()
             }
         }
@@ -129,6 +131,7 @@ struct MLXModelPickerView: View {
                 // a manual click and the "I downloaded but enhancement still doesn't work" trap.
                 if selectedModelId.isEmpty {
                     selectedModelId = model.id
+                    aiService.notifyMLXSelectionChanged()
                 }
                 aiService.refreshAPIKeyValidity()
             }
@@ -141,7 +144,10 @@ struct MLXModelPickerView: View {
         do {
             try MLXModelDownloader.delete(model.id)
             statuses[model.id] = .notDownloaded
-            if selectedModelId == model.id { selectedModelId = "" }
+            if selectedModelId == model.id {
+                selectedModelId = ""
+                aiService.notifyMLXSelectionChanged()
+            }
             aiService.refreshAPIKeyValidity()
         } catch {
             statuses[model.id] = .failed(error.localizedDescription)
