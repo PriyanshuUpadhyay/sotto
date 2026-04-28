@@ -96,11 +96,11 @@ struct ContentView: View {
                         if case .licensed = licenseViewModel.licenseState {
                             Text("PRO")
                                 .font(.system(size: 9, weight: .heavy))
-                                .foregroundStyle(.white)
+                                .foregroundStyle(Palette.onyxFg)
                                 .padding(.horizontal, 4)
                                 .padding(.vertical, 2)
-                                .background(Color.blue)
-                                .cornerRadius(4)
+                                .background(Palette.accent)
+                                .cornerRadius(10)
                         }
 
                         Spacer()
@@ -119,6 +119,7 @@ struct ContentView: View {
                 }
             }
             .listStyle(.sidebar)
+            .tint(Palette.accent)
             .navigationTitle("VoiceInk")
             .navigationSplitViewColumnWidth(210)
         } detail: {
