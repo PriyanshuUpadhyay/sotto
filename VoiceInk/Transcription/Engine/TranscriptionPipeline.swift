@@ -57,6 +57,13 @@ class TranscriptionPipeline {
         // (which picks the pre-paste cue) can read it. Flipped only on
         // successful enhance.
         var didEnhance = false
+        // Polish: also hoist a "did the pre-enhance transcribe cue already
+        // fire?" flag. On enhance-failure, the engine state flip fires `playFail`
+        // via the Combine sink in `RecorderUIManager`; without this guard the
+        // pre-paste asyncAfter would replay `playTranscribeComplete`, stacking
+        // three cues (transcribe → fail → transcribe). Skip the pre-paste
+        // transcribe cue when the pre-enhance one already fired.
+        var didFireTranscribeCue = false
 
         logger.notice("🔄 Starting transcription...")
 
@@ -122,6 +129,7 @@ class TranscriptionPipeline {
                 // enhance" per spec §3.10. The enhance step then runs (often
                 // several seconds), and enhance-complete fires before paste.
                 SoundManager.shared.playTranscribeComplete()
+                didFireTranscribeCue = true
 
                 onStateChange(.enhancing)
                 let textForAI = promptDetectionResult?.processedText ?? text
@@ -185,10 +193,12 @@ class TranscriptionPipeline {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.015) {
                 // P3.F: pre-paste cue. enhance-complete if enhancement actually
                 // ran (slightly softer stacked arpeggio), else transcribe-
-                // complete (the fundamental "done" cue).
+                // complete (the fundamental "done" cue) — but only if the
+                // pre-enhance transcribe cue didn't already fire (enhance-
+                // failure path) so we don't stack three cues.
                 if didEnhance {
                     SoundManager.shared.playEnhanceComplete()
-                } else {
+                } else if !didFireTranscribeCue {
                     SoundManager.shared.playTranscribeComplete()
                 }
                 let appendSpace = UserDefaults.standard.bool(forKey: "AppendTrailingSpace")

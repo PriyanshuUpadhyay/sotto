@@ -42,10 +42,9 @@ class RecorderUIManager: ObservableObject {
     private weak var engine: VoiceInkEngine?
     private var recorder: Recorder?
 
-    /// P3.F: Combine subscription to engine.recordingState for the failure cue.
-    /// Stored here so it's torn down with the manager (engine is weak — sink
-    /// holds a strong-self closure capture, so we must keep this owned by us
-    /// to break the cycle on dealloc).
+    /// P3.F: Combine subscription to `engine.$recordingState` that fires the
+    /// failure cue (`SoundManager.playFail`) on every transition into `.failed`.
+    /// Stored as a set so the sink is torn down with the manager.
     private var stateCueObservers = Set<AnyCancellable>()
 
     private let logger = Logger(subsystem: "com.prakashjoshipax.voiceink", category: "RecorderUIManager")
@@ -66,6 +65,12 @@ class RecorderUIManager: ObservableObject {
     /// state directly keeps the cue trigger consolidated rather than scattering
     /// `playFail()` calls across each error path.
     private func setupStateCueObservers(engine: VoiceInkEngine) {
+        // Cancel any prior subscription before re-subscribing. Today there's
+        // only one `configure()` call site, but a second call would otherwise
+        // leave the prior sink alive in the set and fire the failure cue twice
+        // per transition.
+        stateCueObservers.removeAll()
+
         engine.$recordingState
             .removeDuplicates()
             .sink { newState in
