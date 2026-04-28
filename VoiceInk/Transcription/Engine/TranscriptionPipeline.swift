@@ -147,8 +147,14 @@ class TranscriptionPipeline {
                     didEnhance = true
                 } catch {
                     let errorDescription = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
-                    transcription.enhancedText = "Enhancement failed: \(errorDescription)"
                     let shortReason = String(errorDescription.prefix(80))
+                    // Don't write the error into `transcription.enhancedText` —
+                    // history views and the copy/paste path resolve text via
+                    // `enhancedText ?? text`, so persisting a failure string
+                    // there leaks "Enhancement failed: …" into the clipboard
+                    // and the history list. Leaving it nil falls through to
+                    // the raw transcript everywhere.
+                    logger.error("AI enhancement failed: \(errorDescription, privacy: .public)")
                     await MainActor.run {
                         NotificationManager.shared.showNotification(
                             title: "Enhancement failed: \(shortReason)",

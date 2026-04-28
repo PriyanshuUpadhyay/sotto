@@ -12,10 +12,6 @@ import SwiftUI
 // template (auto-tinted by macOS in light + dark menu bars). Recording bakes
 // `Palette.recording` directly so the loudest signal in the system reads as
 // red regardless of menu bar appearance.
-//
-// CALayer animations attach to the host NSImageView's backing layer — see
-// `MenuBarIconAnimator` below. Reduce Motion → static color swap, no
-// animations attached.
 
 enum MenuBarIconRenderer {
     /// Canvas size — 18×18pt, the spec-pinned non-jitter footprint.
@@ -78,8 +74,6 @@ enum MenuBarIconRenderer {
             .applying(NSImage.SymbolConfiguration(paletteColors: [color]))
         let glyph = (NSImage(systemSymbolName: symbol, accessibilityDescription: label)?
             .withSymbolConfiguration(cfg)) ?? NSImage()
-        // Bake into a fresh 18×18 canvas so glyph metrics don't drift from
-        // SF Symbol weight changes. Non-template — tint is permanent.
         let canvas = NSImage(size: NSSize(width: pointSize, height: pointSize))
         canvas.lockFocus()
         let glyphSize = glyph.size
@@ -90,87 +84,6 @@ enum MenuBarIconRenderer {
         canvas.isTemplate = false
         canvas.accessibilityDescription = label
         return canvas
-    }
-}
-
-// MARK: - MenuBarIconAnimator
-//
-// CALayer animation wiring per spec §3.11:
-//   recording    → 1.0s pulse, scale 1.0 ↔ 1.08 (transform.scale, autoreversed)
-//   transcribing → 1.4s shimmer, opacity 1.0 ↔ 0.55 (CAKeyframeAnimation)
-//   enhancing    → 1.6s breath glow on shadowOpacity 0 ↔ 0.55 (CABasicAnimation)
-//
-// Animation keys are stable per-state so re-application after re-attach (see
-// `AnimatedMenuBarIconHost.Coordinator`) does not double-stack animations.
-
-enum MenuBarIconAnimator {
-    static let pulseKey = "voiceink.menubar.pulse"
-    static let shimmerKey = "voiceink.menubar.shimmer"
-    static let breathKey = "voiceink.menubar.breath"
-
-    /// Strip every state-driven animation + reset shadow. Always called before
-    /// re-applying to avoid stacking conflicting animations on the same layer.
-    static func clear(_ layer: CALayer) {
-        layer.removeAnimation(forKey: pulseKey)
-        layer.removeAnimation(forKey: shimmerKey)
-        layer.removeAnimation(forKey: breathKey)
-        layer.shadowOpacity = 0.0
-    }
-
-    static func apply(state: MenuBarIconRenderer.IconState, to layer: CALayer, reduceMotion: Bool) {
-        clear(layer)
-        // Reduce Motion honors spec acceptance criteria: static color swap only.
-        guard !reduceMotion else { return }
-        switch state {
-        case .idle:
-            break
-        case .recording:
-            attachPulse(layer)
-        case .transcribing:
-            attachShimmer(layer)
-        case .enhancing:
-            attachBreath(layer)
-        }
-    }
-
-    private static func attachPulse(_ layer: CALayer) {
-        let anim = CABasicAnimation(keyPath: "transform.scale")
-        anim.fromValue = 1.0
-        anim.toValue = 1.08
-        anim.duration = 0.5            // half-period → full cycle 1.0s per spec
-        anim.autoreverses = true
-        anim.repeatCount = .infinity
-        anim.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
-        anim.isRemovedOnCompletion = false
-        layer.add(anim, forKey: pulseKey)
-    }
-
-    private static func attachShimmer(_ layer: CALayer) {
-        let anim = CAKeyframeAnimation(keyPath: "opacity")
-        anim.values = [1.0, 0.55, 1.0]
-        anim.keyTimes = [0.0, 0.5, 1.0]
-        anim.duration = 1.4            // full cycle per spec
-        anim.repeatCount = .infinity
-        anim.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
-        anim.isRemovedOnCompletion = false
-        layer.add(anim, forKey: shimmerKey)
-    }
-
-    private static func attachBreath(_ layer: CALayer) {
-        // Violet breath glow on the sparkles glyph — shadow on the host layer.
-        layer.shadowColor = NSColor(Palette.enhance).cgColor
-        layer.shadowRadius = 4.0
-        layer.shadowOffset = .zero
-        layer.shadowOpacity = 0.0
-        let anim = CABasicAnimation(keyPath: "shadowOpacity")
-        anim.fromValue = 0.0
-        anim.toValue = 0.55
-        anim.duration = 0.8            // half-period → full cycle 1.6s per spec
-        anim.autoreverses = true
-        anim.repeatCount = .infinity
-        anim.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
-        anim.isRemovedOnCompletion = false
-        layer.add(anim, forKey: breathKey)
     }
 }
 
@@ -205,24 +118,20 @@ final class RecordingStateObserver: ObservableObject {
     }
 }
 
-// MARK: - AnimatedMenuBarIcon (SwiftUI bridge)
+// MARK: - MenuBarIcon (SwiftUI label for MenuBarExtra)
 //
-// SwiftUI label for the `MenuBarExtra`. Hosts an `NSImageView` whose backing
-// CALayer is animated by `MenuBarIconAnimator`. Subscribes to
-// `RecordingStateObserver` so the image swap + animation re-apply on every
-// engine state change.
+// SwiftUI primitive — `Image(nsImage:)` so SwiftUI's `MenuBarExtra` snapshot
+// extraction picks up a real glyph. (`NSViewRepresentable` labels render as a
+// 0-size hot zone with no visible glyph in `.menuBarExtraStyle(.window)`.)
+// State swaps are immediate; per spec §3.11 the menu bar icon is a passive
+// indicator — the loud animation lives on the morphing recorder pill.
 
-struct AnimatedMenuBarIcon: View {
+struct MenuBarIcon: View {
     @ObservedObject var observer: RecordingStateObserver
-    @ObservedObject private var motion = AccessibilityMotionMonitor.shared
 
     var body: some View {
-        AnimatedMenuBarIconHost(
-            state: observer.iconState,
-            reduceMotion: motion.reduceMotion
-        )
-        .frame(width: MenuBarIconRenderer.pointSize, height: MenuBarIconRenderer.pointSize)
-        .accessibilityLabel(Text(accessibilityLabel))
+        Image(nsImage: MenuBarIconRenderer.image(for: observer.iconState))
+            .accessibilityLabel(Text(accessibilityLabel))
     }
 
     private var accessibilityLabel: String {
@@ -235,93 +144,15 @@ struct AnimatedMenuBarIcon: View {
     }
 }
 
-private struct AnimatedMenuBarIconHost: NSViewRepresentable {
-    var state: MenuBarIconRenderer.IconState
-    var reduceMotion: Bool
-
-    func makeCoordinator() -> Coordinator { Coordinator() }
-
-    func makeNSView(context: Context) -> NSImageView {
-        let size = MenuBarIconRenderer.pointSize
-        let view = NSImageView(frame: NSRect(x: 0, y: 0, width: size, height: size))
-        view.imageScaling = .scaleProportionallyUpOrDown
-        view.imageAlignment = .alignCenter
-        view.image = MenuBarIconRenderer.image(for: state)
-        view.wantsLayer = true
-        // Clip-free so the breath glow (shadow) is visible past the bounds.
-        if let layer = view.layer {
-            // Anchor at center so transform.scale pulses around the glyph mid
-            // rather than the bottom-left corner (NSView default).
-            layer.anchorPoint = CGPoint(x: 0.5, y: 0.5)
-            layer.position = CGPoint(x: size / 2, y: size / 2)
-            layer.masksToBounds = false
-        }
-        context.coordinator.bind(view: view, state: state, reduceMotion: reduceMotion)
-        return view
-    }
-
-    func updateNSView(_ nsView: NSImageView, context: Context) {
-        nsView.image = MenuBarIconRenderer.image(for: state)
-        context.coordinator.bind(view: nsView, state: state, reduceMotion: reduceMotion)
-    }
-
-    /// Re-attaches CALayer animations on `NSWindow.didBecomeKeyNotification`.
-    ///
-    /// Mitigation per plan §P2.C risk: `CAKeyframeAnimation` may detach when
-    /// the underlying `NSStatusItem.button` rebuilds itself on click (menu
-    /// open). Catching the key-window change re-applies the active animation
-    /// so the icon never freezes mid-state. The notification observer is
-    /// removed in `deinit` to avoid leaks.
-    final class Coordinator: NSObject {
-        private var keyObserver: NSObjectProtocol?
-        private weak var hostView: NSImageView?
-        private var lastState: MenuBarIconRenderer.IconState = .idle
-        private var lastReduceMotion: Bool = false
-
-        override init() {
-            super.init()
-            keyObserver = NotificationCenter.default.addObserver(
-                forName: NSWindow.didBecomeKeyNotification,
-                object: nil,
-                queue: .main
-            ) { [weak self] _ in
-                guard let self,
-                      let view = self.hostView,
-                      let layer = view.layer else { return }
-                MenuBarIconAnimator.apply(
-                    state: self.lastState,
-                    to: layer,
-                    reduceMotion: self.lastReduceMotion
-                )
-            }
-        }
-
-        deinit {
-            if let keyObserver { NotificationCenter.default.removeObserver(keyObserver) }
-        }
-
-        func bind(view: NSImageView, state: MenuBarIconRenderer.IconState, reduceMotion: Bool) {
-            self.hostView = view
-            self.lastState = state
-            self.lastReduceMotion = reduceMotion
-            if let layer = view.layer {
-                MenuBarIconAnimator.apply(state: state, to: layer, reduceMotion: reduceMotion)
-            }
-        }
-    }
-}
-
 // MARK: - Previews
 
 #if DEBUG
 private struct MenuBarIconPreviewHarness: View {
     @State private var state: MenuBarIconRenderer.IconState = .idle
-    private let observer = RecordingStateObserver()
 
     var body: some View {
         VStack(spacing: 18) {
-            // Force-publish the picked state without a real engine.
-            AnimatedMenuBarIconHost(state: state, reduceMotion: false)
+            Image(nsImage: MenuBarIconRenderer.image(for: state))
                 .frame(width: 64, height: 64)
 
             Picker("", selection: $state) {

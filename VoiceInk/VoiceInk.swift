@@ -357,16 +357,18 @@ struct VoiceInkApp: App {
                 .environmentObject(aiService)
                 .environmentObject(enhancementService)
         } label: {
-            // P2.C — engine-driven animated icon. Subscribes to
-            // `engine.$recordingState` via the observer owned by AppDelegate
-            // and swaps `NSImage` + applies CALayer animations on the host
-            // NSImageView. See `MenuBarIconRenderer` for renderer + animator.
-            AnimatedMenuBarIcon(observer: appDelegate.recordingStateObserver)
+            // SwiftUI `Image(nsImage:)` so MenuBarExtra renders a real glyph;
+            // an `NSViewRepresentable` label rendered 0×0 here under
+            // `.menuBarExtraStyle(.window)`. State-driven static swap via
+            // `RecordingStateObserver` — see `MenuBarIcon`.
+            MenuBarIcon(observer: appDelegate.recordingStateObserver)
         }
-        // Glass popover (P2.B / spec §3.2). Switched from `.menu` so the
-        // dropdown can host a custom 360×420pt Adaptive Glass surface with
-        // the entry spring + sectioned layout.
-        .menuBarExtraStyle(.window)
+        // Native NSMenu-style dropdown — `MenuBarView` lays out flat
+        // Button/Toggle/Menu/Divider items that SwiftUI projects onto
+        // NSMenuItems. The earlier `.window` glass popover was deemed too
+        // sparse (no recording action, no recents copy) — reverted per
+        // user request.
+        .menuBarExtraStyle(.menu)
 
         #if DEBUG
         WindowGroup("Debug") {
