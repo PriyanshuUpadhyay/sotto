@@ -5,8 +5,11 @@ import SwiftUI
 // On-device model picker rendered inside `ProviderCard`'s `.mlx` expanded
 // arm. W6 re-skin: rows show speed + quality ratings + expected latency
 // chips inheriting the glass vocabulary; experimental tier surfaces a
-// caution chip. Spec §5 row W6 + W6 plan
-// `docs/superpowers/plans/W6-mlx-quality-and-segregation.md`.
+// caution chip. W9: chip strip wraps via FlowLayout on narrow card widths
+// to recover the Quality chip clipping reported in the post-W8 handoff.
+// Spec §5 row W6 + W6 plan
+// `docs/superpowers/plans/W6-mlx-quality-and-segregation.md` + W9 plan
+// `docs/superpowers/plans/W9-mlx-chip-overflow.md`.
 
 struct MLXModelPickerView: View {
     @EnvironmentObject private var aiService: AIService
@@ -49,11 +52,17 @@ struct MLXModelPickerView: View {
                 statusControl(for: model)
             }
 
-            HStack(spacing: 6) {
+            // W9: chip strip wraps to a second row on narrow ProviderCard widths
+            // (Quality chip was clipping at default width). FlowLayout's default
+            // spacing(6) matches the prior HStack inter-chip gap and doubles as
+            // the inter-row gap. Spacer() is dropped — FlowLayout treats Spacer
+            // as a zero-width flow item, so the size annotation flows as the
+            // trailing item instead. Spec §5 row W6; plan
+            // docs/superpowers/plans/W9-mlx-chip-overflow.md.
+            FlowLayout(spacing: 6) {
                 ratingChip(label: "Speed", value: model.speedRating)
                 ratingChip(label: "Quality", value: model.qualityRating)
                 latencyChip(min: latency.lowerBound, max: latency.upperBound)
-                Spacer()
                 Text("\(String(format: "%.1f", model.approximateSizeGB)) GB")
                     .font(.system(size: 10.5, weight: .medium, design: .monospaced))
                     .tracking(0.06 * 10.5)
