@@ -208,5 +208,6 @@ struct AudioCleanupSettingsView: View {
                 }
             }
         }
+        .tint(Palette.accent)
     }
 }

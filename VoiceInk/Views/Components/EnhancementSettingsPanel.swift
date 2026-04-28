@@ -170,6 +170,7 @@ struct EnhancementSettingsPanel: View {
             .formStyle(.grouped)
             .scrollContentBackground(.hidden)
         }
+        .tint(Palette.accent)
     }
 }
 
@@ -190,12 +191,15 @@ private struct LastSystemPromptViewer: View {
                         .padding(8)
                 }
                 .frame(minHeight: 120, maxHeight: 220)
-                .background(Color(NSColor.textBackgroundColor).opacity(0.6))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 6)
-                        .stroke(Color.secondary.opacity(0.2), lineWidth: 1)
+                .background(
+                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                        .fill(.ultraThinMaterial)
                 )
-                .clipShape(RoundedRectangle(cornerRadius: 6))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                        .stroke(Palette.hairlineSoft, lineWidth: 1)
+                )
+                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
 
                 HStack {
                     Text("\(prompt.count) characters")

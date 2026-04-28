@@ -7,9 +7,9 @@ import SwiftUI
 // alternating-luminance fill so adjacent rows separate visually without
 // drawing dividers.
 //
-// Hover-lift: 2pt translate-y on cursor enter, 0.18s ease — half the
-// magnitude of `GlassCard` to keep the list rhythm calm. Reduce Motion
-// short-circuits the spring.
+// Hover-lift: 2pt translate-y on cursor enter, 0.18s ease. Calmer list
+// rhythm than the now-zero `GlassCard` primitive — kept locally per
+// design intent. Reduce Motion short-circuits the spring.
 
 struct TranscriptionListItem: View {
     let transcription: Transcription

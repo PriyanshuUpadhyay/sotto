@@ -13,8 +13,9 @@ import SwiftUI
 //
 // Reuses the existing `SettingsSectionHeader` (icon tile + title + subtitle +
 // optional status pill) rather than re-rendering its semantics — same
-// vocabulary, same a11y read order. Hover-lift + adaptive material are
-// inherited from `GlassCard` (4pt translate-y, 0.18s ease).
+// vocabulary, same a11y read order.
+// Adaptive material (appearance + opacity) is inherited from `GlassCard`.
+// The hover signal hook is retained but no longer translates the card.
 //
 // Form-chrome mitigation (per plan §P2.D risks): consumer hosts these in a
 // `ScrollView { LazyVStack }`, NOT a `Form`. Putting `SettingsCard` inside a

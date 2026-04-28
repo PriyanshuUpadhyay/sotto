@@ -99,7 +99,7 @@ private struct RecorderStyleCard<Preview: View>: View {
         .contentShape(Rectangle())
         .background(
             RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .fill(isSelected ? Color.accentColor.opacity(0.06) : Color.clear)
+                .fill(isSelected ? Palette.accent.opacity(0.06) : Color.clear)
         )
         .animation(.easeInOut(duration: 0.15), value: isSelected)
     }

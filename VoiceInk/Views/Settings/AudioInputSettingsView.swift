@@ -73,13 +73,18 @@ struct AudioInputSettingsView: View {
                 Spacer()
 
                 Label("Active", systemImage: "wave.3.right")
-                    .font(.caption)
-                    .foregroundStyle(.green)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 4)
+                    .font(.system(size: 10.5, weight: .semibold, design: .monospaced))
+                    .tracking(0.06 * 10.5)
+                    .foregroundStyle(Palette.success)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 3)
                     .background(
                         Capsule()
-                            .fill(.green.opacity(0.1))
+                            .fill(Palette.success.opacity(0.16))
+                    )
+                    .overlay(
+                        Capsule()
+                            .stroke(Palette.success.opacity(0.42), lineWidth: 0.5)
                     )
             }
             .padding()
@@ -288,7 +293,7 @@ struct InputModeCard: View {
                 Image(systemName: icon)
                     .font(.system(size: 28))
                     .symbolRenderingMode(.hierarchical)
-                    .foregroundStyle(isSelected ? .blue : .secondary)
+                    .foregroundStyle(isSelected ? Palette.accent : .secondary)
                 
                 VStack(alignment: .leading, spacing: 4) {
                     Text(mode.rawValue)
@@ -319,7 +324,7 @@ struct DeviceSelectionCard: View {
             HStack {
                 Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
                     .symbolRenderingMode(.hierarchical)
-                    .foregroundStyle(isSelected ? .blue : .secondary)
+                    .foregroundStyle(isSelected ? Palette.accent : .secondary)
                     .font(.system(size: 18))
                 
                 Text(name)
@@ -329,13 +334,18 @@ struct DeviceSelectionCard: View {
                 
                 if isActive {
                     Label("Active", systemImage: "wave.3.right")
-                        .font(.caption)
-                        .foregroundStyle(.green)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 4)
+                        .font(.system(size: 10.5, weight: .semibold, design: .monospaced))
+                        .tracking(0.06 * 10.5)
+                        .foregroundStyle(Palette.success)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 3)
                         .background(
                             Capsule()
-                                .fill(.green.opacity(0.1))
+                                .fill(Palette.success.opacity(0.16))
+                        )
+                        .overlay(
+                            Capsule()
+                                .stroke(Palette.success.opacity(0.42), lineWidth: 0.5)
                         )
                 }
             }
@@ -384,13 +394,18 @@ struct DevicePriorityCard: View {
                 // Active status
                 if isActive {
                     Label("Active", systemImage: "wave.3.right")
-                        .font(.caption)
-                        .foregroundStyle(.green)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 4)
+                        .font(.system(size: 10.5, weight: .semibold, design: .monospaced))
+                        .tracking(0.06 * 10.5)
+                        .foregroundStyle(Palette.success)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 3)
                         .background(
                             Capsule()
-                                .fill(.green.opacity(0.1))
+                                .fill(Palette.success.opacity(0.16))
+                        )
+                        .overlay(
+                            Capsule()
+                                .stroke(Palette.success.opacity(0.42), lineWidth: 0.5)
                         )
                 } else if !isAvailable && isPrioritized {
                     Label("Unavailable", systemImage: "exclamationmark.triangle")
@@ -409,23 +424,23 @@ struct DevicePriorityCard: View {
                     HStack(spacing: 2) {
                         Button(action: onMoveUp) {
                             Image(systemName: "chevron.up")
-                                .foregroundStyle(canMoveUp ? .blue : .secondary.opacity(0.5))
+                                .foregroundStyle(canMoveUp ? Palette.accent : .secondary.opacity(0.5))
                         }
                         .disabled(!canMoveUp)
-                        
+
                         Button(action: onMoveDown) {
                             Image(systemName: "chevron.down")
-                                .foregroundStyle(canMoveDown ? .blue : .secondary.opacity(0.5))
+                                .foregroundStyle(canMoveDown ? Palette.accent : .secondary.opacity(0.5))
                         }
                         .disabled(!canMoveDown)
                     }
                 }
-                
+
                 // Toggle priority button
                 Button(action: onTogglePriority) {
                     Image(systemName: isPrioritized ? "minus.circle.fill" : "plus.circle.fill")
                         .symbolRenderingMode(.hierarchical)
-                        .foregroundStyle(isPrioritized ? .red : .blue)
+                        .foregroundStyle(isPrioritized ? Palette.warn : Palette.accent)
                 }
             }
             .buttonStyle(.plain)

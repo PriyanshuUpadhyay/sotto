@@ -99,13 +99,17 @@ struct PermissionCard: View {
             HStack(spacing: 16) {
                 // Icon with background
                 ZStack {
-                    Circle()
-                        .fill(isGranted ? Color.green.opacity(0.15) : Color.orange.opacity(0.15))
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .fill((isGranted ? Palette.success : Palette.warn).opacity(0.18))
                         .frame(width: 44, height: 44)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                .stroke((isGranted ? Palette.success : Palette.warn).opacity(0.36), lineWidth: 0.5)
+                        )
 
                     Image(systemName: isGranted ? "\(icon).fill" : icon)
                         .font(.system(size: 20, weight: .semibold))
-                        .foregroundColor(isGranted ? .green : .orange)
+                        .foregroundColor(isGranted ? Palette.success : Palette.warn)
                         .symbolRenderingMode(.hierarchical)
                 }
 
@@ -149,17 +153,10 @@ struct PermissionCard: View {
                     .buttonStyle(.plain)
                     .contentShape(Rectangle())
                     
-                    if isGranted {
-                        Image(systemName: "checkmark.seal.fill")
-                            .font(.system(size: 20))
-                            .foregroundColor(.green)
-                            .symbolRenderingMode(.hierarchical)
-                    } else {
-                        Image(systemName: "xmark.seal.fill")
-                            .font(.system(size: 20))
-                            .foregroundColor(.orange)
-                            .symbolRenderingMode(.hierarchical)
-                    }
+                    StatusPill(
+                        text: isGranted ? "Granted" : "Needs Access",
+                        tone: isGranted ? .positive : .warning
+                    )
                 }
             }
             
@@ -167,29 +164,41 @@ struct PermissionCard: View {
                 Button(action: buttonAction) {
                     HStack {
                         Text(buttonTitle)
+                            .font(.system(size: 14, weight: .semibold))
                         Spacer()
                         Image(systemName: "arrow.right")
+                            .font(.system(size: 13, weight: .semibold))
                     }
-                    .font(.headline)
                     .foregroundColor(.white)
-                    .padding()
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 12)
                     .frame(maxWidth: .infinity)
                     .background(
-                        LinearGradient(
-                            colors: [Color.accentColor, Color.accentColor.opacity(0.8)],
-                            startPoint: .leading,
-                            endPoint: .trailing
-                        )
+                        RoundedRectangle(cornerRadius: 10, style: .continuous)
+                            .fill(Palette.accent)
                     )
-                    .cornerRadius(10)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 10, style: .continuous)
+                            .stroke(Palette.hairline, lineWidth: 1)
+                    )
                 }
                 .buttonStyle(.plain)
             }
         }
-        .padding()
-        .background(CardBackground(isSelected: false))
-        .cornerRadius(16)
-        .shadow(color: Color.black.opacity(0.05), radius: 5, y: 2)
+        .padding(20)
+        .background(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(.ultraThinMaterial)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .fill(Color(red: 0.078, green: 0.078, blue: 0.110).opacity(0.28))
+                )
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .stroke(Palette.hairline, lineWidth: 1)
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
     }
 }
 

@@ -231,7 +231,7 @@ private struct ReorderablePromptGrid: View {
                             RoundedRectangle(cornerRadius: 14)
                                 .stroke(
                                     draggingItem != nil && draggingItem?.id != prompt.id
-                                    ? Color.accentColor.opacity(0.25)
+                                    ? Palette.accent.opacity(0.25)
                                     : Color.clear,
                                     lineWidth: 1
                                 )

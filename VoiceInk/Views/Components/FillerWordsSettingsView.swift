@@ -14,7 +14,7 @@ struct FillerWordChip: View {
             Button(action: onDelete) {
                 Image(systemName: "xmark.circle.fill")
                     .symbolRenderingMode(.hierarchical)
-                    .foregroundStyle(isHovered ? .red : .secondary)
+                    .foregroundStyle(isHovered ? Palette.warn : .secondary)
                     .font(.system(size: 10))
             }
             .buttonStyle(.borderless)
@@ -27,12 +27,12 @@ struct FillerWordChip: View {
         .padding(.horizontal, 8)
         .padding(.vertical, 4)
         .background(
-            RoundedRectangle(cornerRadius: 6)
-                .fill(Color(.windowBackgroundColor).opacity(0.4))
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .fill(.ultraThinMaterial)
         )
         .overlay(
-            RoundedRectangle(cornerRadius: 6)
-                .stroke(Color.secondary.opacity(0.2), lineWidth: 1)
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .stroke(Palette.hairlineSoft, lineWidth: 1)
         )
     }
 }
@@ -64,7 +64,7 @@ struct FillerWordsSettingsView: View {
                         Button(action: addWord) {
                             Image(systemName: "plus.circle.fill")
                                 .symbolRenderingMode(.hierarchical)
-                                .foregroundStyle(.blue)
+                                .foregroundStyle(Palette.accent)
                                 .font(.system(size: 16, weight: .semibold))
                         }
                         .buttonStyle(.borderless)

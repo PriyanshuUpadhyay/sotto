@@ -107,6 +107,7 @@ struct ModelSettingsView: View {
         }
         .formStyle(.grouped)
         .scrollContentBackground(.hidden)
+        .tint(Palette.accent)
         .onChange(of: selectedLanguage) { oldValue, newValue in
             if isEditing {
                 customPrompt = whisperPrompt.getLanguagePrompt(for: selectedLanguage)
