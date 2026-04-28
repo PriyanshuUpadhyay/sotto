@@ -116,7 +116,7 @@ private struct TutorialReplayHost: View {
 
     var body: some View {
         ZStack {
-            Color(red: 0.06, green: 0.06, blue: 0.07).ignoresSafeArea()
+            Palette.onyxBackground.ignoresSafeArea()
             CinematicWalkthrough(onFinish: onClose)
         }
         .frame(minWidth: 900, minHeight: 560)

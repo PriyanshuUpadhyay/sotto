@@ -27,6 +27,11 @@ enum Palette {
     /// #8E8E93 — system gray. Idle baseline.
     static let neutral = Color(red: 0.557, green: 0.557, blue: 0.576)
 
+    /// #0F0F12-ish — onyx backdrop tone for the cinematic walkthrough host
+    /// and other dark-mode surfaces that anchor a `.onyx` GlassCard. Matches
+    /// the previously-hardcoded `Color(red: 0.06, green: 0.06, blue: 0.07)`.
+    static let onyxBackground = Color(red: 0.06, green: 0.06, blue: 0.07)
+
     // MARK: - Halo intensity
     enum HaloIntensity {
         case soft   // 0.18 — recording at low audio

@@ -41,7 +41,6 @@ struct OnboardingPermissionsView: View {
     @EnvironmentObject private var hotkeyManager: HotkeyManager
     @ObservedObject private var audioDeviceManager = AudioDeviceManager.shared
     @State private var permissionStates: [Bool] = [false, false, false, false, false]
-    @State private var requestingIndex: Int? = nil
     @State private var showModelDownload = false
 
     private let permissions: [OnboardingPermission] = [
@@ -213,7 +212,6 @@ struct OnboardingPermissionsView: View {
 
     private func actionButton(title: String, index: Int) -> some View {
         Button {
-            requestingIndex = index
             requestPermission(index: index)
         } label: {
             Text(title)
