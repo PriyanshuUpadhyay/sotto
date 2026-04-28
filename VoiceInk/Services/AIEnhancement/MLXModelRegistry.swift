@@ -69,13 +69,13 @@ enum MLXModelRegistry {
     /// documented at `docs/superpowers/plans/W6-mlx-quality-and-segregation.md`.
     static let curated: [MLXModelEntry] = [
         .init(
-            id: "mlx-community/gemma-4-e2b-it-4bit",
-            displayName: "Gemma 4 E2B (Fastest)",
-            approximateSizeGB: 1.7,
-            notes: "Google. Smallest curated entry. Same gemma3 type as the e4b default — already proven loadable. Finishes typical dictation in 1-3s. Replaces gemma-3-1b. Note: 4-bit quant of PLE layers may degrade on long outputs; file an issue if cleanup looks wrong.",
+            id: "mlx-community/Qwen3-1.7B-4bit-DWQ",
+            displayName: "Qwen 3 1.7B (Fastest)",
+            approximateSizeGB: 1.0,
+            notes: "Alibaba. Smallest curated entry. Apache 2.0. DWQ quant recovers most 4-bit perplexity loss vs plain -4bit. qwen3 type registered in mlx-swift-lm 3.31.3. Replaces gemma-4-e2b — faster on M-base 32 GB and free of PLE-quant degradation risk.",
             speedRating: 9,
-            qualityRating: 5,
-            expectedLatencySeconds: 1.0...3.0
+            qualityRating: 6,
+            expectedLatencySeconds: 1.0...3.0  // PLACEHOLDER — refine post sequential test (Task 6)
         ),
         .init(
             id: "mlx-community/gemma-4-e4b-it-4bit",
