@@ -42,8 +42,14 @@ class RecorderUIManager: ObservableObject {
     private weak var engine: VoiceInkEngine?
     private var recorder: Recorder?
 
-    /// P3.F: Combine subscription to `engine.$recordingState` that fires the
-    /// failure cue (`SoundManager.playFail`) on every transition into `.failed`.
+    /// Failure cue (`SoundManager.playFail`) fires on each registry publish,
+    /// not on engine state. Held strongly because the registry's lifetime
+    /// matches the app process. Set via `configure(...)` once the registry
+    /// is built.
+    private var failureRegistry: FailureRegistry?
+
+    /// Combine subscription to `FailureRegistry.$current` that fires the
+    /// failure cue (`SoundManager.playFail`) on every fresh failure event.
     /// Stored as a set so the sink is torn down with the manager.
     private var stateCueObservers = Set<AnyCancellable>()
 
@@ -51,30 +57,28 @@ class RecorderUIManager: ObservableObject {
 
     init() {}
 
-    /// Call after VoiceInkEngine is created to break the circular init dependency.
-    func configure(engine: VoiceInkEngine, recorder: Recorder) {
+    /// Call after VoiceInkEngine + FailureRegistry are created to break the
+    /// circular init dependency.
+    func configure(engine: VoiceInkEngine, recorder: Recorder, failureRegistry: FailureRegistry) {
         self.engine = engine
         self.recorder = recorder
+        self.failureRegistry = failureRegistry
         setupNotifications()
-        setupStateCueObservers(engine: engine)
+        setupFailureCueObserver(registry: failureRegistry)
     }
 
-    /// P3.F: Fire the synthesized failure cue whenever the engine transitions
-    /// into `.failed`. Failures originate from multiple sites (recorder start,
-    /// missing model, transcription throw, enhancement throw) — observing the
-    /// state directly keeps the cue trigger consolidated rather than scattering
-    /// `playFail()` calls across each error path.
-    private func setupStateCueObservers(engine: VoiceInkEngine) {
-        // Cancel any prior subscription before re-subscribing. Today there's
-        // only one `configure()` call site, but a second call would otherwise
-        // leave the prior sink alive in the set and fire the failure cue twice
-        // per transition.
+    /// Fire `SoundManager.playFail` on every fresh `FailureEvent` published
+    /// by the registry. Failures originate from multiple engine sites
+    /// (recorder start, missing model, transcription throw, enhancement
+    /// throw) — the registry consolidates them so the cue trigger lives in
+    /// one place.
+    private func setupFailureCueObserver(registry: FailureRegistry) {
         stateCueObservers.removeAll()
 
-        engine.$recordingState
+        registry.$current
+            .compactMap { $0 }
             .removeDuplicates()
-            .sink { newState in
-                guard case .failed = newState else { return }
+            .sink { _ in
                 Task { @MainActor in
                     SoundManager.shared.playFail()
                 }
@@ -85,17 +89,19 @@ class RecorderUIManager: ObservableObject {
     // MARK: - Recorder Panel Management
 
     func showRecorderPanel() {
-        guard let engine = engine, let recorder = recorder else { return }
+        guard let engine = engine,
+              let recorder = recorder,
+              let failureRegistry = failureRegistry else { return }
         logger.notice("Showing \(self.recorderType, privacy: .public) recorder")
 
         if recorderType == "notch" {
             if notchWindowManager == nil {
-                notchWindowManager = NotchWindowManager(engine: engine, recorder: recorder)
+                notchWindowManager = NotchWindowManager(engine: engine, recorder: recorder, failureRegistry: failureRegistry)
             }
             notchWindowManager?.show()
         } else {
             if miniWindowManager == nil {
-                miniWindowManager = MiniWindowManager(engine: engine, recorder: recorder)
+                miniWindowManager = MiniWindowManager(engine: engine, recorder: recorder, failureRegistry: failureRegistry)
             }
             miniWindowManager?.show()
         }
@@ -135,14 +141,6 @@ class RecorderUIManager: ObservableObject {
     func dismissMiniRecorder() async {
         guard let engine = engine, let recorder = recorder else { return }
         logger.notice("dismissMiniRecorder called – state=\(String(describing: engine.recordingState), privacy: .public)")
-
-        // Hold off teardown while the engine is dwelling on `.failed` so the
-        // failure visual gets its window before the panel collapses. The dwell
-        // is bounded by `VoiceInkEngine.failedDwellSeconds`; loop exits cleanly
-        // whether the engine self-collapses to `.idle` or a new recording starts.
-        while case .failed = engine.recordingState {
-            try? await Task.sleep(nanoseconds: 100_000_000)
-        }
 
         if engine.recordingState == .busy {
             logger.notice("dismissMiniRecorder: early return, state is busy")

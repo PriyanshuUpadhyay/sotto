@@ -3,27 +3,16 @@ import SwiftUI
 import AVFoundation
 import SwiftData
 import AppKit
+import Combine
 import os
 
 @MainActor
 class VoiceInkEngine: NSObject, ObservableObject {
-    /// Engine state. Transitioning to `.failed(reason:)` schedules an automatic
-    /// collapse back to `.idle` after `failedDwellSeconds` so the view layer can
-    /// render the failure visual (red shake → amber dwell → fade) without the
-    /// call site having to manage timers. Starting a new recording cancels any
-    /// pending dwell so a fresh `.recording` is never stomped by a stale `.idle`.
-    @Published var recordingState: RecordingState = .idle {
-        didSet {
-            switch recordingState {
-            case .failed:
-                scheduleFailedDwell()
-            case .recording, .starting:
-                cancelFailedDwell()
-            default:
-                break
-            }
-        }
-    }
+    /// Engine state. Failures are emitted as one-shot events via
+    /// `failurePublisher`; the engine never sustains a failed state — it
+    /// returns to `.idle` immediately so the view layer's failure lifetime is
+    /// owned by `FailureRegistry`.
+    @Published var recordingState: RecordingState = .idle
     @Published var shouldCancelRecording = false
     var partialTranscript: String = ""
     var currentSession: TranscriptionSession?
@@ -33,10 +22,16 @@ class VoiceInkEngine: NSObject, ObservableObject {
     /// Mutated on the main actor inside `handleDidPaste`.
     @Published var lastPasteEvent: PasteEvent?
 
-    /// Dwell window for `.failed(reason:)` before collapsing to `.idle`.
-    /// Matches spec §3.1: red shake (~0.32s) + amber dwell (~1.2s) ≈ 1.4s.
-    static let failedDwellSeconds: Double = 1.4
-    private var failedDwellTask: Task<Void, Never>?
+    /// One-shot failure events. `FailureRegistry` subscribes externally; the
+    /// engine has no awareness of the registry. Each `send` carries a fresh
+    /// `FailureEvent` (UUID + reason + timestamp).
+    let failurePublisher = PassthroughSubject<FailureEvent, Never>()
+
+    /// Tracks whether the in-flight `runPipeline` published a failure. Reset
+    /// at the top of each run; flipped true inside the `onFailure` closure.
+    /// Guards the tail `failureRegistry.clearAll()` so a run that just
+    /// surfaced a failure doesn't immediately wipe its own publish.
+    private var failurePublishedDuringRun = false
 
     let recorder = Recorder()
     var recordedFile: URL? = nil
@@ -51,6 +46,7 @@ class VoiceInkEngine: NSObject, ObservableObject {
     internal let serviceRegistry: TranscriptionServiceRegistry
     let enhancementService: AIEnhancementService?
     private let pipeline: TranscriptionPipeline
+    private let failureRegistry: FailureRegistry
 
     let logger = Logger(subsystem: "com.prakashjoshipax.voiceink", category: "VoiceInkEngine")
 
@@ -58,12 +54,14 @@ class VoiceInkEngine: NSObject, ObservableObject {
         modelContext: ModelContext,
         whisperModelManager: WhisperModelManager,
         transcriptionModelManager: TranscriptionModelManager,
-        enhancementService: AIEnhancementService? = nil
+        enhancementService: AIEnhancementService? = nil,
+        failureRegistry: FailureRegistry
     ) {
         self.modelContext = modelContext
         self.whisperModelManager = whisperModelManager
         self.transcriptionModelManager = transcriptionModelManager
         self.enhancementService = enhancementService
+        self.failureRegistry = failureRegistry
 
         let appSupportDirectory = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
             .appendingPathComponent("com.prakashjoshipax.VoiceInk")
@@ -136,7 +134,8 @@ class VoiceInkEngine: NSObject, ObservableObject {
                 logger.error("❌ No recorded file found after stopping recording")
                 currentSession?.cancel()
                 currentSession = nil
-                recordingState = .failed(reason: "No recorded audio file")
+                failurePublisher.send(FailureEvent(reason: "No recorded audio file"))
+                recordingState = .idle
                 await cleanupResources()
             }
         } else {
@@ -231,7 +230,8 @@ class VoiceInkEngine: NSObject, ObservableObject {
 
                             } catch {
                                 self.logger.error("❌ Failed to start recording: \(error.localizedDescription, privacy: .public)")
-                                self.recordingState = .failed(reason: error.localizedDescription)
+                                self.failurePublisher.send(FailureEvent(reason: error.localizedDescription))
+                                self.recordingState = .idle
                                 self.recordedFile = nil
                                 await NotificationManager.shared.showNotification(title: "Recording failed to start", type: .error)
                                 self.logger.notice("toggleRecord: calling dismissMiniRecorder from error handler")
@@ -253,11 +253,15 @@ class VoiceInkEngine: NSObject, ObservableObject {
     // MARK: - Pipeline Dispatch
 
     private func runPipeline(on transcription: Transcription, audioURL: URL) async {
+        failurePublishedDuringRun = false
+
         guard let model = transcriptionModelManager.currentTranscriptionModel else {
             transcription.text = "Transcription Failed: No model selected"
             transcription.transcriptionStatus = TranscriptionStatus.failed.rawValue
             try? modelContext.save()
-            recordingState = .failed(reason: "No transcription model selected")
+            failurePublisher.send(FailureEvent(reason: "No transcription model selected"))
+            failurePublishedDuringRun = true
+            recordingState = .idle
             return
         }
 
@@ -270,43 +274,29 @@ class VoiceInkEngine: NSObject, ObservableObject {
             model: model,
             session: session,
             onStateChange: { [weak self] state in self?.recordingState = state },
+            onFailure: { [weak self] reason in
+                guard let self else { return }
+                self.failurePublisher.send(FailureEvent(reason: reason))
+                self.failurePublishedDuringRun = true
+            },
             shouldCancel: { [weak self] in self?.shouldCancelRecording ?? false },
             onCleanup: { [weak self] in await self?.cleanupResources() },
             onDismiss: { [weak self] in await self?.recorderUIManager?.dismissMiniRecorder() }
         )
 
         shouldCancelRecording = false
-        // Preserve `.failed` so its dwell can complete; it self-collapses to `.idle`.
-        if case .failed = recordingState {
-            // dwell timer owns the transition
-        } else if recordingState != .idle {
+        if recordingState != .idle {
             recordingState = .idle
         }
-    }
-
-    // MARK: - Failed dwell
-
-    /// Schedules the `.failed` → `.idle` collapse. Idempotent: replaces any
-    /// in-flight dwell so a fresh failure resets the timer.
-    private func scheduleFailedDwell() {
-        failedDwellTask?.cancel()
-        failedDwellTask = Task { @MainActor [weak self] in
-            let nanos = UInt64(VoiceInkEngine.failedDwellSeconds * 1_000_000_000)
-            try? await Task.sleep(nanoseconds: nanos)
-            guard let self, !Task.isCancelled else { return }
-            // Only collapse if we're still dwelling — a new recording or
-            // explicit reset may have already moved us elsewhere.
-            if case .failed = self.recordingState {
-                self.recordingState = .idle
-            }
+        // Clean-run ack: a pipeline that reached the tail without `onFailure`
+        // firing observed a successful end-to-end run, so any unresolved
+        // failure from a prior run is now stale. Skip the clear when the
+        // current run itself published a failure — otherwise we'd wipe the
+        // registry one frame after surfacing the very failure we just
+        // published, and the cluster + menubar dot would never see it.
+        if !failurePublishedDuringRun {
+            failureRegistry.clearAll()
         }
-    }
-
-    /// Cancels any pending failure dwell. Called on transitions out of `.failed`
-    /// (e.g. user starts a new recording mid-dwell).
-    private func cancelFailedDwell() {
-        failedDwellTask?.cancel()
-        failedDwellTask = nil
     }
 
     // MARK: - Resource Cleanup

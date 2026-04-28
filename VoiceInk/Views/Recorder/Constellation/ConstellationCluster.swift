@@ -3,11 +3,11 @@ import AppKit
 
 // MARK: - ConstellationCluster
 //
-// Orchestrator for the W2 chip cluster (spec §2 + §4). Owns:
+// Orchestrator for the chip cluster. Owns:
 //   • RecordingState → ClusterPhase derivation
 //   • Done-dwell synthesis (1.2s + 0.24s fade) keyed off PasteEvent
 //   • Failed-dwell timer (read AppStorage("failedDwellSeconds"), default 6s)
-//   • W3 seam: injectFailure(reason:) — FailureRegistry will call this
+//   • FailureRegistry subscription
 //   • ChipPanel composition + accessibility wrapping
 //
 // Position: anchor centred horizontally below the notch (or virtual notch on
@@ -19,15 +19,18 @@ struct ConstellationCluster<S: RecorderStateProvider & ObservableObject>: View {
     @ObservedObject var stateProvider: S
     @ObservedObject var recorder: Recorder
     @ObservedObject var aiService: AIService
+    @EnvironmentObject var failureRegistry: FailureRegistry
     let mode: HaloShape.Mode
 
+    /// Failure dwell. 3.0 / 6.0 = auto-acknowledge after seconds;
+    /// `.infinity` = persist until RETRY / OPEN SETTINGS / external ack.
     @AppStorage("failedDwellSeconds") private var failedDwellSeconds: Double = 6.0
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     // MARK: - Phase state
 
-    @State private var injectedFailure: String? = nil
+    @State private var activeFailure: FailureEvent? = nil
     @State private var donePayload: DonePayload? = nil
     @State private var doneFading: Bool = false
     @State private var doneTask: Task<Void, Never>? = nil
@@ -66,6 +69,9 @@ struct ConstellationCluster<S: RecorderStateProvider & ObservableObject>: View {
         .onChange(of: stateProvider.lastPasteEvent) { _, event in
             handlePasteEvent(event)
         }
+        .onReceive(failureRegistry.$current) { event in
+            handleFailureEvent(event)
+        }
         .onAppear { handleRecordingStateChange(stateProvider.recordingState) }
     }
 
@@ -73,15 +79,15 @@ struct ConstellationCluster<S: RecorderStateProvider & ObservableObject>: View {
     //
     // Resolution order (highest priority first):
     //   1. donePayload window (1.2s done dwell + 0.24s fade)
-    //   2. injectedFailure (W3 FailureRegistry seam)
+    //   2. activeFailure (sourced from FailureRegistry)
     //   3. engine state via ClusterPhase.fromEngine
 
     private var derivedPhase: ClusterPhase {
         if let payload = donePayload {
             return .done(appName: payload.appName, preview: payload.preview)
         }
-        if let reason = injectedFailure {
-            return .failed(reason: reason)
+        if let event = activeFailure {
+            return .failed(reason: event.reason)
         }
         return ClusterPhase.fromEngine(stateProvider.recordingState)
     }
@@ -122,10 +128,6 @@ struct ConstellationCluster<S: RecorderStateProvider & ObservableObject>: View {
         default:
             recordingStartedAt = nil
         }
-
-        if case .failed = state {
-            scheduleFailedDwell()
-        }
     }
 
     private func handlePasteEvent(_ event: PasteEvent?) {
@@ -147,35 +149,36 @@ struct ConstellationCluster<S: RecorderStateProvider & ObservableObject>: View {
         }
     }
 
-    private func scheduleFailedDwell() {
+    private func handleFailureEvent(_ event: FailureEvent?) {
         failedTask?.cancel()
-        let dwell = max(0.5, failedDwellSeconds)
-        failedTask = Task { @MainActor in
-            try? await Task.sleep(for: .milliseconds(Int(dwell * 1000)))
-            guard !Task.isCancelled else { return }
-            injectedFailure = nil
-            // Engine .failed already collapses to .idle on its own
-            // (engine-side dwell). Cluster only manages the optional
-            // injected failure timer.
-        }
+        activeFailure = event
+        guard let event else { return }
+        scheduleFailedDwell(for: event.id)
     }
 
-    // MARK: - W3 seam
-
-    /// W3 wires `FailureRegistry.publish(reason:)` to call this.
-    /// W2 ships it unwired so the cluster is testable in isolation.
-    func injectFailure(reason: String) {
-        injectedFailure = reason
-        scheduleFailedDwell()
+    /// Auto-ack timer for the cluster's `.failed` dwell. Three modes:
+    ///   • finite dwell (3.0 / 6.0) → sleep then `failureRegistry.acknowledge`
+    ///   • `.infinity` sentinel → no auto-ack; wait for retry success or
+    ///     OPEN SETTINGS (which clears the registry via the notification
+    ///     observer wired in `FailureRegistry.installSettingsAckObserver`).
+    private func scheduleFailedDwell(for id: UUID) {
+        let dwell = failedDwellSeconds
+        guard dwell.isFinite else { return }
+        let bounded = max(0.5, dwell)
+        failedTask = Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(Int(bounded * 1000)))
+            guard !Task.isCancelled else { return }
+            failureRegistry.acknowledge(id)
+        }
     }
 
     // MARK: - Action chip handlers
 
     private func handleRetry() {
-        // W2 stub. W3's FailureRegistry will define retry semantics.
-        // For now, clear the injected failure so the cluster retracts —
-        // the engine state machine handles real recovery via hotkey.
-        injectedFailure = nil
+        // RETRY chip is informational + visual. Per spec: ack ONLY on retry
+        // success — so the dot stays if the retry also fails. The user
+        // re-records via the existing toggle hotkey path; the registry
+        // clears on the next clean run via `clearAll` from `runPipeline`.
     }
 
     private func handleOpenSettings() {

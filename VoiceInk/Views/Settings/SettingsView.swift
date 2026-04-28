@@ -37,6 +37,7 @@ struct SettingsView: View {
     @AppStorage("restoreClipboardAfterPaste") private var restoreClipboardAfterPaste = true
     @AppStorage("clipboardRestoreDelay") private var clipboardRestoreDelay = 2.0
     @AppStorage("useAppleScriptPaste") private var useAppleScriptPaste = false
+    @AppStorage("failedDwellSeconds") private var failedDwellSeconds: Double = 6.0
     @State private var showResetOnboardingAlert = false
     @State private var currentShortcut = KeyboardShortcuts.getShortcut(for: .toggleMiniRecorder)
     @State private var currentShortcut2 = KeyboardShortcuts.getShortcut(for: .toggleMiniRecorder2)
@@ -301,6 +302,21 @@ struct SettingsView: View {
             ) {
                 Toggle("", isOn: $useAppleScriptPaste)
                     .labelsHidden()
+            }
+
+            SettingsRow(
+                iconSystemName: "exclamationmark.triangle",
+                label: "Failure Dwell",
+                subtitle: "How long the recorder shows a failure before retracting. Until-dismissed keeps the menubar dot until you open Settings or the next recording succeeds.",
+                iconTint: Palette.accent
+            ) {
+                Picker("", selection: $failedDwellSeconds) {
+                    Text("3 seconds").tag(3.0)
+                    Text("6 seconds").tag(6.0)
+                    Text("Until dismissed").tag(Double.infinity)
+                }
+                .labelsHidden()
+                .fixedSize()
             }
         }
     }

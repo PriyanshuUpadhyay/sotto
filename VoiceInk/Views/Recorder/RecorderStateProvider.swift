@@ -69,12 +69,3 @@ protocol RecorderStateProvider: AnyObject {
     /// card's default placeholder.
     var transcriptionModelLabel: String? { get }
 }
-
-extension RecorderStateProvider {
-    /// Convenience accessor for the failure reason embedded in
-    /// `RecordingState.failed`. Returns nil for any other state.
-    var failureReason: String? {
-        if case .failed(let reason) = recordingState { return reason }
-        return nil
-    }
-}

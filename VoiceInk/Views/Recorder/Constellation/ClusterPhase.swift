@@ -40,12 +40,17 @@ extension ClusterPhase {
 
 // MARK: - RecordingState bridge
 //
-// Engine-side `RecordingState` → cluster `ClusterPhase`. `.busy` collapses to
-// `.idle` (matches v1 ConstellationContainer.derivedPhase). `.failed(reason)`
-// preserves the reason. `.done` is NOT derived here — done synthesis lives
-// on the orchestrator (PasteEvent freshness window).
+// Engine-side `RecordingState` → cluster `ClusterPhase`. `.busy` collapses
+// to `.idle`. Failure does not flow through this bridge — `ClusterPhase
+// .failed` is sourced from `FailureRegistry` at the orchestrator. `.done`
+// is also not derived here — done synthesis lives on the orchestrator
+// (PasteEvent freshness window).
 
 extension ClusterPhase {
+    /// Engine-side `RecordingState` carries no `.failed` case; failures
+    /// flow as one-shot events via `FailureRegistry.$current` and feed
+    /// `ClusterPhase.failed` directly on the orchestrator. This function
+    /// therefore never returns `.failed`.
     static func fromEngine(_ state: RecordingState) -> ClusterPhase {
         switch state {
         case .idle, .busy:
@@ -56,8 +61,6 @@ extension ClusterPhase {
             return .transcribing
         case .enhancing:
             return .enhancing
-        case .failed(let reason):
-            return .failed(reason: reason)
         }
     }
 }

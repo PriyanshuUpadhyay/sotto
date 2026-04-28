@@ -4,6 +4,7 @@ import Sparkle
 import AppKit
 import OSLog
 import AppIntents
+import Combine
 import FluidAudio
 
 @main
@@ -22,6 +23,7 @@ struct VoiceInkApp: App {
     @StateObject private var menuBarManager: MenuBarManager
     @StateObject private var aiService = AIService()
     @StateObject private var enhancementService: AIEnhancementService
+    @StateObject private var failureRegistry: FailureRegistry
     @StateObject private var activeWindowService = ActiveWindowService.shared
     @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
     @AppStorage("enableAnnouncements") private var enableAnnouncements = true
@@ -115,16 +117,26 @@ struct VoiceInkApp: App {
         // 3. Create UI manager
         let recorderUIManager = RecorderUIManager()
 
+        // Failure registry remembers unresolved failures for the cluster +
+        // menubar dot. Built before the engine so the engine can ack on
+        // successful runs via its init-injected reference.
+        let failureRegistry = FailureRegistry()
+
         // 4. Create engine
         let engine = VoiceInkEngine(
             modelContext: container.mainContext,
             whisperModelManager: whisperModelManager,
             transcriptionModelManager: transcriptionModelManager,
-            enhancementService: enhancementService
+            enhancementService: enhancementService,
+            failureRegistry: failureRegistry
         )
 
+        // Engine is now constructed — wire the publisher subscription.
+        failureRegistry.attach(to: engine.failurePublisher.eraseToAnyPublisher())
+        _failureRegistry = StateObject(wrappedValue: failureRegistry)
+
         // 5. Configure circular deps
-        recorderUIManager.configure(engine: engine, recorder: engine.recorder)
+        recorderUIManager.configure(engine: engine, recorder: engine.recorder, failureRegistry: failureRegistry)
         engine.recorderUIManager = recorderUIManager
 
         // 6. Initialize model state
@@ -166,6 +178,7 @@ struct VoiceInkApp: App {
         // animated icon reflects idle / recording / transcribing / enhancing
         // via Combine on `engine.$recordingState`.
         appDelegate.recordingStateObserver.bind(to: engine)
+        appDelegate.recordingStateObserver.bind(toRegistry: failureRegistry)
 
         // P3.F: warm up the AVAudioEngine that powers synthesized cues. Starts
         // the audio graph + schedules a silent pre-roll so the first user cue
@@ -271,6 +284,7 @@ struct VoiceInkApp: App {
                     .environmentObject(menuBarManager)
                     .environmentObject(aiService)
                     .environmentObject(enhancementService)
+                    .environmentObject(failureRegistry)
                     .modelContainer(container)
                     .onAppear {
                         // Check if container initialization failed
@@ -325,6 +339,7 @@ struct VoiceInkApp: App {
                     .environmentObject(recorderUIManager)
                     .environmentObject(aiService)
                     .environmentObject(enhancementService)
+                    .environmentObject(failureRegistry)
                     .frame(minWidth: 880, minHeight: 780)
                     .background(WindowAccessor { window in
                         if window.identifier == nil || window.identifier != NSUserInterfaceItemIdentifier("com.prakashjoshipax.voiceink.onboardingWindow") {
@@ -356,6 +371,7 @@ struct VoiceInkApp: App {
                 .environmentObject(updaterViewModel)
                 .environmentObject(aiService)
                 .environmentObject(enhancementService)
+                .environmentObject(failureRegistry)
         } label: {
             // SwiftUI `Image(nsImage:)` so MenuBarExtra renders a real glyph;
             // an `NSViewRepresentable` label rendered 0×0 here under

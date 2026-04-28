@@ -22,8 +22,9 @@ enum MenuBarIconRenderer {
     static let symbolSize: CGFloat = 14.0
 
     /// Icon state — derived from `RecordingState`. Collapses transient app
-    /// states (.starting / .busy / .failed) to `.idle` since the menu bar
-    /// is the wrong surface for failure dwell (the recorder card owns that).
+    /// states (.starting / .busy) to `.idle`. Failure overlay is rendered
+    /// separately via `image(for:unresolvedFailures:)` driven by
+    /// `FailureRegistry.unresolvedCount`.
     enum IconState: Equatable {
         case idle
         case recording
@@ -55,6 +56,58 @@ enum MenuBarIconRenderer {
             return template("waveform", weight: .regular, label: "VoiceInk transcribing")
         case .enhancing:
             return template("sparkles", weight: .regular, label: "VoiceInk enhancing")
+        }
+    }
+
+    /// Failure-aware variant. When `unresolvedFailures > 0`, renders the
+    /// recording-tinted waveform plus a 4pt tangerine dot in the upper-right
+    /// of the 18pt canvas. Drawn by hand via `NSImage.lockFocus` — no asset
+    /// dependency.
+    static func image(for state: IconState, unresolvedFailures: Int) -> NSImage {
+        guard unresolvedFailures > 0 else {
+            return image(for: state)
+        }
+        return failed(label: failedAccessibilityLabel(for: state, count: unresolvedFailures))
+    }
+
+    private static func failed(label: String) -> NSImage {
+        let cfg = NSImage.SymbolConfiguration(pointSize: symbolSize, weight: .semibold)
+            .applying(NSImage.SymbolConfiguration(paletteColors: [NSColor(Palette.accent)]))
+        let glyph = (NSImage(systemSymbolName: "waveform", accessibilityDescription: label)?
+            .withSymbolConfiguration(cfg)) ?? NSImage()
+
+        let canvas = NSImage(size: NSSize(width: pointSize, height: pointSize))
+        canvas.lockFocus()
+        defer { canvas.unlockFocus() }
+
+        let glyphSize = glyph.size
+        let originX = (pointSize - glyphSize.width) / 2.0
+        let originY = (pointSize - glyphSize.height) / 2.0
+        glyph.draw(in: NSRect(x: originX, y: originY, width: glyphSize.width, height: glyphSize.height))
+
+        let dotDiameter: CGFloat = 4.0
+        let dotInset: CGFloat = 1.0
+        let dotRect = NSRect(
+            x: pointSize - dotDiameter - dotInset,
+            y: pointSize - dotDiameter - dotInset,
+            width: dotDiameter,
+            height: dotDiameter
+        )
+        NSColor(Palette.accent).setFill()
+        NSBezierPath(ovalIn: dotRect).fill()
+
+        canvas.isTemplate = false
+        canvas.accessibilityDescription = label
+        return canvas
+    }
+
+    private static func failedAccessibilityLabel(for state: IconState, count: Int) -> String {
+        let suffix = count == 1 ? "1 unresolved failure" : "\(count) unresolved failures"
+        switch state {
+        case .recording:    return "VoiceInk recording, \(suffix)"
+        case .transcribing: return "VoiceInk transcribing, \(suffix)"
+        case .enhancing:    return "VoiceInk enhancing, \(suffix)"
+        case .idle:         return "VoiceInk idle, \(suffix)"
         }
     }
 
@@ -99,12 +152,15 @@ enum MenuBarIconRenderer {
 
 final class RecordingStateObserver: ObservableObject {
     @Published private(set) var iconState: MenuBarIconRenderer.IconState = .idle
-    private var cancellable: AnyCancellable?
+    @Published private(set) var unresolvedFailures: Int = 0
+
+    private var stateCancellable: AnyCancellable?
+    private var registryCancellable: AnyCancellable?
 
     @MainActor
     func bind(to engine: VoiceInkEngine) {
-        cancellable?.cancel()
-        cancellable = engine.$recordingState
+        stateCancellable?.cancel()
+        stateCancellable = engine.$recordingState
             .receive(on: DispatchQueue.main)
             .map(MenuBarIconRenderer.IconState.init)
             .removeDuplicates()
@@ -113,8 +169,20 @@ final class RecordingStateObserver: ObservableObject {
             }
     }
 
+    @MainActor
+    func bind(toRegistry registry: FailureRegistry) {
+        registryCancellable?.cancel()
+        registryCancellable = registry.$unresolvedCount
+            .receive(on: DispatchQueue.main)
+            .removeDuplicates()
+            .sink { [weak self] next in
+                self?.unresolvedFailures = next
+            }
+    }
+
     deinit {
-        cancellable?.cancel()
+        stateCancellable?.cancel()
+        registryCancellable?.cancel()
     }
 }
 
@@ -130,17 +198,29 @@ struct MenuBarIcon: View {
     @ObservedObject var observer: RecordingStateObserver
 
     var body: some View {
-        Image(nsImage: MenuBarIconRenderer.image(for: observer.iconState))
-            .accessibilityLabel(Text(accessibilityLabel))
+        Image(
+            nsImage: MenuBarIconRenderer.image(
+                for: observer.iconState,
+                unresolvedFailures: observer.unresolvedFailures
+            )
+        )
+        .accessibilityLabel(Text(accessibilityLabel))
     }
 
     private var accessibilityLabel: String {
-        switch observer.iconState {
-        case .idle:         return "VoiceInk idle"
-        case .recording:    return "VoiceInk recording"
-        case .transcribing: return "VoiceInk transcribing"
-        case .enhancing:    return "VoiceInk enhancing"
-        }
+        let base: String = {
+            switch observer.iconState {
+            case .idle:         return "VoiceInk idle"
+            case .recording:    return "VoiceInk recording"
+            case .transcribing: return "VoiceInk transcribing"
+            case .enhancing:    return "VoiceInk enhancing"
+            }
+        }()
+        guard observer.unresolvedFailures > 0 else { return base }
+        let suffix = observer.unresolvedFailures == 1
+            ? "1 unresolved failure"
+            : "\(observer.unresolvedFailures) unresolved failures"
+        return "\(base), \(suffix)"
     }
 }
 
@@ -149,10 +229,11 @@ struct MenuBarIcon: View {
 #if DEBUG
 private struct MenuBarIconPreviewHarness: View {
     @State private var state: MenuBarIconRenderer.IconState = .idle
+    @State private var unresolved: Int = 0
 
     var body: some View {
         VStack(spacing: 18) {
-            Image(nsImage: MenuBarIconRenderer.image(for: state))
+            Image(nsImage: MenuBarIconRenderer.image(for: state, unresolvedFailures: unresolved))
                 .frame(width: 64, height: 64)
 
             Picker("", selection: $state) {
@@ -162,6 +243,8 @@ private struct MenuBarIconPreviewHarness: View {
                 Text("Enhancing").tag(MenuBarIconRenderer.IconState.enhancing)
             }
             .pickerStyle(.segmented)
+
+            Stepper("Unresolved: \(unresolved)", value: $unresolved, in: 0...5)
         }
         .padding(32)
         .frame(width: 360)

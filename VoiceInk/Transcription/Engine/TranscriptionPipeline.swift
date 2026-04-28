@@ -33,6 +33,9 @@ class TranscriptionPipeline {
     ///   - model: The transcription model to use.
     ///   - session: An active streaming session if one was prepared, otherwise nil.
     ///   - onStateChange: Called when the pipeline moves to a new recording state (e.g. `.enhancing`).
+    ///   - onFailure: Called with a user-readable reason when the pipeline hits a failure path
+    ///     (transcription throw or enhancement throw). The engine forwards this to
+    ///     `failurePublisher` so the FailureRegistry can surface it.
     ///   - shouldCancel: Returns true if the user requested cancellation.
     ///   - onCleanup: Called when cancellation is detected to release model resources.
     ///   - onDismiss: Called at the end to dismiss the recorder panel.
@@ -42,6 +45,7 @@ class TranscriptionPipeline {
         model: any TranscriptionModel,
         session: TranscriptionSession?,
         onStateChange: @escaping (RecordingState) -> Void,
+        onFailure: @escaping (String) -> Void,
         shouldCancel: () -> Bool,
         onCleanup: @escaping () async -> Void,
         onDismiss: @escaping () async -> Void
@@ -163,7 +167,7 @@ class TranscriptionPipeline {
                     }
                     // Surface to engine so the failure visual can render. Paste
                     // still proceeds with the un-enhanced transcript (silent fallback).
-                    onStateChange(.failed(reason: "Enhancement failed: \(shortReason)"))
+                    onFailure("Enhancement failed: \(shortReason)")
                     if shouldCancel() { await onCleanup(); return }
                 }
             }
@@ -179,7 +183,7 @@ class TranscriptionPipeline {
             transcription.transcriptionStatus = TranscriptionStatus.failed.rawValue
             // Surface to engine so the failure visual can render during dwell.
             let shortReason = String(errorDescription.prefix(80))
-            onStateChange(.failed(reason: "Transcription failed: \(shortReason)"))
+            onFailure("Transcription failed: \(shortReason)")
         }
 
         try? modelContext.save()
