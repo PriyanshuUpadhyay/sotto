@@ -15,15 +15,22 @@ struct MLXModelEntry: Identifiable, Hashable {
 }
 
 enum MLXModelRegistry {
-    /// Curated lineup as of April 2026. Two tiers: ~2.5 GB "fast default" and
-    /// ~14 GB "quality" picks. All entries verified loadable against the bundled
-    /// `mlx-swift-lm` 3.31.3 (gemma4 + qwen3_5 model types are registered).
+    /// Curated lineup as of April 2026. Three tiers: ~0.7 GB "fastest" (QAT-quantized,
+    /// ideal for low-latency cleanup), ~2.5 GB "fast default", and ~14 GB "quality".
+    /// All entries verified loadable against the bundled `mlx-swift-lm` 3.31.3
+    /// (gemma3 + gemma3_text + gemma4 + qwen3_5 model types are registered).
     static let curated: [MLXModelEntry] = [
+        .init(
+            id: "mlx-community/gemma-3-1b-it-qat-4bit",
+            displayName: "Gemma 3 1B QAT (Fastest)",
+            approximateSizeGB: 0.7,
+            notes: "Google. Smallest viable. QAT (quantization-aware training) minimizes 4-bit accuracy loss. ~3-5x faster than gemma-4-e4b on M-series."
+        ),
         .init(
             id: "mlx-community/gemma-4-e4b-it-4bit",
             displayName: "Gemma 4 E4B Instruct (4-bit)",
             approximateSizeGB: 2.5,
-            notes: "Google. Built for on-device. Fastest, strong instruction-following."
+            notes: "Google. Built for on-device. Strong instruction-following, mid-tier latency."
         ),
         .init(
             id: "mlx-community/Qwen3.5-4B-MLX-4bit",
