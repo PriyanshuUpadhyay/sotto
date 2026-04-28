@@ -1,7 +1,12 @@
 import SwiftUI
 import AppKit
 
-// MARK: - WhisperLine
+// MARK: - WhisperLine (legacy)
+//
+// Pre-W2 ambient breath line. Retained ONLY for `CinematicWalkthrough.swift`
+// (onboarding, deferred per spec §5). The live recorder is invisible at idle
+// per spec §3 — `ConstellationCluster` does not mount this view. Do not add
+// new consumers.
 //
 // Whisper — ambient breath line below the notch when the recorder is idle.
 // Spec §3.1 (Idle / Whisper). Visual reference:

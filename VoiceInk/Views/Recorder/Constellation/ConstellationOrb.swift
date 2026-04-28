@@ -1,6 +1,10 @@
 import SwiftUI
 
-// MARK: - ConstellationOrb
+// MARK: - ConstellationOrb (legacy)
+//
+// Pre-W2 16×16pt state-driven satellite. Retained ONLY for
+// `CinematicWalkthrough.swift` (onboarding, deferred per spec §5). The live
+// recorder uses `RingPulseDot` inside the anchor chip. Do not add new consumers.
 //
 // 16×16pt state-driven satellite. One of three Constellation pieces (orb /
 // chip / card) per spec §3.1. Owns the per-state fill, glow, opacity shimmer,

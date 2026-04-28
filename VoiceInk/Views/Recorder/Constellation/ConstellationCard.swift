@@ -1,7 +1,11 @@
 import SwiftUI
 import AppKit
 
-// MARK: - ConstellationCard
+// MARK: - ConstellationCard (legacy)
+//
+// Pre-W2 Constellation card. Retained ONLY for `CinematicWalkthrough.swift`
+// (onboarding, deferred per spec §5). The live recorder uses
+// `ConstellationCluster` + `ChipPanel` instead. Do not add new consumers.
 //
 // Floating Adaptive Glass card — third satellite of the Constellation recorder
 // (spec §3.1). Fixed 280pt wide × dynamic height (≥ 56pt), 22pt corner radius.

@@ -1,6 +1,10 @@
 import SwiftUI
 
-// MARK: - ConstellationChip
+// MARK: - ConstellationChip (legacy)
+//
+// Pre-W2 PROVIDER · MODEL capsule. Retained ONLY for `CinematicWalkthrough.swift`
+// (onboarding, deferred per spec §5). The live recorder uses chip factories
+// in `ClusterChips.swift`. Do not add new consumers.
 //
 // Glass capsule with color dot + mono provider/model identifier. Sits right-of-notch
 // in the Constellation recorder layout (spec §3.1, plan §P1.E).

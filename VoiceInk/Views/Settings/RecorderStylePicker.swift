@@ -4,13 +4,13 @@ import SwiftUI
 //
 // Three visual cards — each a miniature of the corresponding recorder
 // surface — instead of the old segmented "Notch / Mini" text picker.
-// Per plan §P2.E, adds a third tile for the Constellation recorder so users
-// can preview the orb + chip + card silhouette before opting in.
+// The Constellation tile previews the W2 chip cluster silhouette (anchor +
+// secondaries) so users see the new vocabulary before opting in.
 //
 // Identifier contract (matches `RecorderUIManager.recorderType`):
 //   "notch"          → Halo pill in the notch
 //   "mini"           → Halo pill floating top-of-screen
-//   "constellation"  → Constellation orb + chip + card composition
+//   "constellation"  → Constellation chip cluster (anchor + secondaries)
 //
 // `RecorderUIManager` currently branches on `"notch"` vs. everything else;
 // `"constellation"` falls through to the floating layout until Phase 3 wires
@@ -43,7 +43,7 @@ struct RecorderStylePicker: View {
 
             RecorderStyleCard(
                 title: "Constellation",
-                subtitle: "Orb · chip · card",
+                subtitle: "Anchor · chips",
                 identifier: "constellation",
                 isSelected: selection == "constellation",
                 preview: { ConstellationPreview() }
@@ -167,108 +167,63 @@ private struct FloatingPreview: View {
 
 // MARK: - Constellation preview
 //
-// Static miniature of the real Constellation recorder (spec §3.1):
-//   • Orb (accent @ .recording)  — small filled circle with white@0.25 ring
-//     + dual color glows, mirroring `ConstellationOrb` at the recording phase.
-//   • Chip — capsule with leading color dot + mono `CLAUDE · SONNET` label,
-//     mirroring `ConstellationChip` proportions.
-//   • Card — rounded glass plaque below with placeholder transcript line,
-//     mirroring `ConstellationCard` at the recording phase.
-//
-// Hand-painted (not the real primitives) so the tile stays static — the live
-// `ConstellationOrb` would pulse / breathe; spec §6.4 requires Reduce Motion
-// honored for any tile micro-animation. By rendering everything as plain
-// static shapes here we side-step the issue entirely (no motion tokens
-// active inside the tile preview).
-//
-// Reviewer focus (plan §P2.E): the layout is recognizably "orb + chip + card"
-// — not a placeholder rectangle. Same three-piece silhouette as the
-// production recorder, just shrunk to fit the 84pt-tall preview viewport.
+// Static miniature of the W2 chip cluster (spec §2 + §4): anchor REC chip
+// flanked by TIME (left) and PROMPT (right). Hand-painted at preview scale
+// so the tile stays motion-free — Reduce Motion compliance per spec §6.4.
 
 private struct ConstellationPreview: View {
     var body: some View {
         VStack(spacing: 6) {
             Spacer().frame(height: 6)
-
-            // Top row — orb + chip, mirroring the production layout where the
-            // chip sits to the right of the orb.
-            HStack(alignment: .center, spacing: 6) {
+            HStack(spacing: 4) {
                 Spacer(minLength: 0)
-                miniOrb
-                miniChip
+                miniSecondary(text: "00:14")
+                miniAnchor
+                miniSecondary(text: "PROMPT")
                 Spacer(minLength: 0)
             }
-
-            // Card — sits below the orb/chip pair, ~half the tile width.
-            miniCard
-
             Spacer(minLength: 0)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
-    /// Miniature `ConstellationOrb` at `.recording`: 8pt tangerine disc with
-    /// white halo ring + dual accent glows.
-    private var miniOrb: some View {
-        ZStack {
-            Circle()
-                .fill(Palette.accent)
-                .frame(width: 8, height: 8)
-                .shadow(color: Palette.accent.opacity(0.85), radius: 4)
-                .shadow(color: Palette.accent.opacity(0.50), radius: 8)
-            Circle()
-                .strokeBorder(Color.white.opacity(0.25), lineWidth: 1)
-                .frame(width: 12, height: 12)
-        }
-        .frame(width: 14, height: 14)
-    }
-
-    /// Miniature `ConstellationChip`: 11pt-tall dark capsule with leading
-    /// red dot + mono label. Provider/model abbreviated to fit ~32pt width.
-    private var miniChip: some View {
+    private var miniAnchor: some View {
         HStack(spacing: 3) {
             Circle()
                 .fill(Palette.accent)
-                .frame(width: 3, height: 3)
-            Text("CLAUDE")
+                .frame(width: 4, height: 4)
+                .shadow(color: Palette.accent.opacity(0.7), radius: 2)
+            Text("REC")
                 .font(.system(size: 5, weight: .medium, design: .monospaced))
-                .tracking(0.4)
-                .foregroundStyle(Color.white.opacity(0.9))
+                .tracking(0.3)
+                .foregroundStyle(Color.white.opacity(0.95))
         }
         .padding(.horizontal, 4)
-        .frame(height: 10)
+        .frame(height: 11)
         .background(
-            Capsule()
-                .fill(Color.black.opacity(0.78))
+            RoundedRectangle(cornerRadius: 3, style: .continuous)
+                .fill(Color.black.opacity(0.55))
                 .overlay(
-                    Capsule().stroke(Color.white.opacity(0.16), lineWidth: 0.5)
-                )
-        )
-        .shadow(color: Palette.accent.opacity(0.30), radius: 4)
-    }
-
-    /// Miniature `ConstellationCard`: rounded glass plaque with two faint
-    /// transcript lines, mirroring the recording-phase card content.
-    private var miniCard: some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Capsule()
-                .fill(Color.white.opacity(0.55))
-                .frame(width: 38, height: 2)
-            Capsule()
-                .fill(Color.white.opacity(0.25))
-                .frame(width: 24, height: 2)
-        }
-        .padding(.horizontal, 6)
-        .padding(.vertical, 4)
-        .frame(width: 56, alignment: .leading)
-        .background(
-            RoundedRectangle(cornerRadius: 5, style: .continuous)
-                .fill(Color.black.opacity(0.78))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 5, style: .continuous)
+                    RoundedRectangle(cornerRadius: 3, style: .continuous)
                         .stroke(Color.white.opacity(0.16), lineWidth: 0.5)
                 )
         )
-        .shadow(color: Color.black.opacity(0.45), radius: 3, y: 2)
+    }
+
+    private func miniSecondary(text: String) -> some View {
+        Text(text)
+            .font(.system(size: 5, weight: .medium, design: .monospaced))
+            .tracking(0.3)
+            .foregroundStyle(Color.white.opacity(0.85))
+            .padding(.horizontal, 4)
+            .frame(height: 11)
+            .background(
+                RoundedRectangle(cornerRadius: 3, style: .continuous)
+                    .fill(Color.black.opacity(0.55))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 3, style: .continuous)
+                            .stroke(Color.white.opacity(0.16), lineWidth: 0.5)
+                    )
+            )
     }
 }
