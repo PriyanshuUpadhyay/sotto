@@ -95,16 +95,6 @@ enum MLXModelRegistry {
             qualityRating: 6,
             expectedLatencySeconds: 3.0...7.0
         ),
-        .init(
-            id: "mlx-community/gemma-4-26b-a4b-it-4bit",
-            displayName: "Gemma 4 26B-A4B (Experimental)",
-            approximateSizeGB: 14.0,
-            notes: "MoE 4B-active. Best curated quality. Slow on 32 GB base — may exceed 10s under swap pressure. Try only after a fresh restart.",
-            speedRating: 3,
-            qualityRating: 9,
-            expectedLatencySeconds: 8.0...30.0,
-            isExperimental: true
-        ),
     ]
 }
 
