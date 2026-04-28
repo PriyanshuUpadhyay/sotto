@@ -113,7 +113,7 @@ struct ModelManagementView: View {
         }
         .padding()
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(CardBackground(isSelected: false))
+        .modifier(GlassChip(cornerRadius: 16, paddingH: 0, paddingV: 0))
         .cornerRadius(10)
     }
 
@@ -138,8 +138,10 @@ struct ModelManagementView: View {
                                 .foregroundColor(selectedFilter == filter ? .primary : .primary.opacity(0.7))
                                 .padding(.horizontal, 16)
                                 .padding(.vertical, 8)
-                                .background(
-                                    CardBackground(isSelected: selectedFilter == filter, cornerRadius: 22)
+                                .modifier(GlassChip(cornerRadius: 22, paddingH: 0, paddingV: 0))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 22, style: .continuous)
+                                        .strokeBorder(Palette.accent.opacity(selectedFilter == filter ? 0.5 : 0), lineWidth: 1.5)
                                 )
                         }
                         .buttonStyle(PlainButtonStyle())
@@ -157,8 +159,10 @@ struct ModelManagementView: View {
                         .font(.system(size: 16, weight: .medium))
                         .foregroundColor(isShowingSettings ? .accentColor : .primary.opacity(0.7))
                         .padding(12)
-                        .background(
-                            CardBackground(isSelected: isShowingSettings, cornerRadius: 22)
+                        .modifier(GlassChip(cornerRadius: 22, paddingH: 0, paddingV: 0))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                                .strokeBorder(Palette.accent.opacity(isShowingSettings ? 0.5 : 0), lineWidth: 1.5)
                         )
                 }
                 .buttonStyle(PlainButtonStyle())
@@ -227,7 +231,7 @@ struct ModelManagementView: View {
                                 }
                                 .frame(maxWidth: .infinity)
                                 .padding(16)
-                                .background(CardBackground(isSelected: false))
+                                .modifier(GlassChip(cornerRadius: 16, paddingH: 0, paddingV: 0))
                                 .cornerRadius(10)
                             }
                             .buttonStyle(.plain)
