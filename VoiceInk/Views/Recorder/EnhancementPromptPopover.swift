@@ -47,7 +47,14 @@ struct EnhancementPromptPopover: View {
         .frame(width: 200)
         .frame(maxHeight: 340)
         .padding(.vertical, 8)
-        .background(Color.black)
+        .background(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .fill(.ultraThinMaterial)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .stroke(Palette.hairline, lineWidth: 1)
+                )
+        )
         .environment(\.colorScheme, .dark)
         .onAppear {
             // Set the initially selected prompt

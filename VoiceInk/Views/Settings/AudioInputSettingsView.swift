@@ -11,7 +11,7 @@ struct AudioInputSettingsView: View {
                 mainContent
             }
         }
-        .background(Color(NSColor.controlBackgroundColor))
+        .adaptiveGlassBackground()
     }
     
     private var mainContent: some View {

@@ -158,7 +158,7 @@ struct EnhancementSettingsView: View {
         }
         .formStyle(.grouped)
         .scrollContentBackground(.hidden)
-        .background(Color(NSColor.controlBackgroundColor))
+        .adaptiveGlassBackground()
         .slidingPanel(isPresented: .init(
             get: { isPanelOpen },
             set: { newValue in

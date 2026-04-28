@@ -54,7 +54,7 @@ struct ModelManagementView: View {
             .padding(40)
         }
         .frame(minWidth: 600, minHeight: 500)
-        .background(Color(NSColor.controlBackgroundColor))
+        .adaptiveGlassBackground()
         .slidingPanel(isPresented: $isShowingSettings, width: settingsPanelWidth) {
             settingsPanelContent
         }
@@ -92,7 +92,7 @@ struct ModelManagementView: View {
             }
             .padding(.horizontal, 20)
             .padding(.vertical, 16)
-            .background(Color(NSColor.windowBackgroundColor))
+            .adaptiveGlassBackground(intensity: .panel)
             .overlay(
                 Divider().opacity(0.5), alignment: .bottom
             )

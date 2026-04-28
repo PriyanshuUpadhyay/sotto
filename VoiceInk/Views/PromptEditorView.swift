@@ -75,7 +75,7 @@ struct PromptEditorView: View {
             splitContent
             footerBar
         }
-        .background(Color(NSColor.windowBackgroundColor))
+        .adaptiveGlassBackground(intensity: .panel)
     }
 
     // MARK: - Header
@@ -112,7 +112,6 @@ struct PromptEditorView: View {
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 16)
-        .background(Color(NSColor.windowBackgroundColor))
         .overlay(
             Rectangle()
                 .fill(Palette.hairlineSoft)
@@ -211,7 +210,6 @@ struct PromptEditorView: View {
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 16)
-        .background(Color(NSColor.windowBackgroundColor))
         .overlay(
             Rectangle()
                 .fill(Palette.hairlineSoft)
@@ -285,7 +283,7 @@ struct PromptEditorView: View {
                             .font(.system(size: 22))
                             .foregroundColor(.primary)
                             .frame(width: 44, height: 44)
-                            .background(Color(NSColor.controlBackgroundColor))
+                            .background(.ultraThinMaterial)
                             .cornerRadius(10)
                             .overlay(
                                 RoundedRectangle(cornerRadius: 10)
@@ -471,7 +469,7 @@ struct TriggerWordItemView: View {
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 4)
-        .background(Color(NSColor.controlBackgroundColor))
+        .background(.ultraThinMaterial)
         .cornerRadius(4)
         .overlay(
             RoundedRectangle(cornerRadius: 4)
@@ -550,7 +548,7 @@ struct IconPickerPopover: View {
                     }) {
                         ZStack {
                             RoundedRectangle(cornerRadius: 10)
-                                .fill(selectedIcon == icon ? Palette.accent.opacity(0.14) : Color(NSColor.controlBackgroundColor))
+                                .fill(selectedIcon == icon ? Palette.accent.opacity(0.14) : Color.clear)
                                 .frame(width: 52, height: 52)
                                 .overlay(
                                     RoundedRectangle(cornerRadius: 10)

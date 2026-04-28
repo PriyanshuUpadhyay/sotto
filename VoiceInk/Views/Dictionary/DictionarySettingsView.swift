@@ -38,7 +38,7 @@ struct DictionarySettingsView: View {
             }
         }
         .frame(minWidth: 600, minHeight: 500)
-        .background(Color(NSColor.controlBackgroundColor))
+        .adaptiveGlassBackground()
         .slidingPanel(isPresented: $isShowingSettings, width: 400) {
             DictionarySettingsPanel {
                 withAnimation(.smooth(duration: 0.3)) {

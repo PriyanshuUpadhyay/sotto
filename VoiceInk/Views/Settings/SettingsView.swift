@@ -67,7 +67,7 @@ struct SettingsView: View {
             .frame(maxWidth: 720)
             .frame(maxWidth: .infinity)
         }
-        .background(Color(NSColor.controlBackgroundColor))
+        .adaptiveGlassBackground()
     }
 
     // MARK: - Shortcuts

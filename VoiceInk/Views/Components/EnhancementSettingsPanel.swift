@@ -41,7 +41,7 @@ struct EnhancementSettingsPanel: View {
             }
             .padding(.horizontal, 20)
             .padding(.vertical, 16)
-            .background(Color(NSColor.windowBackgroundColor))
+            .adaptiveGlassBackground(intensity: .panel)
             .overlay(
                 Rectangle()
                     .fill(Palette.hairlineSoft)

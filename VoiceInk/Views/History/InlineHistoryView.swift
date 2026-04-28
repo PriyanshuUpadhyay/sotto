@@ -85,7 +85,7 @@ struct InlineHistoryView: View {
         }
         .animation(.easeInOut(duration: 0.2), value: selectedTranscriptions.isEmpty)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color(NSColor.controlBackgroundColor))
+        .adaptiveGlassBackground()
         .overlay {
             Color.black.opacity(isPanelPresented ? 0.1 : 0)
                 .ignoresSafeArea()
@@ -103,7 +103,7 @@ struct InlineHistoryView: View {
                 panelContent
                     .frame(width: 400)
                     .frame(maxHeight: .infinity)
-                    .background(Color(NSColor.windowBackgroundColor))
+                    .adaptiveGlassBackground(intensity: .panel)
                     .overlay(alignment: .leading) {
                         Rectangle()
                             .fill(Color(NSColor.separatorColor))
@@ -226,10 +226,8 @@ struct InlineHistoryView: View {
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 10)
-        .background(
-            Color(NSColor.windowBackgroundColor)
-                .shadow(color: Color.black.opacity(0.1), radius: 3, y: -2)
-        )
+        .adaptiveGlassBackground(intensity: .panel)
+        .shadow(color: Color.black.opacity(0.1), radius: 3, y: -2)
     }
 
     // MARK: - Empty State
@@ -347,7 +345,6 @@ struct InlineHistoryView: View {
             }
             .padding(.horizontal, 20)
             .padding(.vertical, 12)
-            .background(Color(NSColor.windowBackgroundColor))
             .overlay(Divider().opacity(0.5), alignment: .bottom)
             .zIndex(1)
 

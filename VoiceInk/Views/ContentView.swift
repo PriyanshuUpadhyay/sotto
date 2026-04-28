@@ -120,6 +120,12 @@ struct ContentView: View {
             }
         }
         .navigationSplitViewStyle(.balanced)
+        // W8 backstop — every detail pane applies its own
+        // `.adaptiveGlassBackground()`, but if a future pane forgets, this
+        // ensures the gap area still glasses correctly. The sidebar's own
+        // `.listStyle(.sidebar)` chrome takes precedence on its column;
+        // detail-pane backgrounds cover the detail column. Plan W8.
+        .adaptiveGlassBackground()
         .frame(width: 950)
         .frame(minHeight: 730)
         .onAppear {

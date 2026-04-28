@@ -38,7 +38,6 @@ struct MetricsContent: View {
                         .padding(.vertical, 28)
                         .padding(.horizontal, 32)
                     }
-                    .background(Color(.windowBackgroundColor))
                 }
             }
         }
@@ -138,9 +137,8 @@ struct MetricsContent: View {
                 .foregroundColor(.secondary)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color(.windowBackgroundColor))
     }
-    
+
     // MARK: - Sections
     
     private var heroSection: some View {

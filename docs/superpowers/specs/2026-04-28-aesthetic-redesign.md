@@ -44,6 +44,41 @@ corner radius:      10pt for chips, 14pt for panels (NEVER 999pt pills)
 
 **Motion:** existing `Animation.haloExpand` (0.38s spring, damping 0.78) is kept for entry; **0.24s linear fade** added for cluster collapse. Reduce-Motion → swap to 0.18s opacity for both directions, no scale.
 
+### 1.X Adaptive glass app-wide (W8 extension, 2026-04-29)
+
+The recorder cluster's glass vocabulary (HaloMaterial onyx/light + GlassAppearanceDetector wallpaper-luminance adaptation) propagates to the main-window app shell. Specifically:
+
+**Window contract.** The main NSWindow runs non-opaque + clear bg (set in `WindowManager.configureWindow`). This permits NSVisualEffectView `.behindWindow` blending to reveal wallpaper through the gap area behind cards.
+
+**New primitive: `AdaptiveGlassBackground` view modifier.** Located at `VoiceInk/Views/Common/AdaptiveGlassBackground.swift`. Two intensities:
+
+| Intensity | Use | Onyx tint α | Light tint α |
+|---|---|---:|---:|
+| `.pane`  | Detail-pane root (gap behind cards)         | 0.42 | 0.18 |
+| `.panel` | Sliding-panel chrome (stepped-up over pane) | 0.52 | 0.26 |
+
+Material: `.fullScreenUI` over `.behindWindow` blending. Appearance: `GlassAppearanceDetector.shared.current → .aqua / .darkAqua`. Reuses recorder's `VisualEffectBlur` `NSViewRepresentable`.
+
+**Accessibility branches.** Per §6.4 contract:
+- `accessibilityDisplayShouldReduceTransparency` → opaque `Color(NSColor.controlBackgroundColor)`. NSVisualEffectView is suppressed.
+- `accessibilityDisplayShouldIncreaseContrast` → opaque `Color(NSColor.windowBackgroundColor)`. Matches the pre-existing `HaloMaterial.AdaptiveGlass.contrastedFill` contract.
+
+**Surface inventory (W8 packet — 27 sites).**
+- Detail-pane roots (10): MetricsView, ModelManagementView, InlineHistoryView, EnhancementSettingsView, AudioTranscribeView, AudioInputSettingsView, DictionarySettingsView, PowerModeView, PermissionsView, SettingsView.
+- Sliding-panel chrome (10): SlidingPanel primitive, DictionarySettingsPanel, EnhancementSettingsPanel, PromptEditorView root + bands + icon-picker, PowerModeConfigView header/footer/body, ModelManagementView settings-panel header.
+- Recorder popover (1): EnhancementPromptPopover.
+- Sub-pane flush bands dropped (5): MetricsContent, PowerModeView heroHeader/emptyState, InlineHistoryView empty-state, PromptEditorView header/footer.
+- Window flag (1): WindowManager.configureWindow flips isOpaque + backgroundColor.
+
+**Out-of-scope surfaces (W8 explicit non-targets).**
+- `MenuBarView` (system NSMenu via `.menuBarExtraStyle(.menu)` — not skinnable).
+- `HistoryWindowController` (separate NSWindow — needs its own configureWindow flip; tracked as W8 follow-up).
+- `PerformanceAnalysisView` / `PerformanceAnalysisPanelView` (Charts hosts — opaque bg required for chart legibility).
+- Recorder cluster panels (already adaptive via HaloMaterial).
+- Notification panels (`AppNotificationView` / `AnnouncementView` — already use HUD glass).
+
+**Plan reference:** `docs/superpowers/plans/W8-adaptive-glass-app-wide.md`.
+
 ## 2. Structure — Constellation satellite cluster
 
 **Locked.** Replaces the single morphing pill with a cluster of small chips.

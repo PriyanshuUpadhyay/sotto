@@ -28,7 +28,7 @@ struct SlidingPanel<PanelContent: View>: ViewModifier {
                     panelContent()
                         .frame(width: panelWidth)
                         .frame(maxHeight: .infinity)
-                        .background(Color(NSColor.windowBackgroundColor))
+                        .adaptiveGlassBackground(intensity: .panel)
                         .overlay(Divider(), alignment: .leading)
                         .shadow(color: .black.opacity(0.08), radius: 8, x: -2, y: 0)
                 }

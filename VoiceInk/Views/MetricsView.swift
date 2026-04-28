@@ -9,6 +9,6 @@ struct MetricsView: View {
 
     var body: some View {
         MetricsContent(modelContext: modelContext)
-            .background(Color(.controlBackgroundColor))
+            .adaptiveGlassBackground()
     }
 }

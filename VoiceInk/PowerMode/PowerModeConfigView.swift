@@ -179,7 +179,6 @@ struct ConfigurationView: View {
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 16)
-        .background(Color(NSColor.windowBackgroundColor))
         .overlay(Divider().opacity(0.5), alignment: .bottom)
     }
 
@@ -213,7 +212,6 @@ struct ConfigurationView: View {
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 16)
-        .background(Color(NSColor.windowBackgroundColor))
         .overlay(Divider().opacity(0.5), alignment: .top)
     }
 
@@ -232,7 +230,6 @@ struct ConfigurationView: View {
             .padding(.vertical, 16)
             .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .background(Color(NSColor.controlBackgroundColor))
     }
 
     // MARK: - General

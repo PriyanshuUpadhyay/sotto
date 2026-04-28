@@ -86,7 +86,7 @@ struct PowerModeView: View {
             heroHeader
             content
         }
-        .background(Color(NSColor.controlBackgroundColor))
+        .adaptiveGlassBackground()
         .slidingPanel(isPresented: .init(
             get: { isPanelOpen },
             set: { if !$0 { closePanel() } }
@@ -121,7 +121,6 @@ struct PowerModeView: View {
         .padding(.horizontal, 24)
         .padding(.top, 20)
         .padding(.bottom, 8)
-        .background(Color(NSColor.windowBackgroundColor))
     }
 
     // MARK: - Content — strip or empty state
@@ -131,7 +130,6 @@ struct PowerModeView: View {
         if powerModeManager.configurations.isEmpty {
             emptyState
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background(Color(NSColor.controlBackgroundColor))
         } else {
             PowerModeStripView(
                 powerModeManager: powerModeManager,

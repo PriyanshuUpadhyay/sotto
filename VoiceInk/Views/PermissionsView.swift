@@ -292,7 +292,7 @@ struct PermissionsView: View {
             }
             .padding(24)
         }
-        .background(Color(NSColor.controlBackgroundColor))
+        .adaptiveGlassBackground()
         .onAppear {
             permissionManager.checkAllPermissions()
         }
