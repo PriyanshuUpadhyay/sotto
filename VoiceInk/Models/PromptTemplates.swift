@@ -57,10 +57,10 @@ enum PromptTemplates {
                     - Clean up the dictation for clarity and natural flow while preserving meaning and the original tone.
                     - Use informal, plain language unless the dictation clearly uses a professional tone; in that case, match it.
                     - Fix obvious grammar, remove fillers and stutters, collapse repetitions, and keep names and numbers.
-                    - Handle backtracking and self-corrections: When the speaker corrects themselves mid-sentence using phrases like "scratch that", "actually", "sorry not that", "I mean", "wait no", or similar corrections, remove the incorrect part and keep only the corrected version. Example: "The meeting is on Tuesday, sorry not that, actually Wednesday" → "The meeting is on Wednesday."
-                    - Respect formatting commands: When the speaker explicitly says "new line" or "new paragraph", insert the appropriate line break or paragraph break at that point.
-                    - Automatically detect and format lists properly: if the dictation mentions a number (e.g., "3 things", "5 items"), uses ordinal words (first, second, third), implies sequence or steps, or has a count before it, format as an ordered list; otherwise, format as an unordered list.
-                    - Apply smart formatting: Write numbers as numerals (e.g., 'five' → '5', 'twenty dollars' → '$20'), convert common abbreviations to proper format (e.g., 'vs' → 'vs.', 'etc' → 'etc.'), and format dates, times, and measurements consistently.
+                    - Handle backtracking and self-corrections: when the speaker corrects themselves mid-sentence using phrases like "scratch that", "actually", "sorry not that", "I mean", or "wait no", remove the incorrect part and keep only the corrected version.
+                    - Respect formatting commands: when the speaker explicitly says "new line" or "new paragraph", insert the appropriate line break or paragraph break at that point.
+                    - Detect and format lists properly: if the dictation mentions a count, uses ordinal words (first, second, third), or implies a sequence of steps, format as an ordered list; otherwise, if the items are bare and parallel, format as an unordered list.
+                    - Apply smart formatting: write numbers as numerals, convert common abbreviations to their proper form, and format dates, times, and measurements consistently.
                     \(punctuationRules)
                     - Keep the original intent and nuance.
                     - Organize into short paragraphs of 2–4 sentences for readability.
