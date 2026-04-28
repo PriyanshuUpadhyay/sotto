@@ -66,7 +66,7 @@ struct StreamingCaretTranscript: View {
             ScrollView(.vertical, showsIndicators: false) {
                 HStack(alignment: .lastTextBaseline, spacing: 3) {
                     Text(displayText)
-                        .font(.system(size: 13, weight: .medium, design: .rounded))
+                        .font(.system(size: 13, weight: .medium))
                         .foregroundColor(.white.opacity(0.95))
                         .frame(maxWidth: maxWidth, alignment: .leading)
                         .fixedSize(horizontal: false, vertical: true)

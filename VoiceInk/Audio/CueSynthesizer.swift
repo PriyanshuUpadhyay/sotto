@@ -33,8 +33,10 @@ final class CueSynthesizer {
 
     /// Master gain applied to every generated buffer. Tuned so the loudest cue
     /// (start pluck — single voice peaking near 1.0) sits comfortably below
-    /// clipping while quieter cues remain audible.
-    nonisolated static let masterGain: Float = 0.45
+    /// clipping while quieter cues remain audible. Re-tuned per spec §5 row W7
+    /// to match the lighter aesthetic — ~30% perceived drop relative to the
+    /// pre-W7 0.45 default.
+    nonisolated static let masterGain: Float = 0.32
 
     private init() {
         format = AVAudioFormat(standardFormatWithSampleRate: sampleRate, channels: 1)!

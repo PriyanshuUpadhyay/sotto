@@ -89,7 +89,7 @@ struct TranscriptionDetailView: View {
             VStack(alignment: .leading, spacing: 6) {
                 Text(transcription.timestamp,
                      format: .dateTime.year().month(.abbreviated).day().hour().minute())
-                    .font(.system(size: 14, weight: .semibold, design: .rounded))
+                    .font(.system(size: 14, weight: .semibold))
                     .foregroundColor(.primary)
                 HStack(spacing: 10) {
                     if let provider = inferredProvider {
@@ -150,7 +150,7 @@ struct TranscriptionDetailView: View {
     private var durationPill: some View {
         Text(transcription.duration.formatTiming())
             .font(.system(size: 10, weight: .semibold, design: .monospaced))
-            .tracking(0.4)
+            .tracking(0.06 * 10)
             .padding(.horizontal, 7)
             .padding(.vertical, 2.5)
             .background(Capsule().fill(Palette.neutral.opacity(0.14)))
@@ -180,7 +180,7 @@ struct TranscriptionDetailView: View {
                 Text(label.uppercased())
                     .font(.system(size: 9, weight: .semibold, design: .monospaced))
                     .foregroundColor(.secondary)
-                    .tracking(0.6)
+                    .tracking(0.06 * 9)
                 Spacer()
                 CopyIconButton(textToCopy: text)
             }

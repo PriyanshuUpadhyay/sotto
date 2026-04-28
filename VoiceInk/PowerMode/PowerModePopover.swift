@@ -141,6 +141,7 @@ struct PowerModePopover: View {
         return VStack(alignment: .leading, spacing: 6) {
             Text("SWITCH")
                 .font(.system(size: 10, weight: .semibold, design: .monospaced))
+                .tracking(0.06 * 10)
                 .foregroundColor(.secondary)
                 .padding(.horizontal, 4)
 
@@ -261,6 +262,7 @@ private struct PowerModePopoverRow: View {
                 if config.isDefault {
                     Text("DEFAULT")
                         .font(.system(size: 9, weight: .semibold, design: .monospaced))
+                        .tracking(0.06 * 9)
                         .foregroundColor(Palette.warn)
                         .padding(.horizontal, 5)
                         .padding(.vertical, 2)

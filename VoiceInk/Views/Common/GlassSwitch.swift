@@ -80,6 +80,7 @@ private struct GlassSwitchPreviewHarness: View {
             HStack(spacing: 16) {
                 Text("AI ENHANCEMENT")
                     .font(.system(size: 11, weight: .semibold, design: .monospaced))
+                    .tracking(0.06 * 11)
                     .foregroundColor(backgroundIsLight ? .black.opacity(0.6) : .white.opacity(0.6))
                 Spacer()
                 GlassSwitch(isOn: $on)
@@ -87,6 +88,7 @@ private struct GlassSwitchPreviewHarness: View {
             HStack(spacing: 16) {
                 Text("PAUSE MEDIA")
                     .font(.system(size: 11, weight: .semibold, design: .monospaced))
+                    .tracking(0.06 * 11)
                     .foregroundColor(backgroundIsLight ? .black.opacity(0.6) : .white.opacity(0.6))
                 Spacer()
                 GlassSwitch(isOn: $off)

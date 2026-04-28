@@ -34,13 +34,13 @@ struct TranscriptionListItem: View {
             VStack(alignment: .leading, spacing: 5) {
                 HStack(spacing: 8) {
                     Text(transcription.timestamp, format: .dateTime.month(.abbreviated).day().hour().minute())
-                        .font(.system(size: 11, weight: .medium, design: .rounded))
+                        .font(.system(size: 11, weight: .medium))
                         .foregroundColor(.secondary)
                     Spacer()
                     if transcription.duration > 0 {
                         Text(transcription.duration.formatTiming())
                             .font(.system(size: 10, weight: .semibold, design: .monospaced))
-                            .tracking(0.4)
+                            .tracking(0.06 * 10)
                             .padding(.horizontal, 7)
                             .padding(.vertical, 2.5)
                             .background(

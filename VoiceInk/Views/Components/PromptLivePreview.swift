@@ -175,8 +175,8 @@ struct PromptLivePreview: View {
 
     private func sectionLabel(_ s: String) -> some View {
         Text(s.uppercased())
-            .font(.system(size: 10, weight: .semibold))
-            .tracking(0.6)
+            .font(.system(size: 10, weight: .semibold, design: .monospaced))
+            .tracking(0.06 * 10)
             .foregroundStyle(.secondary)
     }
 

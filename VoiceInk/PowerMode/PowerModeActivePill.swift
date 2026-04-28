@@ -37,6 +37,7 @@ struct PowerModeActivePill: View {
 
                 Text(name.uppercased())
                     .font(.system(size: 9, weight: .semibold, design: .monospaced))
+                    .tracking(0.06 * 9)
                     .foregroundColor(.primary)
                     .lineLimit(1)
                     .truncationMode(.tail)

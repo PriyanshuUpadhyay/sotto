@@ -60,7 +60,10 @@ class SoundManager: ObservableObject {
     private func loadAndPreparePlayer(from url: URL?) -> AVAudioPlayer? {
         guard let url = url else { return nil }
         let player = try? AVAudioPlayer(contentsOf: url)
-        player?.volume = 0.4
+        // Custom-override loudness — re-tuned per spec §5 row W7 to match
+        // the synthesized-cue masterGain drop (parity, ~30% perceived drop
+        // vs the pre-W7 0.4 default).
+        player?.volume = 0.28
         player?.prepareToPlay()
         return player
     }
@@ -90,7 +93,7 @@ class SoundManager: ObservableObject {
             return
         }
         if let player = customPlayers[.start] {
-            player.volume = 0.4
+            player.volume = 0.28
             if let onFinished {
                 let delegate = AudioPlayerCompletionDelegate(onFinished)
                 startSoundDelegate = delegate

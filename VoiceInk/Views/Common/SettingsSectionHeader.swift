@@ -44,7 +44,7 @@ struct SettingsSectionHeader: View {
 
             VStack(alignment: .leading, spacing: 1) {
                 Text(title)
-                    .font(.system(size: 14, weight: .semibold, design: .rounded))
+                    .font(.system(size: 14, weight: .semibold))
                     .foregroundColor(.primary)
                 if let subtitle, !subtitle.isEmpty {
                     Text(subtitle)
@@ -58,8 +58,9 @@ struct SettingsSectionHeader: View {
 
             if let statusText {
                 Text(statusText)
-                    .font(.system(size: 10, weight: .semibold, design: .rounded))
-                    .tracking(0.5)
+                    .font(.system(size: 10, weight: .semibold, design: .monospaced))
+                    .tracking(0.06 * 10)
+                    .textCase(.uppercase)
                     .foregroundColor(statusTone.color)
                     .padding(.horizontal, 8)
                     .padding(.vertical, 3)

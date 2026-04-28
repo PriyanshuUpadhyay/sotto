@@ -118,6 +118,7 @@ private struct PowerModeStripCard: View {
                     } else if config.isDefault {
                         Text("DEFAULT")
                             .font(.system(size: 8, weight: .semibold, design: .monospaced))
+                            .tracking(0.06 * 8)
                             .foregroundColor(Palette.warn)
                             .padding(.horizontal, 5)
                             .padding(.vertical, 2)

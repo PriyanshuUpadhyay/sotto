@@ -161,7 +161,7 @@ struct ConfigurationView: View {
     private var header: some View {
         HStack(spacing: 12) {
             Text(mode.title)
-                .font(.system(size: 17, weight: .semibold, design: .rounded))
+                .font(.system(size: 17, weight: .semibold))
                 .foregroundColor(.primary)
 
             Spacer()

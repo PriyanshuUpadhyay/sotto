@@ -144,7 +144,7 @@ struct SectionCard: View {
 
                 VStack(alignment: .leading, spacing: 4) {
                     Text(section.rawValue)
-                        .font(.system(size: 15, weight: .semibold, design: .rounded))
+                        .font(.system(size: 15, weight: .semibold))
 
                     Text(section.description)
                         .font(.system(size: 12))

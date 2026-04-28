@@ -87,7 +87,7 @@ private struct RecorderStyleCard<Preview: View>: View {
 
             VStack(spacing: 0) {
                 Text(title)
-                    .font(.system(size: 12, weight: .semibold, design: .rounded))
+                    .font(.system(size: 12, weight: .semibold))
                     .foregroundColor(.primary)
                 Text(subtitle)
                     .font(.system(size: 10))
