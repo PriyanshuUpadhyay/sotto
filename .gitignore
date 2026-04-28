@@ -102,3 +102,6 @@ Temporary Items
 .apdisk
 .superpowers/
 .claude/
+
+# Git worktrees (per superpowers:using-git-worktrees skill)
+.worktrees/
