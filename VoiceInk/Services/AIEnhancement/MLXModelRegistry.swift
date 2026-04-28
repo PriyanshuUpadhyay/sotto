@@ -2,22 +2,22 @@ import Foundation
 import os
 
 #if canImport(MLXLLM)
-import Hub
+import HuggingFace
 #endif
 
 private let mlxRegistryLogger = Logger(subsystem: "com.prakashjoshipax.voiceink", category: "MLXModelDownloader")
 
 struct MLXModelEntry: Identifiable, Hashable {
-    let id: String              // HF repo, e.g. "mlx-community/Qwen2.5-3B-Instruct-4bit"
+    let id: String              // HF repo, e.g. "mlx-community/gemma-4-e4b-it-4bit"
     let displayName: String
     let approximateSizeGB: Double
     let notes: String
 }
 
 enum MLXModelRegistry {
-    /// Curated lineup as of April 2026. Trades size vs quality across two clear
-    /// tiers: ~2.5 GB "fast default" and ~14 GB "quality" picks. Update freely;
-    /// mlx-community publishes new MLX-quantised variants weekly.
+    /// Curated lineup as of April 2026. Two tiers: ~2.5 GB "fast default" and
+    /// ~14 GB "quality" picks. All entries verified loadable against the bundled
+    /// `mlx-swift-lm` 3.31.3 (gemma4 + qwen3_5 model types are registered).
     static let curated: [MLXModelEntry] = [
         .init(
             id: "mlx-community/gemma-4-e4b-it-4bit",
@@ -53,50 +53,69 @@ enum MLXModelStatus: Equatable {
     case failed(String)
 }
 
+#if canImport(MLXLLM)
 enum MLXModelDownloader {
-    /// `swift-transformers` HubApi.snapshot() writes files flat into
-    /// `<downloadBase>/models/<repoId>/{config.json, model.safetensors, ...}`.
-    /// Presence of `config.json` is the canonical "is downloaded" signal —
-    /// the .safetensors are huge, so checking that first is fast.
+    /// `swift-huggingface` writes the snapshot under
+    /// `<cache>/models--<namespace>--<name>/snapshots/<commit-hash>/{config.json, *.safetensors, ...}`
+    /// and tracks the HEAD commit in a `refs/main` file. We resolve "main" via
+    /// the cache; if it returns a hash AND that hash's snapshot has `config.json`,
+    /// the model is fully downloaded.
     static func status(for repoId: String) -> MLXModelStatus {
-        let dir = repoDir(for: repoId)
-        let cfg = dir.appendingPathComponent("config.json")
+        guard let repo = Repo.ID(rawValue: repoId),
+              let cache = MLXProvider.sharedHubClient.cache,
+              let commit = cache.resolveRevision(repo: repo, kind: .model, ref: "main"),
+              let snapshotURL = try? cache.snapshotPath(repo: repo, kind: .model, commitHash: commit) else {
+            mlxRegistryLogger.notice("🦾 status: repo=\(repoId, privacy: .public) not in cache")
+            return .notDownloaded
+        }
+        let cfg = snapshotURL.appendingPathComponent("config.json")
         let exists = FileManager.default.fileExists(atPath: cfg.path)
-        mlxRegistryLogger.notice("🦾 status: repo=\(repoId, privacy: .public) dir=\(dir.path, privacy: .public) configExists=\(exists, privacy: .public)")
+        mlxRegistryLogger.notice("🦾 status: repo=\(repoId, privacy: .public) snapshot=\(snapshotURL.path, privacy: .public) configExists=\(exists, privacy: .public)")
         return exists ? .downloaded : .notDownloaded
     }
 
     static func download(
         _ repoId: String,
         approximateSizeGB: Double,
-        progress: @escaping (Double) -> Void
+        progress: @Sendable @escaping (Double) -> Void
     ) async throws {
         try preflightDiskSpace(needGB: approximateSizeGB + 1.0)
 
-        #if canImport(MLXLLM)
-        let repo = Hub.Repo(id: repoId)
-        let hub = MLXProvider.sharedHubApi
-        mlxRegistryLogger.notice("🦾 download start: repo=\(repoId, privacy: .public) base=\(MLXProvider.applicationSupportModelsRoot().path, privacy: .public)")
-        _ = try await hub.snapshot(from: repo) { (foundationProgress: Progress) in
+        guard let repo = Repo.ID(rawValue: repoId) else {
+            throw NSError(
+                domain: "MLXModelDownloader",
+                code: -3,
+                userInfo: [NSLocalizedDescriptionKey: "Invalid repo id: \(repoId). Expected 'namespace/name'."]
+            )
+        }
+        mlxRegistryLogger.notice("🦾 download start: repo=\(repoId, privacy: .public)")
+        let progressBridge: @MainActor @Sendable (Progress) -> Void = { foundationProgress in
             progress(foundationProgress.fractionCompleted)
         }
+        _ = try await MLXProvider.sharedHubClient.downloadSnapshot(
+            of: repo,
+            revision: "main",
+            progressHandler: progressBridge
+        )
         mlxRegistryLogger.notice("🦾 download done: repo=\(repoId, privacy: .public)")
-        #else
-        throw NSError(domain: "MLXModelDownloader", code: -1, userInfo: [NSLocalizedDescriptionKey: "Hub framework unavailable"])
-        #endif
     }
 
     static func delete(_ repoId: String) throws {
-        let dir = repoDir(for: repoId)
+        guard let repo = Repo.ID(rawValue: repoId),
+              let cache = MLXProvider.sharedHubClient.cache else { return }
+        let dir = cache.repoDirectory(repo: repo, kind: .model)
         if FileManager.default.fileExists(atPath: dir.path) {
             try FileManager.default.removeItem(at: dir)
             mlxRegistryLogger.notice("🦾 deleted: repo=\(repoId, privacy: .public)")
         }
     }
 
+    /// Probes free space against the *cache volume* (where downloads land).
+    /// Falls back to the legacy MLXModels root if the cache is unavailable —
+    /// both live under `~/Library` for unsandboxed builds, so volume is the same.
     private static func preflightDiskSpace(needGB: Double) throws {
-        let url = MLXProvider.applicationSupportModelsRoot()
-        let values = try? url.resourceValues(forKeys: [.volumeAvailableCapacityForImportantUsageKey])
+        let probe = MLXProvider.sharedHubClient.cache?.cacheDirectory ?? MLXProvider.applicationSupportModelsRoot()
+        let values = try? probe.resourceValues(forKeys: [.volumeAvailableCapacityForImportantUsageKey])
         let free = Double(values?.volumeAvailableCapacityForImportantUsage ?? 0) / 1_073_741_824.0
         guard free >= needGB else {
             throw NSError(
@@ -106,17 +125,21 @@ enum MLXModelDownloader {
             )
         }
     }
-
-    /// Mirror swift-transformers' `localRepoLocation`:
-    ///   downloadBase / repo.type.rawValue / repo.id
-    /// `repo.type.rawValue` is "models" for default Repo. `repo.id` keeps its slash
-    /// ("mlx-community/Qwen3.6-27B-4bit") creating a nested two-level dir.
-    private static func repoDir(for repoId: String) -> URL {
-        let base = MLXProvider.applicationSupportModelsRoot()
-        var dir = base.appendingPathComponent("models", isDirectory: true)
-        for component in repoId.split(separator: "/") {
-            dir = dir.appendingPathComponent(String(component), isDirectory: true)
-        }
-        return dir
-    }
 }
+#else
+enum MLXModelDownloader {
+    static func status(for repoId: String) -> MLXModelStatus { .failed("MLX framework unavailable") }
+    static func download(
+        _ repoId: String,
+        approximateSizeGB: Double,
+        progress: @Sendable @escaping (Double) -> Void
+    ) async throws {
+        throw NSError(
+            domain: "MLXModelDownloader",
+            code: -1,
+            userInfo: [NSLocalizedDescriptionKey: "MLX framework unavailable in this build."]
+        )
+    }
+    static func delete(_ repoId: String) throws {}
+}
+#endif

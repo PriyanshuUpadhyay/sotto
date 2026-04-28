@@ -70,6 +70,7 @@ local: check setup
 	xcodebuild -project VoiceInk.xcodeproj -scheme VoiceInk -configuration Debug \
 		-derivedDataPath "$(LOCAL_DERIVED_DATA)" \
 		-xcconfig LocalBuild.xcconfig \
+		-skipMacroValidation \
 		'CODE_SIGN_IDENTITY=$(LOCAL_SIGN_IDENTITY)' \
 		CODE_SIGNING_REQUIRED=NO \
 		CODE_SIGNING_ALLOWED=YES \

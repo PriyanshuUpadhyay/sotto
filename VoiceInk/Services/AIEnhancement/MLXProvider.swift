@@ -5,10 +5,12 @@ import os
 import MLX
 import MLXLLM
 import MLXLMCommon
-import Hub
+import MLXHuggingFace
+import HuggingFace
+import Tokenizers
 #endif
 
-/// On-device LLM provider using mlx-swift. Loads MLX-quantized HuggingFace
+/// On-device LLM provider using mlx-swift-lm. Loads MLX-quantised HuggingFace
 /// models lazily; idle-evicts after `idleEvictSeconds` to free RAM. All state
 /// is actor-isolated; cancellation honoured at load and generate boundaries.
 actor MLXProvider {
@@ -78,58 +80,57 @@ actor MLXProvider {
         let dynamicMaxTokens = max(192, min(768, approxInputTokens * 3))
 
         do {
-            let result: String = try await container.perform { context in
-                try Task.checkCancellation()
+            try Task.checkCancellation()
 
-                let prepStart = Date()
-                let messages: [Chat.Message] = [
-                    .system(systemPrompt),
-                    .user(userPrompt),
-                ]
-                let userInput = UserInput(chat: messages)
-                let input = try await context.processor.prepare(input: userInput)
-                let prepElapsed = Date().timeIntervalSince(prepStart)
+            let prepStart = Date()
+            let messages: [Chat.Message] = [
+                .system(systemPrompt),
+                .user(userPrompt),
+            ]
+            let userInput = UserInput(chat: messages)
+            let input = try await container.prepare(input: userInput)
+            let prepElapsed = Date().timeIntervalSince(prepStart)
 
-                var output = ""
-                var firstChunkAt: TimeInterval?
-                var chunkCount = 0
-                let parameters = GenerateParameters(
-                    maxTokens: dynamicMaxTokens,
-                    temperature: 0.1,
-                    topP: 0.9
-                )
-                Self.logger.notice("🦾 enhance: prep=\(prepElapsed, format: .fixed(precision: 2), privacy: .public)s maxTokens=\(dynamicMaxTokens, privacy: .public) input=\(userPrompt.count, privacy: .public)c")
+            let parameters = GenerateParameters(
+                maxTokens: dynamicMaxTokens,
+                temperature: 0.1,
+                topP: 0.9
+            )
+            Self.logger.notice("🦾 enhance: prep=\(prepElapsed, format: .fixed(precision: 2), privacy: .public)s maxTokens=\(dynamicMaxTokens, privacy: .public) input=\(userPrompt.count, privacy: .public)c")
 
-                let genStart = Date()
-                let stream = try MLXLMCommon.generate(
-                    input: input, parameters: parameters, context: context
-                )
-                for await item in stream {
-                    if Task.isCancelled { break }
-                    switch item {
-                    case .chunk(let chunk):
-                        if firstChunkAt == nil {
-                            firstChunkAt = Date().timeIntervalSince(genStart)
-                        }
-                        output += chunk
-                        chunkCount += 1
-                    case .info:
-                        break
-                    @unknown default:
-                        break
+            var output = ""
+            var firstChunkAt: TimeInterval?
+            var chunkCount = 0
+            let genStart = Date()
+
+            let stream = try await container.generate(
+                input: input,
+                parameters: parameters
+            )
+            for await item in stream {
+                if Task.isCancelled { break }
+                switch item {
+                case .chunk(let chunk):
+                    if firstChunkAt == nil {
+                        firstChunkAt = Date().timeIntervalSince(genStart)
                     }
+                    output += chunk
+                    chunkCount += 1
+                case .info, .toolCall:
+                    break
+                @unknown default:
+                    break
                 }
-                let genElapsed = Date().timeIntervalSince(genStart)
-                let ttft = firstChunkAt ?? genElapsed
-                let tokenRate = genElapsed > 0 ? Double(chunkCount) / genElapsed : 0
-                Self.logger.notice("🦾 enhance: gen=\(genElapsed, format: .fixed(precision: 2), privacy: .public)s ttft=\(ttft, format: .fixed(precision: 2), privacy: .public)s tokens≈\(chunkCount, privacy: .public) (\(tokenRate, format: .fixed(precision: 1), privacy: .public) tok/s) output=\(output.count, privacy: .public)c")
-
-                try Task.checkCancellation()
-                return output
             }
+            let genElapsed = Date().timeIntervalSince(genStart)
+            let ttft = firstChunkAt ?? genElapsed
+            let tokenRate = genElapsed > 0 ? Double(chunkCount) / genElapsed : 0
+            Self.logger.notice("🦾 enhance: gen=\(genElapsed, format: .fixed(precision: 2), privacy: .public)s ttft=\(ttft, format: .fixed(precision: 2), privacy: .public)s tokens≈\(chunkCount, privacy: .public) (\(tokenRate, format: .fixed(precision: 1), privacy: .public) tok/s) output=\(output.count, privacy: .public)c")
+
+            try Task.checkCancellation()
             let totalElapsed = Date().timeIntervalSince(totalStart)
             Self.logger.notice("🦾 enhance: total=\(totalElapsed, format: .fixed(precision: 2), privacy: .public)s")
-            return result
+            return output
         } catch is CancellationError {
             throw CancellationError()
         } catch {
@@ -160,15 +161,16 @@ actor MLXProvider {
         try Task.checkCancellation()
 
         let configuration = ModelConfiguration(id: modelId)
-        Self.logger.notice("🦾 loadModel: id=\(self.modelId, privacy: .public) base=\(MLXProvider.applicationSupportModelsRoot().path, privacy: .public)")
+        Self.logger.notice("🦾 loadModel: id=\(self.modelId, privacy: .public)")
 
         do {
-            let loaded = try await LLMModelFactory.shared.loadContainer(
-                hub: MLXProvider.sharedHubApi,
+            let loaded = try await loadModelContainer(
+                from: #hubDownloader(MLXProvider.sharedHubClient),
+                using: #huggingFaceTokenizerLoader(),
                 configuration: configuration
             ) { progress in
                 #if DEBUG
-                MLXProvider.logger.notice("🦾 load \(self.modelId, privacy: .public): \(Int(progress.fractionCompleted * 100), privacy: .public)%")
+                MLXProvider.logger.notice("🦾 load progress: \(Int(progress.fractionCompleted * 100), privacy: .public)%")
                 #endif
             }
             try Task.checkCancellation()
@@ -183,17 +185,15 @@ actor MLXProvider {
         }
     }
 
-    /// Shared HubApi instance whose `downloadBase` points to Application Support,
-    /// so models live in a non-purgeable location and survive macOS Caches eviction.
-    /// Setting this also mutates `MLXLMCommon.defaultHubApi` so any code path that
-    /// forgets to pass `hub:` explicitly still uses the same root.
-    nonisolated static let sharedHubApi: HubApi = {
-        let base = MLXProvider.applicationSupportModelsRoot()
-        let api = HubApi(downloadBase: base)
-        defaultHubApi = api
-        return api
-    }()
+    /// Shared `HubClient` for downloads. `swift-huggingface` auto-detects cache
+    /// location (Library/Caches/huggingface/hub for sandboxed apps), which is
+    /// fine for VoiceInk — token auth and endpoint default to public HF.
+    nonisolated static let sharedHubClient: HubClient = HubClient()
 
+    /// Legacy MLX cache root from the 2.x mlx-swift-examples era. Retained for
+    /// the MLX picker UI's status check + cleanup hooks; downloads under
+    /// `mlx-swift-lm` 3.x land in `swift-huggingface`'s Python-compatible
+    /// `~/Library/Caches/huggingface/hub` instead.
     nonisolated static func applicationSupportModelsRoot() -> URL {
         let appSupport = (try? FileManager.default.url(
             for: .applicationSupportDirectory,
