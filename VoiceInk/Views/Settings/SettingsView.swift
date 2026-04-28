@@ -31,14 +31,12 @@ struct SettingsView: View {
     @ObservedObject private var soundManager = SoundManager.shared
     @ObservedObject private var mediaController = MediaController.shared
     @ObservedObject private var playbackController = PlaybackController.shared
-    @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = true
     @AppStorage("autoUpdateCheck") private var autoUpdateCheck = true
     @AppStorage("enableAnnouncements") private var enableAnnouncements = true
     @AppStorage("restoreClipboardAfterPaste") private var restoreClipboardAfterPaste = true
     @AppStorage("clipboardRestoreDelay") private var clipboardRestoreDelay = 2.0
     @AppStorage("useAppleScriptPaste") private var useAppleScriptPaste = false
     @AppStorage("failedDwellSeconds") private var failedDwellSeconds: Double = 6.0
-    @State private var showResetOnboardingAlert = false
     @State private var currentShortcut = KeyboardShortcuts.getShortcut(for: .toggleMiniRecorder)
     @State private var currentShortcut2 = KeyboardShortcuts.getShortcut(for: .toggleMiniRecorder2)
     @State private var isCustomCancelEnabled = KeyboardShortcuts.getShortcut(for: .cancelRecorder) != nil
@@ -70,16 +68,6 @@ struct SettingsView: View {
             .frame(maxWidth: .infinity)
         }
         .background(Color(NSColor.controlBackgroundColor))
-        .alert("Reset Onboarding", isPresented: $showResetOnboardingAlert) {
-            Button("Cancel", role: .cancel) { }
-            Button("Reset", role: .destructive) {
-                DispatchQueue.main.async {
-                    hasCompletedOnboarding = false
-                }
-            }
-        } message: {
-            Text("You'll see the introduction screens again the next time you launch the app.")
-        }
     }
 
     // MARK: - Shortcuts
@@ -394,10 +382,6 @@ struct SettingsView: View {
                     updaterViewModel.checkForUpdates()
                 }
                 .disabled(!updaterViewModel.canCheckForUpdates)
-
-                Button("Reset Onboarding") {
-                    showResetOnboardingAlert = true
-                }
 
                 Spacer()
             }

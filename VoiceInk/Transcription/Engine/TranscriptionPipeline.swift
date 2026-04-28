@@ -13,8 +13,6 @@ class TranscriptionPipeline {
     private let promptDetectionService = PromptDetectionService()
     private let logger = Logger(subsystem: "com.prakashjoshipax.voiceink", category: "TranscriptionPipeline")
 
-    var licenseViewModel: LicenseViewModel
-
     init(
         modelContext: ModelContext,
         serviceRegistry: TranscriptionServiceRegistry,
@@ -23,7 +21,6 @@ class TranscriptionPipeline {
         self.modelContext = modelContext
         self.serviceRegistry = serviceRegistry
         self.enhancementService = enhancementService
-        self.licenseViewModel = LicenseViewModel()
     }
 
     /// Run the full pipeline for a given transcription record.
@@ -191,15 +188,8 @@ class TranscriptionPipeline {
 
         if shouldCancel() { await onCleanup(); return }
 
-        if var textToPaste = finalPastedText,
+        if let textToPaste = finalPastedText,
            transcription.transcriptionStatus == TranscriptionStatus.completed.rawValue {
-            if case .trialExpired = licenseViewModel.licenseState {
-                textToPaste = """
-                    Your trial has expired. Upgrade to VoiceInk Pro at tryvoiceink.com/buy
-                    \n\(textToPaste)
-                    """
-            }
-
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.015) {
                 // P3.F: pre-paste cue. enhance-complete if enhancement actually
                 // ran (slightly softer stacked arpeggio), else transcribe-

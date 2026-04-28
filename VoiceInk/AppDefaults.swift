@@ -3,8 +3,7 @@ import Foundation
 enum AppDefaults {
     static func registerDefaults() {
         UserDefaults.standard.register(defaults: [
-            // Onboarding & General
-            "hasCompletedOnboarding": false,
+            // General
             "enableAnnouncements": true,
             "autoUpdateCheck": true,
 

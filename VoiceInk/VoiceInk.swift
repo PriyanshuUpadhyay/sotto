@@ -25,7 +25,6 @@ struct VoiceInkApp: App {
     @StateObject private var enhancementService: AIEnhancementService
     @StateObject private var failureRegistry: FailureRegistry
     @StateObject private var activeWindowService = ActiveWindowService.shared
-    @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
     @AppStorage("enableAnnouncements") private var enableAnnouncements = true
     @AppStorage("legacyMLXDirPurged") private var legacyMLXDirPurged: Bool = false
     @State private var showMenuBarIcon = true
@@ -296,21 +295,20 @@ struct VoiceInkApp: App {
 
     var body: some Scene {
         WindowGroup {
-            if hasCompletedOnboarding {
-                ContentView()
-                    .environmentObject(engine)
-                    .environmentObject(whisperModelManager)
-                    .environmentObject(fluidAudioModelManager)
-                    .environmentObject(transcriptionModelManager)
-                    .environmentObject(recorderUIManager)
-                    .environmentObject(hotkeyManager)
-                    .environmentObject(updaterViewModel)
-                    .environmentObject(menuBarManager)
-                    .environmentObject(aiService)
-                    .environmentObject(enhancementService)
-                    .environmentObject(failureRegistry)
-                    .modelContainer(container)
-                    .onAppear {
+            ContentView()
+                .environmentObject(engine)
+                .environmentObject(whisperModelManager)
+                .environmentObject(fluidAudioModelManager)
+                .environmentObject(transcriptionModelManager)
+                .environmentObject(recorderUIManager)
+                .environmentObject(hotkeyManager)
+                .environmentObject(updaterViewModel)
+                .environmentObject(menuBarManager)
+                .environmentObject(aiService)
+                .environmentObject(enhancementService)
+                .environmentObject(failureRegistry)
+                .modelContainer(container)
+                .onAppear {
                         // Check if container initialization failed
                         if containerInitializationFailed {
                             let alert = NSAlert()
@@ -353,24 +351,6 @@ struct VoiceInkApp: App {
                         // Stop the automatic audio cleanup process
                         audioCleanupManager.stopAutomaticCleanup()
                     }
-            } else {
-                OnboardingView(hasCompletedOnboarding: $hasCompletedOnboarding)
-                    .environmentObject(hotkeyManager)
-                    .environmentObject(engine)
-                    .environmentObject(whisperModelManager)
-                    .environmentObject(fluidAudioModelManager)
-                    .environmentObject(transcriptionModelManager)
-                    .environmentObject(recorderUIManager)
-                    .environmentObject(aiService)
-                    .environmentObject(enhancementService)
-                    .environmentObject(failureRegistry)
-                    .frame(minWidth: 880, minHeight: 780)
-                    .background(WindowAccessor { window in
-                        if window.identifier == nil || window.identifier != NSUserInterfaceItemIdentifier("com.prakashjoshipax.voiceink.onboardingWindow") {
-                            WindowManager.shared.configureOnboardingPanel(window)
-                        }
-                    })
-            }
         }
         .windowStyle(.hiddenTitleBar)
         .defaultSize(width: 950, height: 730)
