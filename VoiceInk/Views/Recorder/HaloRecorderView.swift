@@ -11,9 +11,7 @@ import SwiftUI
 // per-state visuals + motion. The breathe pulse, popover plumbing,
 // minPillWidth / maxPillWidth math, the `pill`/`mainRow`/`liveTextPanel`
 // stack, the `RecordingDot` / `TranscribingShimmerDot` glyphs, and the
-// `EnhancingIdentity` view that lived in v1 are all gone. The parts the
-// constellation re-uses — `StreamingCaretTranscript` — moved with this
-// file (kept below so existing references continue to resolve).
+// `EnhancingIdentity` view that lived in v1 are all gone.
 
 struct HaloRecorderView<S: RecorderStateProvider & ObservableObject, WM: ObservableObject>: View {
     @ObservedObject var stateProvider: S
@@ -35,68 +33,3 @@ struct HaloRecorderView<S: RecorderStateProvider & ObservableObject, WM: Observa
     }
 }
 
-// MARK: - Streaming caret transcript (live partial)
-//
-// Renders partial-transcript text with a blinking caret for the live-text
-// affordance. Kept here from the v1 pill — file already exported it, so
-// moving would just churn import paths. Spec §3.1 recording content row.
-
-struct StreamingCaretTranscript: View {
-    let text: String
-    /// Maximum text-area width — text wraps at this width so the pill stays at a
-    /// stable size during liveText (no jittery re-layout per partial-transcript
-    /// chunk). Caller passes the inner content width of the pill.
-    var maxWidth: CGFloat = 480
-
-    private var displayText: String {
-        // Keep last ~140 chars so the panel doesn't grow visually.
-        if text.count > 140 {
-            let idx = text.index(text.endIndex, offsetBy: -140)
-            return "…" + text[idx...].trimmingCharacters(in: .whitespacesAndNewlines)
-        }
-        return text
-    }
-
-    var body: some View {
-        // Vertical scroll: text wraps within the pill width; if it grows beyond
-        // the panel's clamped height, the user can scroll. Auto-scrolls to the
-        // bottom when new partial-transcript chunks arrive so the caret stays
-        // in view. No head-truncation — the user sees the full transcript.
-        ScrollViewReader { proxy in
-            ScrollView(.vertical, showsIndicators: false) {
-                HStack(alignment: .lastTextBaseline, spacing: 3) {
-                    Text(displayText)
-                        .font(.system(size: 13, weight: .medium))
-                        .foregroundColor(.white.opacity(0.95))
-                        .frame(maxWidth: maxWidth, alignment: .leading)
-                        .fixedSize(horizontal: false, vertical: true)
-                    BlinkingCaret()
-                }
-                .frame(maxWidth: maxWidth + 8, alignment: .leading)
-                .id("liveTextEnd")
-            }
-            .frame(maxWidth: maxWidth + 8, alignment: .leading)
-            .onChange(of: displayText) { _, _ in
-                withAnimation(.easeOut(duration: 0.12)) {
-                    proxy.scrollTo("liveTextEnd", anchor: .bottom)
-                }
-            }
-            .transaction { $0.disablesAnimations = true }
-        }
-    }
-}
-
-private struct BlinkingCaret: View {
-    @State private var on = true
-
-    var body: some View {
-        RoundedRectangle(cornerRadius: 0.75)
-            .fill(Color.white.opacity(on ? 0.7 : 0.0))
-            .frame(width: 1.5, height: 14)
-            .onAppear {
-                withAnimation(.easeInOut(duration: 0.55).repeatForever(autoreverses: true)) {
-                    on = false
-                }
-            }
-    }
-}

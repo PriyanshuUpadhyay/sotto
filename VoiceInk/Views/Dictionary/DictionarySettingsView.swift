@@ -105,7 +105,7 @@ struct DictionarySettingsView: View {
             switch selectedSection {
             case .spellings:
                 VocabularyView(whisperPrompt: whisperPrompt)
-                    .background(CardBackground(isSelected: false))
+                    .modifier(GlassChip(cornerRadius: 16, paddingH: 0, paddingV: 0))
             case .replacements:
                 // P3.D: entries already wear individual GlassCards — drop
                 // the redundant outer chrome so cards breathe against the
@@ -154,7 +154,11 @@ struct SectionCard: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(16)
-            .background(CardBackground(isSelected: isSelected))
+            .modifier(GlassChip(cornerRadius: 16, paddingH: 0, paddingV: 0))
+            .overlay(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .strokeBorder(Palette.accent.opacity(isSelected ? 0.5 : 0), lineWidth: 1.5)
+            )
         }
         .buttonStyle(.plain)
     }

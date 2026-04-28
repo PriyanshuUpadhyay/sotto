@@ -88,7 +88,7 @@ struct AudioInputSettingsView: View {
                     )
             }
             .padding()
-            .background(CardBackground(isSelected: false))
+            .modifier(GlassChip(cornerRadius: 16, paddingH: 0, paddingV: 0))
         }
     }
 
@@ -182,7 +182,7 @@ struct AudioInputSettingsView: View {
         }
         .frame(maxWidth: .infinity)
         .padding(40)
-        .background(CardBackground(isSelected: false))
+        .modifier(GlassChip(cornerRadius: 16, paddingH: 0, paddingV: 0))
     }
     
     private var prioritizedDevicesList: some View {
@@ -307,7 +307,11 @@ struct InputModeCard: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding()
-            .background(CardBackground(isSelected: isSelected))
+            .modifier(GlassChip(cornerRadius: 16, paddingH: 0, paddingV: 0))
+            .overlay(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .strokeBorder(Palette.accent.opacity(isSelected ? 0.5 : 0), lineWidth: 1.5)
+            )
         }
         .buttonStyle(.plain)
     }
@@ -350,7 +354,11 @@ struct DeviceSelectionCard: View {
                 }
             }
             .padding()
-            .background(CardBackground(isSelected: isSelected))
+            .modifier(GlassChip(cornerRadius: 16, paddingH: 0, paddingV: 0))
+            .overlay(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .strokeBorder(Palette.accent.opacity(isSelected ? 0.5 : 0), lineWidth: 1.5)
+            )
         }
         .buttonStyle(.plain)
     }
@@ -446,6 +454,6 @@ struct DevicePriorityCard: View {
             .buttonStyle(.plain)
         }
         .padding()
-        .background(CardBackground(isSelected: false))
+        .modifier(GlassChip(cornerRadius: 16, paddingH: 0, paddingV: 0))
     }
-} 
+}
