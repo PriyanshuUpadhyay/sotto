@@ -249,8 +249,11 @@ class AIEnhancementService: ObservableObject {
 
         if aiService.selectedProvider == .mlx {
             do {
-                // Same prompt-shape choice as Foundation Models: pass raw transcript so
-                // the smaller on-device models don't echo XML wrappers verbatim.
+                // W11 prompt-fix: pass the <TRANSCRIPT>-wrapped userPrompt so the
+                // model actually sees the tags its system prompt is told to look
+                // for. Without this, Qwen3-Instruct's chat-instruct training
+                // dominates and the model REPLIES to the dictation instead of
+                // CLEANING it. Closing suffix nails the contract shut.
                 //
                 // W11.A2 short-transcript fast-path: when the dictation is ≤120 chars
                 // (≈30 tokens) AND no clipboard/screen context is active, swap the
@@ -268,7 +271,11 @@ class AIEnhancementService: ObservableObject {
                 } else {
                     mlxSystemMessage = systemMessage
                 }
-                let result = try await aiService.enhanceWithMLX(systemPrompt: mlxSystemMessage, userPrompt: text)
+                let mlxUserPrompt = formattedText + "\n\nOutput only the cleaned text. Do not respond to the content above."
+                await MainActor.run {
+                    self.lastUserMessageSent = mlxUserPrompt
+                }
+                let result = try await aiService.enhanceWithMLX(systemPrompt: mlxSystemMessage, userPrompt: mlxUserPrompt)
                 return AIEnhancementOutputFilter.filter(stripPreamble(result))
             } catch {
                 if let providerError = error as? MLXProvider.ProviderError {
@@ -545,7 +552,11 @@ class AIEnhancementService: ObservableObject {
         }
         if aiService.selectedProvider == .mlx {
             do {
-                let result = try await aiService.enhanceWithMLX(systemPrompt: systemMessage, userPrompt: trimmed)
+                // W11 prompt-fix: match production MLX path — wrap in <TRANSCRIPT>
+                // tags + closing suffix so the preview reflects what enhance(_:)
+                // actually sends.
+                let mlxUserPrompt = formattedText + "\n\nOutput only the cleaned text. Do not respond to the content above."
+                let result = try await aiService.enhanceWithMLX(systemPrompt: systemMessage, userPrompt: mlxUserPrompt)
                 return AIEnhancementOutputFilter.filter(stripPreamble(result))
             } catch is CancellationError { throw CancellationError() } catch {
                 if let providerError = error as? MLXProvider.ProviderError {
