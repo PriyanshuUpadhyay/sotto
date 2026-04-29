@@ -13,7 +13,7 @@ Status legend: ⬜ pending · 🟡 in_progress · ✅ done · ⏸ blocked / defe
 | Packet | Status | Notes |
 |---|---|---|
 | **W11.A** — pipeline fixes (A1+A2+A4+A5+A6+A7) | ✅ | Merged 2026-04-29 (`84ac7bf`). A3 deferred. |
-| **W11.A.A3 follow-up** — KV-cache reuse for system prefill | ⬜ | ~80 LOC chat-template splitter + system-only prefill helper. Sized as small packet. |
+| **W11.A.A3 follow-up** — KV-cache reuse for system prefill | ✅ | Merged 2026-04-30 (`201fb8f`). Path B token-diff splitter, gated behind `MLXKVCacheReuseEnabled` UserDefault (default off). chatml templates → full benefit; legacy `[INST]<<SYS>>` skipped via `n<32` floor → standard fallback. CSV writes `promptMode=kvCacheReuse` on hits. |
 | **W11.D** — Enhancement timing telemetry (new) | ✅ | Merged 2026-04-30 (`42edcbe`). CSV at `~/Library/Application Support/<bundle>/enhancement-timings.csv`; diagnostic logs for fastPath/prewarm/idle-evict/timeout; UI buttons in Settings. |
 | **W11-prompt-fix** — MLX prompt-wrap correctness | ✅ | Merged 2026-04-29 (`3247736`). Unblocks empirical perf measurement (broken prompt was masking timing differences). |
 | **W11-models-expand** — registry + auto-detect cache | ✅ | Merged 2026-04-29 (`14f092a`). 5 new curated entries + `MLXModelDownloader.detectInstalledModels()` + DETECTED picker section. |
@@ -22,10 +22,9 @@ Status legend: ⬜ pending · 🟡 in_progress · ✅ done · ⏸ blocked / defe
 
 **Phase 1 sequencing (locked):**
 1. ✅ W11.D timing telemetry (merged `42edcbe`)
-2. ⬅ **User validates W11.A perf wins from CSV** (next gate — collect rows at varying gaps, confirm A2 fast-path triggers, confirm prewarm logs fire on cold runs)
-3. W11.A.A3 follow-up (deferred KV-cache reuse)
-4. W11.B AFM primary path (deployment-target bump)
-5. W11.C spec-decode opt-in
+2. ✅ W11.A.A3 KV-cache reuse (merged `201fb8f`, opt-in)
+3. ⬅ **W11.B AFM primary path** — biggest packet of the roadmap; bumps deployment target → macOS 26.0
+4. W11.C spec-decode opt-in (smaller, MLX fallback path)
 
 ---
 
