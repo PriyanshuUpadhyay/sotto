@@ -33,10 +33,27 @@
 
 See `docs/superpowers/plans/2026-04-29-W11-W13-master-plan.md` — **fully populated** with W11/W12/W13 phase plans, packet sequencing, and 10 consolidated open questions for user sign-off.
 
-## Next step
+## Phase 1 — done so far (2026-04-29 → 2026-04-30)
 
-✅ All 10 open questions ANSWERED (2026-04-29). Decisions locked at master plan §0.
+- ✅ `w11-models-expand` (merge `14f092a`) — registry + cache auto-detect
+- ✅ W13.A (merge `e196cda`) — token sweep (Phase 3 partial start)
+- ✅ W11.A (merge `84ac7bf`) — pipeline fixes (A1+A2+A4+A5+A6+A7; A3 deferred)
+- ✅ W11-prompt-fix (merge `3247736`) — MLX `<TRANSCRIPT>` wrap + convention alignment
 
-**Headlines:** Q1=b (bump min target → macOS 26.0; AFM primary path); Q3=c (spec-decode as MLX-fallback opt-in toggle); Q5=Caps+9 (Hyper+9 via Karabiner) for Command Mode; Q6=a (4-level Auto Cleanup dial); Q10=defer (continue build-only validation).
+## Phase tracker
 
-**Recommended next:** spawn `w11a-pipeline-fixes` team. First action — capture ground-truth baseline (5 `🦾 enhance: total=…s` lines on current build) at `docs/superpowers/research/2026-04-29-baseline-enhance-timings.md` BEFORE any code edits land.
+See `docs/superpowers/PHASE-TRACKING.md` — full status matrix for W11 / W12 / W13. Updated as packets merge.
+
+## Phase 1 — done so far (continued)
+
+- ✅ W11.D timing telemetry (merge `42edcbe`) — CSV log + diagnostic logs
+
+## Currently waiting on
+
+- **User validation pass.** Run the live build (`make local` from main produces `~/Downloads/VoiceInk.app`). Capture rows in `~/Library/Application Support/com.prakashjoshipax.VoiceInk/enhancement-timings.csv` across multiple enhancement runs at varying gap intervals (5s, 30s, 5min, 15min). Then we can decide whether A1 prewarm is doing real work or should be dropped.
+
+## Next packets queued (Phase 1 remaining)
+
+1. W11.A.A3 follow-up (KV-cache reuse for system prefill — was deferred during W11.A)
+2. W11.B AFM primary path (deployment-target bump → macOS 26.0)
+3. W11.C spec-decode opt-in
