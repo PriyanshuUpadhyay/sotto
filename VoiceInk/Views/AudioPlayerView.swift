@@ -205,12 +205,12 @@ struct WaveformView: View {
                             .foregroundColor(.white)
                             .padding(.horizontal, 6)
                             .padding(.vertical, 3)
-                            .background(Capsule().fill(Color.accentColor))
+                            .background(Capsule().fill(Palette.accent))
                             .offset(x: max(0, min(hoverLocation - 25, geometry.size.width - 50)))
                             .offset(y: -26)
 
                         Rectangle()
-                            .fill(Color.accentColor)
+                            .fill(Palette.accent)
                             .frame(width: 2)
                             .frame(maxHeight: .infinity)
                             .offset(x: hoverLocation)
@@ -229,7 +229,7 @@ struct WaveformView: View {
             )
             .onHover { hovering in
                 if !isLoading {
-                    withAnimation(.easeInOut(duration: 0.2)) {
+                    withAnimation(Animation.haloPhaseCrossfade) {
                         isHovering = hovering
                     }
                 }
@@ -444,7 +444,7 @@ struct AudioPlayerView: View {
                     )
                     .scaleEffect(isHovering ? 1.05 : 1.0)
                     .onHover { hovering in
-                        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                        withAnimation(Animation.haloExpand) {
                             isHovering = hovering
                         }
                     }
@@ -510,7 +510,7 @@ struct AudioPlayerView: View {
                 Spacer()
             }
             .padding(.top, 16)
-            .animation(.spring(response: 0.3, dampingFraction: 0.7), value: bannerState)
+            .animation(Animation.haloExpand, value: bannerState)
         )
     }
 

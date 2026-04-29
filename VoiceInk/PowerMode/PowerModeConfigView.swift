@@ -421,7 +421,7 @@ struct ConfigurationView: View {
         )
         .overlay(
             RoundedRectangle(cornerRadius: 8)
-                .stroke(Color.white.opacity(0.10), lineWidth: 0.5)
+                .stroke(Palette.hairlineSoft, lineWidth: 0.5)
         )
     }
 

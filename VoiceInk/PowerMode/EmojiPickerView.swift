@@ -162,7 +162,7 @@ private struct EmojiButton: View {
                     .frame(width: 44, height: 44)
                     .overlay( 
                         Circle()
-                            .strokeBorder(isSelected ? Color.accentColor : Color.gray.opacity(0.3), lineWidth: isSelected ? 2 : 1)
+                            .strokeBorder(isSelected ? Palette.accent : Color.gray.opacity(0.3), lineWidth: isSelected ? 2 : 1)
                     )
             }
             .buttonStyle(.plain) 

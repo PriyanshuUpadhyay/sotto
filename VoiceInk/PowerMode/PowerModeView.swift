@@ -193,13 +193,13 @@ struct PowerModeView: View {
     private func openPanel(mode: ConfigurationMode) {
         configurationMode = mode
         panelID = UUID()
-        withAnimation(.smooth(duration: 0.3)) {
+        withAnimation(Animation.haloExpand) {
             isPanelOpen = true
         }
     }
 
     private func closePanel() {
-        withAnimation(.smooth(duration: 0.3)) {
+        withAnimation(Animation.haloExpand) {
             isPanelOpen = false
             configurationMode = nil
         }

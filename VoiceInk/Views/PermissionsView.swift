@@ -135,7 +135,7 @@ struct PermissionCard: View {
                 // Status indicator with refresh
                 HStack(spacing: 12) {
                     Button(action: {
-                        withAnimation(.easeInOut(duration: 0.5)) {
+                        withAnimation(Animation.haloExpand) {
                             isRefreshing = true
                         }
                         checkPermission()

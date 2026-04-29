@@ -45,7 +45,7 @@ struct PromptSelectionGrid: View {
                         prompt.promptIcon(
                             isSelected: selectedPromptId == prompt.id,
                             onTap: { 
-                                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                withAnimation(Animation.haloExpand) {
                                     onPromptSelected(prompt)
                                 }
                             },

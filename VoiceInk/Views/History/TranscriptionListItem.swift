@@ -72,7 +72,7 @@ struct TranscriptionListItem: View {
                         lineWidth: 1)
         }
         .offset(y: isHovering && !isSelected ? -2 : 0)
-        .animation(motion.reduceMotion ? nil : .easeOut(duration: 0.18), value: isHovering)
+        .animation(motion.reduceMotion ? nil : Animation.haloPhaseCrossfade, value: isHovering)
         .contentShape(Rectangle())
         .onTapGesture { onSelect() }
         .onHover { isHovering = $0 }
@@ -98,7 +98,7 @@ struct CircularCheckboxStyle: ToggleStyle {
         }) {
             Image(systemName: configuration.isOn ? "checkmark.circle.fill" : "circle")
                 .symbolRenderingMode(.hierarchical)
-                .foregroundColor(configuration.isOn ? Color(NSColor.controlAccentColor) : .secondary)
+                .foregroundColor(configuration.isOn ? Palette.accent : .secondary)
                 .font(.system(size: 18))
         }
         .buttonStyle(.plain)

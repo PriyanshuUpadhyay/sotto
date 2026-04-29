@@ -374,11 +374,11 @@ struct TranscriptionDetailView: View {
 
     private func showStatus(_ text: String, isError: Bool) {
         let msg = StatusMessage(text: text, isError: isError)
-        withAnimation(.easeInOut(duration: 0.2)) { statusMessage = msg }
+        withAnimation(Animation.haloPhaseCrossfade) { statusMessage = msg }
         DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
             // Only clear if this status is still the active one.
             if statusMessage?.id == msg.id {
-                withAnimation(.easeInOut(duration: 0.2)) { statusMessage = nil }
+                withAnimation(Animation.haloPhaseCrossfade) { statusMessage = nil }
             }
         }
     }

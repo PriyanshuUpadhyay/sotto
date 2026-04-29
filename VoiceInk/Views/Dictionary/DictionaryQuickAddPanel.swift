@@ -212,7 +212,7 @@ struct DictionaryQuickAddView: View {
         HStack(spacing: 4) {
             ForEach(Mode.allCases, id: \.self) { m in
                 Button {
-                    withAnimation(.easeInOut(duration: 0.15)) { mode = m }
+                    withAnimation(Animation.haloPhaseCrossfade) { mode = m }
                 } label: {
                     HStack(spacing: 5) {
                         Image(systemName: m.icon)

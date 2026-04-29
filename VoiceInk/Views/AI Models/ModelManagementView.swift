@@ -35,7 +35,7 @@ struct ModelManagementView: View {
     @State private var deleteActionClosure: () -> Void = {}
 
     private func closeSettings() {
-        withAnimation(.smooth(duration: 0.3)) {
+        withAnimation(Animation.haloExpand) {
             isShowingSettings = false
         }
     }
@@ -128,7 +128,7 @@ struct ModelManagementView: View {
                 HStack(spacing: 12) {
                     ForEach(ModelFilter.allCases, id: \.self) { filter in
                         Button(action: {
-                            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                            withAnimation(Animation.haloExpand) {
                                 selectedFilter = filter
                                 isShowingSettings = false
                             }
@@ -151,7 +151,7 @@ struct ModelManagementView: View {
                 Spacer()
                 
                 Button(action: {
-                    withAnimation(.smooth(duration: 0.3)) {
+                    withAnimation(Animation.haloExpand) {
                         isShowingSettings.toggle()
                     }
                 }) {
@@ -283,7 +283,7 @@ struct ModelManagementView: View {
             Spacer()
 
             Button(action: {
-                withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                withAnimation(Animation.haloExpand) {
                     selectedFilter = .cloud
                 }
             }) {

@@ -585,7 +585,7 @@ struct ExpandableSettingsRow<Content: View>: View {
             .onTapGesture {
                 guard !isHandlingToggleChange else { return }
                 if isEnabled {
-                    withAnimation(.easeInOut(duration: 0.2)) {
+                    withAnimation(Animation.haloPhaseCrossfade) {
                         isExpanded.toggle()
                     }
                 }
@@ -601,11 +601,11 @@ struct ExpandableSettingsRow<Content: View>: View {
                 .transition(.opacity.combined(with: .move(edge: .top)))
             }
         }
-        .animation(.easeInOut(duration: 0.2), value: isExpanded)
+        .animation(Animation.haloPhaseCrossfade, value: isExpanded)
         .onChange(of: isEnabled) { _, newValue in
             isHandlingToggleChange = true
             if newValue {
-                withAnimation(.easeInOut(duration: 0.2)) {
+                withAnimation(Animation.haloPhaseCrossfade) {
                     isExpanded = true
                 }
             } else {

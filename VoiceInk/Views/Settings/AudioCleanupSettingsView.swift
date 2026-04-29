@@ -46,7 +46,7 @@ struct AudioCleanupSettingsView: View {
                 .onTapGesture {
                     guard !isHandlingTranscriptToggle else { return }
                     if isTranscriptionCleanupEnabled {
-                        withAnimation(.easeInOut(duration: 0.2)) {
+                        withAnimation(Animation.haloPhaseCrossfade) {
                             isTranscriptExpanded.toggle()
                         }
                     }
@@ -76,7 +76,7 @@ struct AudioCleanupSettingsView: View {
                     .transition(.opacity.combined(with: .move(edge: .top)))
                 }
             }
-            .animation(.easeInOut(duration: 0.2), value: isTranscriptExpanded)
+            .animation(Animation.haloPhaseCrossfade, value: isTranscriptExpanded)
             .alert("Transcript Cleanup", isPresented: $showTranscriptCleanupResult) {
                 Button("OK", role: .cancel) { }
             } message: {
@@ -85,7 +85,7 @@ struct AudioCleanupSettingsView: View {
             .onChange(of: isTranscriptionCleanupEnabled) { _, newValue in
                 isHandlingTranscriptToggle = true
                 if newValue {
-                    withAnimation(.easeInOut(duration: 0.2)) {
+                    withAnimation(Animation.haloPhaseCrossfade) {
                         isTranscriptExpanded = true
                     }
                     AudioCleanupManager.shared.stopAutomaticCleanup()
@@ -123,7 +123,7 @@ struct AudioCleanupSettingsView: View {
                     .onTapGesture {
                         guard !isHandlingAudioToggle else { return }
                         if isAudioCleanupEnabled {
-                            withAnimation(.easeInOut(duration: 0.2)) {
+                            withAnimation(Animation.haloPhaseCrossfade) {
                                 isAudioExpanded.toggle()
                             }
                         }
@@ -157,7 +157,7 @@ struct AudioCleanupSettingsView: View {
                         .transition(.opacity.combined(with: .move(edge: .top)))
                     }
                 }
-                .animation(.easeInOut(duration: 0.2), value: isAudioExpanded)
+                .animation(Animation.haloPhaseCrossfade, value: isAudioExpanded)
                 .alert("Audio Cleanup", isPresented: $isShowingConfirmation) {
                     Button("Cancel", role: .cancel) { }
 
@@ -196,7 +196,7 @@ struct AudioCleanupSettingsView: View {
                 .onChange(of: isAudioCleanupEnabled) { _, newValue in
                     isHandlingAudioToggle = true
                     if newValue {
-                        withAnimation(.easeInOut(duration: 0.2)) {
+                        withAnimation(Animation.haloPhaseCrossfade) {
                             isAudioExpanded = true
                         }
                     } else {

@@ -146,7 +146,7 @@ struct WordReplacementView: View {
                     .help("Add word replacement")
                 }
             }
-            .animation(.easeInOut(duration: 0.2), value: shouldShowAddButton)
+            .animation(Animation.haloPhaseCrossfade, value: shouldShowAddButton)
 
             if !wordReplacements.isEmpty {
                 sortHeader
@@ -403,7 +403,7 @@ private struct ReplacementGlassCard: View {
             if motion.reduceMotion {
                 hovering = hover
             } else {
-                withAnimation(.easeInOut(duration: 0.18)) {
+                withAnimation(Animation.haloPhaseCrossfade) {
                     hovering = hover
                 }
             }

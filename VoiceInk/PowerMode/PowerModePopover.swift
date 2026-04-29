@@ -200,7 +200,7 @@ struct PowerModePopover: View {
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .stroke(Color.white.opacity(0.10), lineWidth: 0.5)
+                    .stroke(Palette.hairlineSoft, lineWidth: 0.5)
             )
         }
         .buttonStyle(.plain)
@@ -281,7 +281,7 @@ private struct PowerModePopoverRow: View {
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .stroke(Color.white.opacity(hovering ? 0.16 : 0.06), lineWidth: 0.5)
+                    .stroke(hovering ? Palette.hairline : Color.white.opacity(0.06), lineWidth: 0.5)
             )
         }
         .buttonStyle(.plain)

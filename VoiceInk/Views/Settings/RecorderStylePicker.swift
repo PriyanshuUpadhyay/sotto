@@ -81,7 +81,7 @@ private struct RecorderStyleCard<Preview: View>: View {
             .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
             .overlay(
                 RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .stroke(isSelected ? Palette.accent : Color.white.opacity(0.12),
+                    .stroke(isSelected ? Palette.accent : Palette.hairlineSoft,
                              lineWidth: isSelected ? 2 : 0.5)
             )
 
@@ -101,7 +101,7 @@ private struct RecorderStyleCard<Preview: View>: View {
             RoundedRectangle(cornerRadius: 12, style: .continuous)
                 .fill(isSelected ? Palette.accent.opacity(0.06) : Color.clear)
         )
-        .animation(.easeInOut(duration: 0.15), value: isSelected)
+        .animation(Animation.haloPhaseCrossfade, value: isSelected)
     }
 }
 
@@ -205,7 +205,7 @@ private struct ConstellationPreview: View {
                 .fill(Color.black.opacity(0.55))
                 .overlay(
                     RoundedRectangle(cornerRadius: 3, style: .continuous)
-                        .stroke(Color.white.opacity(0.16), lineWidth: 0.5)
+                        .stroke(Palette.hairline, lineWidth: 0.5)
                 )
         )
     }
@@ -222,7 +222,7 @@ private struct ConstellationPreview: View {
                     .fill(Color.black.opacity(0.55))
                     .overlay(
                         RoundedRectangle(cornerRadius: 3, style: .continuous)
-                            .stroke(Color.white.opacity(0.16), lineWidth: 0.5)
+                            .stroke(Palette.hairline, lineWidth: 0.5)
                     )
             )
     }

@@ -58,7 +58,7 @@ struct AppPickerPopover: View {
                             .padding(.horizontal, 12)
                             .padding(.vertical, 6)
                             .contentShape(Rectangle())
-                            .background(isSelected ? Color.accentColor.opacity(0.08) : Color.clear)
+                            .background(isSelected ? Palette.accent.opacity(0.08) : Color.clear)
                         }
                         .buttonStyle(.plain)
                     }

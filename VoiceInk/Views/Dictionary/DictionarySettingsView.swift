@@ -41,7 +41,7 @@ struct DictionarySettingsView: View {
         .adaptiveGlassBackground()
         .slidingPanel(isPresented: $isShowingSettings, width: 400) {
             DictionarySettingsPanel {
-                withAnimation(.smooth(duration: 0.3)) {
+                withAnimation(Animation.haloExpand) {
                     isShowingSettings = false
                 }
             }
@@ -76,7 +76,7 @@ struct DictionarySettingsView: View {
                 Spacer()
 
                 Button {
-                    withAnimation(.smooth(duration: 0.3)) {
+                    withAnimation(Animation.haloExpand) {
                         isShowingSettings.toggle()
                     }
                 } label: {

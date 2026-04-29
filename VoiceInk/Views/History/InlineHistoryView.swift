@@ -83,7 +83,7 @@ struct InlineHistoryView: View {
                     .transition(.move(edge: .bottom).combined(with: .opacity))
             }
         }
-        .animation(.easeInOut(duration: 0.2), value: selectedTranscriptions.isEmpty)
+        .animation(Animation.haloPhaseCrossfade, value: selectedTranscriptions.isEmpty)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .adaptiveGlassBackground()
         .overlay {
@@ -91,12 +91,12 @@ struct InlineHistoryView: View {
                 .ignoresSafeArea()
                 .allowsHitTesting(isPanelPresented)
                 .onTapGesture {
-                    withAnimation(.smooth(duration: 0.3)) {
+                    withAnimation(Animation.haloExpand) {
                         isPanelPresented = false
                         panelMode = .info
                     }
                 }
-                .animation(.smooth(duration: 0.3), value: isPanelPresented)
+                .animation(Animation.haloExpand, value: isPanelPresented)
         }
         .overlay(alignment: .trailing) {
             if isPanelPresented {
@@ -114,7 +114,7 @@ struct InlineHistoryView: View {
                     .transition(.move(edge: .trailing))
             }
         }
-        .animation(.smooth(duration: 0.3), value: isPanelPresented)
+        .animation(Animation.haloExpand, value: isPanelPresented)
         .alert("Delete Selected Items?", isPresented: $showDeleteConfirmation) {
             Button("Delete", role: .destructive) {
                 deleteSelectedTranscriptions()
@@ -181,7 +181,7 @@ struct InlineHistoryView: View {
 
             Button(action: {
                 panelMode = .analysis
-                withAnimation(.smooth(duration: 0.3)) { isPanelPresented = true }
+                withAnimation(Animation.haloExpand) { isPanelPresented = true }
             }) {
                 Label("Analyze", systemImage: "chart.bar.xaxis")
                     .font(.system(size: 12, weight: .medium))
@@ -260,7 +260,7 @@ struct InlineHistoryView: View {
                         isExpanded: expandedId == transcription.id,
                         isChecked: selectedTranscriptions.contains(transcription),
                         onToggleExpand: {
-                            withAnimation(.easeInOut(duration: 0.2)) {
+                            withAnimation(Animation.haloPhaseCrossfade) {
                                 expandedId = expandedId == transcription.id ? nil : transcription.id
                             }
                         },
@@ -268,7 +268,7 @@ struct InlineHistoryView: View {
                         onShowInfo: {
                             panelTranscriptionId = transcription.id
                             panelMode = .info
-                            withAnimation(.smooth(duration: 0.3)) {
+                            withAnimation(Animation.haloExpand) {
                                 isPanelPresented = true
                             }
                         }
@@ -311,7 +311,7 @@ struct InlineHistoryView: View {
             PerformanceAnalysisPanelView(
                 transcriptions: Array(selectedTranscriptions),
                 onClose: {
-                    withAnimation(.smooth(duration: 0.3)) {
+                    withAnimation(Animation.haloExpand) {
                         isPanelPresented = false
                         panelMode = .info
                     }
@@ -329,7 +329,7 @@ struct InlineHistoryView: View {
                     .fontWeight(.semibold)
                 Spacer()
                 Button(action: {
-                    withAnimation(.smooth(duration: 0.3)) {
+                    withAnimation(Animation.haloExpand) {
                         isPanelPresented = false
                         panelMode = .info
                     }
@@ -540,7 +540,7 @@ private struct HistoryCardRow: View {
                     .font(.caption2.weight(.semibold))
                     .foregroundColor(.secondary)
                     .rotationEffect(.degrees(isExpanded ? 90 : 0))
-                    .animation(.easeInOut(duration: 0.2), value: isExpanded)
+                    .animation(Animation.haloPhaseCrossfade, value: isExpanded)
             }
             .contentShape(Rectangle())
             .onTapGesture { onToggleExpand() }
@@ -561,7 +561,7 @@ private struct HistoryCardRow: View {
                 HStack(spacing: 4) {
                     ForEach(TranscriptionTab.allCases, id: \.self) { tab in
                         Button {
-                            withAnimation(.easeInOut(duration: 0.15)) {
+                            withAnimation(Animation.haloPhaseCrossfade) {
                                 selectedTab = tab
                             }
                         } label: {

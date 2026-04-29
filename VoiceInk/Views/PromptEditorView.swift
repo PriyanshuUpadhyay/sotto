@@ -408,7 +408,7 @@ struct TriggerWordsEditor: View {
                 Button(action: { addTriggerWord() }) {
                     Image(systemName: "plus.circle.fill")
                         .symbolRenderingMode(.hierarchical)
-                        .foregroundStyle(Color.accentColor)
+                        .foregroundStyle(Palette.accent)
                         .font(.system(size: 18))
                 }
                 .buttonStyle(.plain)
@@ -541,7 +541,7 @@ struct IconPickerPopover: View {
             LazyVGrid(columns: columns, spacing: 14) {
                 ForEach(PromptIcon.allCases, id: \.self) { icon in
                     Button(action: {
-                        withAnimation(.spring(response: 0.2, dampingFraction: 0.7)) {
+                        withAnimation(Animation.haloExpand) {
                             selectedIcon = icon
                             isPresented = false
                         }
@@ -560,7 +560,7 @@ struct IconPickerPopover: View {
                                 .foregroundColor(.primary)
                         }
                         .scaleEffect(selectedIcon == icon ? 1.1 : 1.0)
-                        .animation(.spring(response: 0.2, dampingFraction: 0.7), value: selectedIcon == icon)
+                        .animation(Animation.haloExpand, value: selectedIcon == icon)
                     }
                     .buttonStyle(.plain)
                 }

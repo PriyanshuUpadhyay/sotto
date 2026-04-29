@@ -19,7 +19,7 @@ struct FillerWordChip: View {
             }
             .buttonStyle(.borderless)
             .onHover { hover in
-                withAnimation(.easeInOut(duration: 0.2)) {
+                withAnimation(Animation.haloPhaseCrossfade) {
                     isHovered = hover
                 }
             }
@@ -77,7 +77,7 @@ struct FillerWordsSettingsView: View {
                         FlowLayout(spacing: 6) {
                             ForEach(fillerWordManager.fillerWords, id: \.self) { word in
                                 FillerWordChip(word: word) {
-                                    withAnimation(.easeInOut(duration: 0.2)) {
+                                    withAnimation(Animation.haloPhaseCrossfade) {
                                         fillerWordManager.removeWord(word)
                                     }
                                 }

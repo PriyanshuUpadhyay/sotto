@@ -111,7 +111,7 @@ struct AppNotificationView: View {
         .overlay(
             // Subtle inner border
             RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .strokeBorder(Color.white.opacity(0.1), lineWidth: 0.5)
+                .strokeBorder(Palette.hairlineSoft, lineWidth: 0.5)
         )
         .overlay(
             VStack {

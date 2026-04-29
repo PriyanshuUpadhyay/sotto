@@ -14,11 +14,11 @@ struct SlidingPanel<PanelContent: View>: ViewModifier {
                 .ignoresSafeArea()
                 .allowsHitTesting(isPresented)
                 .onTapGesture {
-                    withAnimation(.smooth(duration: 0.3)) {
+                    withAnimation(Animation.haloExpand) {
                         isPresented = false
                     }
                 }
-                .animation(.smooth(duration: 0.3), value: isPresented)
+                .animation(Animation.haloExpand, value: isPresented)
                 .zIndex(1)
 
             if isPresented {

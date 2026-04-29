@@ -74,7 +74,7 @@ struct VocabularyView: View {
                     .help("Add word")
                 }
             }
-            .animation(.easeInOut(duration: 0.2), value: shouldShowAddButton)
+            .animation(Animation.haloPhaseCrossfade, value: shouldShowAddButton)
 
             if !vocabularyWords.isEmpty {
                 VStack(alignment: .leading, spacing: 12) {
@@ -161,7 +161,7 @@ struct VocabularyWordView: View {
             .buttonStyle(.borderless)
             .help("Remove word")
             .onHover { hover in
-                withAnimation(.easeInOut(duration: 0.2)) {
+                withAnimation(Animation.haloPhaseCrossfade) {
                     isDeleteHovered = hover
                 }
             }

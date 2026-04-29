@@ -125,7 +125,7 @@ struct AudioFileRow: View {
                 .font(.caption2.weight(.semibold))
                 .foregroundColor(.secondary)
                 .rotationEffect(.degrees(isExpanded ? 90 : 0))
-                .animation(.easeInOut(duration: 0.2), value: isExpanded)
+                .animation(Animation.haloPhaseCrossfade, value: isExpanded)
         }
         .contentShape(Rectangle())
         .onTapGesture { onToggleExpand() }
@@ -174,7 +174,7 @@ struct AudioFileRow: View {
                 .padding(.vertical, 4)
                 .background(
                     RoundedRectangle(cornerRadius: 6, style: .continuous)
-                        .fill(selectedTab == tab ? Color.accentColor.opacity(0.12) : Color.clear)
+                        .fill(selectedTab == tab ? Palette.accent.opacity(0.12) : Color.clear)
                 )
         }
         .buttonStyle(.plain)
