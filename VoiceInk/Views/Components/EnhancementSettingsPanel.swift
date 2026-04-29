@@ -157,6 +157,23 @@ struct EnhancementSettingsPanel: View {
 
                 if enhancementService.aiService.selectedProvider == .mlx {
                     Section {
+                        // W11.B — surface the active local path. AFM is the
+                        // primary path on macOS 26+ with Apple Intelligence
+                        // enabled; MLX is the fallback. Informational only,
+                        // no toggle.
+                        HStack(spacing: 6) {
+                            Image(systemName: enhancementService.activeLocalPathDescription.hasPrefix("Apple")
+                                  ? "applelogo"
+                                  : "cpu")
+                                .foregroundColor(.secondary)
+                            Text("Active path:")
+                                .foregroundColor(.secondary)
+                            Text(enhancementService.activeLocalPathDescription)
+                                .foregroundColor(.primary)
+                            Spacer()
+                        }
+                        .font(.callout)
+
                         Picker("Idle eviction", selection: $mlxIdleEvictSeconds) {
                             Text("60 seconds").tag(60)
                             Text("5 minutes").tag(300)

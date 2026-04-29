@@ -248,6 +248,36 @@ class AIEnhancementService: ObservableObject {
         }
 
         if aiService.selectedProvider == .mlx {
+            // W11.B — AFM-first routing. When Apple Foundation Models is
+            // available (macOS 26+ with Apple Intelligence enabled), prefer
+            // AFM and use MLX as fallback. On AFM safety-filter refusal we
+            // transparently retry with MLX. Other AFM errors propagate as
+            // EnhancementError so the user sees them. AFM-unavailable users
+            // get the unchanged MLX path.
+            if #available(macOS 26.0, *), AFMProvider.isAvailable {
+                let afmSystemPrompt = systemMessage + Self.afmOutputDirective
+                await MainActor.run {
+                    self.lastSystemMessageSent = afmSystemPrompt
+                    self.lastUserMessageSent = text
+                }
+                logger.notice("🦾 afm: routing — AFM primary (mlx fallback on safety refusal)")
+                do {
+                    let result = try await aiService.enhanceWithAFM(systemPrompt: afmSystemPrompt, userPrompt: text)
+                    return AIEnhancementOutputFilter.filter(stripPreamble(result))
+                } catch let providerError as AFMProvider.ProviderError {
+                    if case .safetyRefusal = providerError {
+                        logger.notice("🦾 afm: refused, falling back to MLX")
+                        // Fall through to MLX path below.
+                    } else {
+                        throw EnhancementError.customError(providerError.errorDescription ?? "An unknown Apple Foundation Models error occurred.")
+                    }
+                } catch is CancellationError {
+                    throw CancellationError()
+                } catch {
+                    throw EnhancementError.customError(error.localizedDescription)
+                }
+            }
+
             do {
                 // W11 prompt-fix: pass the <TRANSCRIPT>-wrapped userPrompt so the
                 // model actually sees the tags its system prompt is told to look
@@ -301,21 +331,12 @@ class AIEnhancementService: ObservableObject {
                 // conversational preambles like "Sure, here's the cleaned version:".
                 // Pass the raw transcript (no <TRANSCRIPT> wrapper) and append a strict
                 // output directive so the model emits only the cleaned text.
-                let foundationModelsSystemPrompt = systemMessage + """
-
-
-                IMPORTANT OUTPUT RULES:
-                - Output ONLY the cleaned text. Nothing else.
-                - Do NOT add a preamble like "Sure, here's…" or "Here's the cleaned version:".
-                - Do NOT wrap the output in quotes or code fences.
-                - Do NOT explain what you changed.
-                - Do NOT ask follow-up questions.
-                """
-                let result = try await aiService.enhanceWithFoundationModels(systemPrompt: foundationModelsSystemPrompt, userPrompt: text)
+                let afmSystemPrompt = systemMessage + Self.afmOutputDirective
+                let result = try await aiService.enhanceWithAFM(systemPrompt: afmSystemPrompt, userPrompt: text)
                 return AIEnhancementOutputFilter.filter(stripPreamble(result))
             } catch {
-                if let providerError = error as? FoundationModelsProvider.ProviderError {
-                    throw EnhancementError.customError(providerError.errorDescription ?? "An unknown Foundation Models error occurred.")
+                if let providerError = error as? AFMProvider.ProviderError {
+                    throw EnhancementError.customError(providerError.errorDescription ?? "An unknown Apple Foundation Models error occurred.")
                 } else {
                     throw EnhancementError.customError(error.localizedDescription)
                 }
@@ -576,21 +597,12 @@ class AIEnhancementService: ObservableObject {
                 throw EnhancementError.customError("Apple Foundation Models requires macOS 26 or later.")
             }
             do {
-                let foundationModelsSystemPrompt = systemMessage + """
-
-
-                IMPORTANT OUTPUT RULES:
-                - Output ONLY the cleaned text. Nothing else.
-                - Do NOT add a preamble like "Sure, here's…" or "Here's the cleaned version:".
-                - Do NOT wrap the output in quotes or code fences.
-                - Do NOT explain what you changed.
-                - Do NOT ask follow-up questions.
-                """
-                let result = try await aiService.enhanceWithFoundationModels(systemPrompt: foundationModelsSystemPrompt, userPrompt: trimmed)
+                let afmSystemPrompt = systemMessage + Self.afmOutputDirective
+                let result = try await aiService.enhanceWithAFM(systemPrompt: afmSystemPrompt, userPrompt: trimmed)
                 return AIEnhancementOutputFilter.filter(stripPreamble(result))
             } catch is CancellationError { throw CancellationError() } catch {
-                if let providerError = error as? FoundationModelsProvider.ProviderError {
-                    throw EnhancementError.customError(providerError.errorDescription ?? "An unknown Foundation Models error occurred.")
+                if let providerError = error as? AFMProvider.ProviderError {
+                    throw EnhancementError.customError(providerError.errorDescription ?? "An unknown Apple Foundation Models error occurred.")
                 } else {
                     throw EnhancementError.customError(error.localizedDescription)
                 }
@@ -668,6 +680,47 @@ class AIEnhancementService: ObservableObject {
         guard aiService.selectedProvider == .mlx else { return }
         await aiService.warmMLX(source: source)
     }
+
+    /// W11.B: fire-and-forget Apple Foundation Models warm-up. Fired by
+    /// `ModelPrewarmService` whenever AFM is available — i.e. the AFM-first
+    /// routing in `.mlx` selection or the direct `.foundationModels`
+    /// selection. Errors are swallowed inside `warmAFM(source:)`.
+    func warmAFMIfAvailable(source: String) async {
+        if #available(macOS 26.0, *) {
+            // Warm whenever AFM is available, since the active path can flip
+            // from MLX → AFM mid-session if the user enables Apple Intelligence.
+            // Cheap; LanguageModelSession.prewarm() is idempotent.
+            guard AFMProvider.isAvailable else { return }
+            await aiService.warmAFM(source: source)
+        }
+    }
+
+    /// W11.B: human-readable label for the Active Path indicator in the
+    /// Enhancement Settings panel. Reflects what the next enhance(...) will
+    /// actually route through given the user's MLX selection.
+    var activeLocalPathDescription: String {
+        if #available(macOS 26.0, *) {
+            return AFMProvider.availabilityDescription()
+        }
+        return "MLX (macOS 26 required for Apple Foundation Models)"
+    }
+
+    /// W11.B / W11.A2 — directive appended to AFM system prompt. Apple's 3B
+    /// foundation model is conservative under heavy prompts and tends to
+    /// (a) echo XML-wrapped input verbatim, (b) prefix output with
+    /// conversational preambles like "Sure, here's the cleaned version:".
+    /// This block nails the contract shut. `stripPreamble(...)` is the
+    /// belt-and-suspenders backup.
+    fileprivate static let afmOutputDirective: String = """
+
+
+    IMPORTANT OUTPUT RULES:
+    - Output ONLY the cleaned text. Nothing else.
+    - Do NOT add a preamble like "Sure, here's…" or "Here's the cleaned version:".
+    - Do NOT wrap the output in quotes or code fences.
+    - Do NOT explain what you changed.
+    - Do NOT ask follow-up questions.
+    """
     
     func clearCapturedContexts() {
         lastCapturedClipboard = nil

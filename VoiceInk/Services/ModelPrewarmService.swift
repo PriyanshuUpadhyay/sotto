@@ -112,6 +112,17 @@ final class ModelPrewarmService: ObservableObject {
             let warmDuration = Date().timeIntervalSince(warmStart)
             logger.notice("MLX warm completed in \(String(format: "%.2f", warmDuration), privacy: .public)s")
         }
+
+        // W11.B: AFM prewarm — fired whenever Apple Foundation Models is
+        // available, because the AFM-first routing path can flip in mid-
+        // session as the user toggles Apple Intelligence in System Settings.
+        // The hook itself is cheap (`LanguageModelSession.prewarm()`).
+        if #available(macOS 26.0, *), AFMProvider.isAvailable, let enhancementService {
+            let warmStart = Date()
+            await enhancementService.warmAFMIfAvailable(source: source)
+            let warmDuration = Date().timeIntervalSince(warmStart)
+            logger.notice("AFM warm completed in \(String(format: "%.2f", warmDuration), privacy: .public)s")
+        }
     }
 
     // MARK: - Validation
@@ -134,6 +145,13 @@ final class ModelPrewarmService: ObservableObject {
         // true when MLX is the selected enhance provider and the model is
         // downloaded; performPrewarm() dispatches the actual warm.
         if isMLXEnhanceProviderReady() {
+            return true
+        }
+
+        // W11.B: AFM prewarm fires whenever Apple Foundation Models is
+        // available, regardless of provider selection. The AFM-first
+        // routing kicks in for `.mlx` users too.
+        if #available(macOS 26.0, *), AFMProvider.isAvailable {
             return true
         }
 

@@ -173,7 +173,7 @@ struct APIKeyManagementView: View {
             // (always considered "may be" until the card is opened and pinged).
             return aiService.isAPIKeyValid
         case .foundationModels:
-            if #available(macOS 26.0, *) { return FoundationModelsProvider.isAvailable }
+            if #available(macOS 26.0, *) { return AFMProvider.isAvailable }
             return false
         default:
             return aiService.isAPIKeyValid

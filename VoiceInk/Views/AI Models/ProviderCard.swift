@@ -69,7 +69,7 @@ struct ProviderCard: View {
             return isActive ? aiService.isAPIKeyValid : !aiService.localCLICommandTemplate.isEmpty
         case .foundationModels:
             if #available(macOS 26.0, *) {
-                return FoundationModelsProvider.isAvailable
+                return AFMProvider.isAvailable
             }
             return false
         case .mlx:
@@ -87,7 +87,7 @@ struct ProviderCard: View {
             return ollamaModels.isEmpty ? "Disconnected" : "Connected"
         case .foundationModels:
             if #available(macOS 26.0, *) {
-                return FoundationModelsProvider.isAvailable ? "Available" : "Unavailable"
+                return AFMProvider.isAvailable ? "Available" : "Unavailable"
             }
             return "macOS 26+"
         case .mlx:
@@ -504,9 +504,9 @@ struct ProviderCard: View {
         if #available(macOS 26.0, *) {
             HStack(spacing: 8) {
                 Circle()
-                    .fill(FoundationModelsProvider.isAvailable ? Palette.success : Palette.warn)
+                    .fill(AFMProvider.isAvailable ? Palette.success : Palette.warn)
                     .frame(width: 8, height: 8)
-                Text(FoundationModelsProvider.isAvailable
+                Text(AFMProvider.isAvailable
                      ? "Apple Intelligence ready — no key required."
                      : "Apple Intelligence is not ready on this device.")
                     .font(.system(size: 12))

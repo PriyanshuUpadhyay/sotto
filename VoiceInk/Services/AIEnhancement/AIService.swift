@@ -226,7 +226,7 @@ class AIService: ObservableObject {
             return localCLIService.isConfigured
         case .foundationModels:
             if #available(macOS 26.0, *) {
-                return FoundationModelsProvider.isAvailable
+                return AFMProvider.isAvailable
             } else {
                 return false
             }
@@ -263,7 +263,7 @@ class AIService: ObservableObject {
     private lazy var localCLIService = LocalCLIService()
 
     @available(macOS 26.0, *)
-    private static var sharedFoundationModelsProvider: FoundationModelsProvider = FoundationModelsProvider()
+    private static var sharedAFMProvider: AFMProvider = AFMProvider()
 
     /// One MLXProvider per (modelId) so switching models in the picker discards
     /// the loaded weights of the previous model. Keyed cache so the active one
@@ -299,7 +299,7 @@ class AIService: ObservableObject {
                 return localCLIService.isConfigured
             } else if provider == .foundationModels {
                 if #available(macOS 26.0, *) {
-                    return FoundationModelsProvider.isAvailable
+                    return AFMProvider.isAvailable
                 } else {
                     return false
                 }
@@ -551,8 +551,18 @@ class AIService: ObservableObject {
     }
 
     @available(macOS 26.0, *)
-    func enhanceWithFoundationModels(systemPrompt: String, userPrompt: String) async throws -> String {
-        try await AIService.sharedFoundationModelsProvider.enhance(systemPrompt: systemPrompt, userPrompt: userPrompt)
+    func enhanceWithAFM(systemPrompt: String, userPrompt: String) async throws -> String {
+        try await AIService.sharedAFMProvider.enhance(systemPrompt: systemPrompt, userPrompt: userPrompt)
+    }
+
+    /// W11.B prewarm hook for Apple Foundation Models. Mirrors `warmMLX(source:)`
+    /// — fire-and-forget, swallows errors. Called from `ModelPrewarmService`
+    /// alongside the MLX warm so first-enhance-after-wake skips AFM cold-start.
+    func warmAFM(source: String) async {
+        if #available(macOS 26.0, *) {
+            guard AFMProvider.isAvailable else { return }
+            await AIService.sharedAFMProvider.warm(source: source)
+        }
     }
 
     func enhanceWithMLX(
