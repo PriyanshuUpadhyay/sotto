@@ -66,7 +66,7 @@ final class ModelPrewarmService: ObservableObject {
         logger.notice("App launched, scheduling prewarm")
         Task {
             try? await Task.sleep(for: .seconds(3))
-            await performPrewarm()
+            await performPrewarm(source: "appLaunch")
         }
     }
 
@@ -75,13 +75,13 @@ final class ModelPrewarmService: ObservableObject {
         logger.notice("Mac activity detected (wake/unlock), scheduling prewarm")
         Task {
             try? await Task.sleep(for: .seconds(3))
-            await performPrewarm()
+            await performPrewarm(source: "wake")
         }
     }
 
     // MARK: - Core Prewarming Logic
 
-    private func performPrewarm() async {
+    private func performPrewarm(source: String) async {
         guard shouldPrewarm() else { return }
 
         // Transcription model prewarm — runs only when a local whisper/fluidAudio
@@ -108,7 +108,7 @@ final class ModelPrewarmService: ObservableObject {
         // when MLX isn't the active enhance provider OR no model is downloaded.
         if isMLXEnhanceProviderReady(), let enhancementService {
             let warmStart = Date()
-            await enhancementService.warmMLXIfSelected()
+            await enhancementService.warmMLXIfSelected(source: source)
             let warmDuration = Date().timeIntervalSince(warmStart)
             logger.notice("MLX warm completed in \(String(format: "%.2f", warmDuration), privacy: .public)s")
         }

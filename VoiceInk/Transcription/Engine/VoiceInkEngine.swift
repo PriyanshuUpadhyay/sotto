@@ -228,7 +228,7 @@ class VoiceInkEngine: NSObject, ObservableObject {
                                         // W11.A1: warm MLX in parallel with audio capture so
                                         // first-enhance after this recording skips cold-load.
                                         // Fire-and-forget; errors swallowed inside warmMLX().
-                                        await enhancementService.warmMLXIfSelected()
+                                        await enhancementService.warmMLXIfSelected(source: "recordingStart")
                                     }
                                 }
 

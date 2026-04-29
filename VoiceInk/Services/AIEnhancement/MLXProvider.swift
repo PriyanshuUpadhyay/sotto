@@ -47,6 +47,22 @@ actor MLXProvider {
     private var lastUsedAt: Date?
     private var evictTask: Task<Void, Never>?
 
+    // W11.D — per-call timing capture. Populated by `runEnhance` so the
+    // outer `enhance(...)` can record() the timing row from any of the four
+    // outcome branches (success / timedOut / cancelled / error). Reset at
+    // the start of every `enhance(...)`.
+    private var currentPrepSeconds: TimeInterval?
+    private var currentTtftSeconds: TimeInterval?
+    private var currentGenSeconds: TimeInterval?
+    private var currentOutputChars: Int = 0
+    /// Set by the wall-clock timeout task before it throws, so the outer
+    /// catch can disambiguate `.timedOut` from a generic `.error`.
+    private var lastTimeoutFired: Bool = false
+
+    private func markTimeoutFired() {
+        self.lastTimeoutFired = true
+    }
+
     init(modelId: String, idleEvictSeconds: TimeInterval = 600) {
         self.modelId = modelId
         self.idleEvictSeconds = idleEvictSeconds
@@ -56,7 +72,11 @@ actor MLXProvider {
         evictTask?.cancel()
     }
 
-    func enhance(systemPrompt: String, userPrompt: String) async throws -> String {
+    func enhance(
+        systemPrompt: String,
+        userPrompt: String,
+        promptMode: EnhancementTimingLogger.PromptMode = .standard
+    ) async throws -> String {
         #if canImport(MLXLLM)
         // W11.A5: wall-clock timeout reuses the existing user-set
         // `EnhancementTimeoutSeconds` (default 7s). Caps cold + warm + rambling
@@ -66,26 +86,64 @@ actor MLXProvider {
         let storedTimeout = UserDefaults.standard.integer(forKey: "EnhancementTimeoutSeconds")
         let effectiveTimeout: TimeInterval = storedTimeout > 0 ? TimeInterval(storedTimeout) : 7
 
-        return try await withThrowingTaskGroup(of: String.self) { group in
-            group.addTask { [systemPrompt, userPrompt] in
-                try await self.runEnhance(systemPrompt: systemPrompt, userPrompt: userPrompt)
-            }
-            group.addTask { [effectiveTimeout, modelId] in
-                try await Task.sleep(nanoseconds: UInt64(effectiveTimeout * 1_000_000_000))
-                Self.logger.warning("🦾 enhance: TIMEOUT after \(effectiveTimeout, format: .fixed(precision: 1), privacy: .public)s — cancelling generation for model=\(modelId, privacy: .public)")
-                throw ProviderError.generationFailed("Timed out after \(Int(effectiveTimeout))s")
-            }
-            do {
-                guard let result = try await group.next() else {
-                    group.cancelAll()
-                    throw ProviderError.generationFailed("Enhancement task group returned no result")
+        // W11.D — reset per-call timing capture before kicking off the race.
+        let startedAt = Date()
+        self.currentPrepSeconds = nil
+        self.currentTtftSeconds = nil
+        self.currentGenSeconds = nil
+        self.currentOutputChars = 0
+        self.lastTimeoutFired = false
+
+        let modelIdSnapshot = self.modelId
+        let inputChars = userPrompt.count
+
+        func recordOutcome(_ outcome: EnhancementTimingLogger.Outcome) async {
+            let total = Date().timeIntervalSince(startedAt)
+            await EnhancementTimingLogger.shared.record(
+                modelId: modelIdSnapshot,
+                promptMode: promptMode,
+                inputChars: inputChars,
+                outputChars: self.currentOutputChars,
+                prepSeconds: self.currentPrepSeconds,
+                ttftSeconds: self.currentTtftSeconds,
+                genSeconds: self.currentGenSeconds,
+                totalSeconds: total,
+                startedAt: startedAt,
+                outcome: outcome
+            )
+        }
+
+        do {
+            let result = try await withThrowingTaskGroup(of: String.self) { group in
+                group.addTask { [systemPrompt, userPrompt] in
+                    try await self.runEnhance(systemPrompt: systemPrompt, userPrompt: userPrompt)
                 }
-                group.cancelAll()
-                return result
-            } catch {
-                group.cancelAll()
-                throw error
+                group.addTask { [effectiveTimeout] in
+                    try await Task.sleep(nanoseconds: UInt64(effectiveTimeout * 1_000_000_000))
+                    Self.logger.warning("🦾 enhance: timeout fired after \(effectiveTimeout, format: .fixed(precision: 1), privacy: .public)s (EnhancementTimeoutSeconds)")
+                    await self.markTimeoutFired()
+                    throw ProviderError.generationFailed("Timed out after \(Int(effectiveTimeout))s")
+                }
+                do {
+                    guard let result = try await group.next() else {
+                        group.cancelAll()
+                        throw ProviderError.generationFailed("Enhancement task group returned no result")
+                    }
+                    group.cancelAll()
+                    return result
+                } catch {
+                    group.cancelAll()
+                    throw error
+                }
             }
+            await recordOutcome(.success)
+            return result
+        } catch is CancellationError {
+            await recordOutcome(self.lastTimeoutFired ? .timedOut : .cancelled)
+            throw CancellationError()
+        } catch {
+            await recordOutcome(self.lastTimeoutFired ? .timedOut : .error)
+            throw error
         }
         #else
         throw ProviderError.frameworkUnavailable
@@ -131,6 +189,7 @@ actor MLXProvider {
             let userInput = UserInput(chat: messages)
             let input = try await container.prepare(input: userInput)
             let prepElapsed = Date().timeIntervalSince(prepStart)
+            self.currentPrepSeconds = prepElapsed
 
             // W11.A4: temperature=0.0 routes to ArgMaxSampler; topP omitted (ignored
             // at temp=0). Quality-neutral on cleanup task; cuts 5-15ms per 100 tokens
@@ -168,6 +227,9 @@ actor MLXProvider {
             let genElapsed = Date().timeIntervalSince(genStart)
             let ttft = firstChunkAt ?? genElapsed
             let tokenRate = genElapsed > 0 ? Double(chunkCount) / genElapsed : 0
+            self.currentTtftSeconds = ttft
+            self.currentGenSeconds = genElapsed
+            self.currentOutputChars = output.count
             Self.logger.notice("🦾 enhance: gen=\(genElapsed, format: .fixed(precision: 2), privacy: .public)s ttft=\(ttft, format: .fixed(precision: 2), privacy: .public)s tokens≈\(chunkCount, privacy: .public) (\(tokenRate, format: .fixed(precision: 1), privacy: .public) tok/s) output=\(output.count, privacy: .public)c")
 
             try Task.checkCancellation()
@@ -201,12 +263,19 @@ actor MLXProvider {
     /// a second call when warm is a cheap actor-state check on the cached
     /// `modelContainer`. Used by the prewarm hook + recording-start fire-and-
     /// forget warm path so first-enhance-after-idle skips cold-load.
-    func warm() async throws {
+    ///
+    /// W11.D: `source` is one of `appLaunch` / `wake` / `recordingStart`. Logged
+    /// alongside `status=alreadyLoaded|loaded` for empirical prewarm coverage
+    /// measurement.
+    func warm(source: String) async throws {
         #if canImport(MLXLLM)
         guard !modelId.isEmpty else { throw ProviderError.noModelSelected }
+        let alreadyLoaded = (modelContainer != nil)
         _ = try await loadModel()
         self.lastUsedAt = Date()
         self.scheduleEvictionCheck()
+        let status = alreadyLoaded ? "alreadyLoaded" : "loaded"
+        Self.logger.notice("🦾 prewarm: fired model=\(self.modelId, privacy: .public) source=\(source, privacy: .public) status=\(status, privacy: .public)")
         #else
         throw ProviderError.frameworkUnavailable
         #endif
@@ -291,7 +360,7 @@ actor MLXProvider {
               Date().timeIntervalSince(last) >= idleEvictSeconds else { return }
         #if canImport(MLXLLM)
         modelContainer = nil
-        Self.logger.notice("🦾 evicted \(self.modelId, privacy: .public) after idle")
+        Self.logger.notice("🦾 evicted \(self.modelId, privacy: .public) after idle (idleEvictSeconds=\(Int(self.idleEvictSeconds), privacy: .public))")
         #endif
     }
 }

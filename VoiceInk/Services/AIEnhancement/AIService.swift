@@ -555,10 +555,18 @@ class AIService: ObservableObject {
         try await AIService.sharedFoundationModelsProvider.enhance(systemPrompt: systemPrompt, userPrompt: userPrompt)
     }
 
-    func enhanceWithMLX(systemPrompt: String, userPrompt: String) async throws -> String {
+    func enhanceWithMLX(
+        systemPrompt: String,
+        userPrompt: String,
+        promptMode: EnhancementTimingLogger.PromptMode = .standard
+    ) async throws -> String {
         let modelId = UserDefaults.standard.string(forKey: "mlx_selected_model_id") ?? ""
         let provider = mlxProvider(for: modelId)
-        return try await provider.enhance(systemPrompt: systemPrompt, userPrompt: userPrompt)
+        return try await provider.enhance(
+            systemPrompt: systemPrompt,
+            userPrompt: userPrompt,
+            promptMode: promptMode
+        )
     }
 
     /// W11.A1: load MLX weights into memory without running enhance. Used by
@@ -566,13 +574,16 @@ class AIService: ObservableObject {
     /// hook so first-enhance-after-idle skips cold-load. Failures are logged
     /// but never thrown — a failed warm degrades to pre-W11.A1 behavior (the
     /// next `enhance(...)` pays the cold-load cost).
-    func warmMLX() async {
+    ///
+    /// W11.D: `source` is one of `appLaunch` / `wake` / `recordingStart` and
+    /// flows through to the prewarm-fired diagnostic log.
+    func warmMLX(source: String) async {
         let modelId = UserDefaults.standard.string(forKey: "mlx_selected_model_id") ?? ""
         guard !modelId.isEmpty else { return }
         guard MLXModelDownloader.status(for: modelId) == .downloaded else { return }
         let provider = mlxProvider(for: modelId)
         do {
-            try await provider.warm()
+            try await provider.warm(source: source)
         } catch {
             Logger(subsystem: "com.prakashjoshipax.voiceink", category: "AIService")
                 .notice("🦾 warmMLX failed: \(error.localizedDescription, privacy: .public)")

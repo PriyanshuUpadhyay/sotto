@@ -1,4 +1,5 @@
 import SwiftUI
+import AppKit
 
 struct EnhancementSettingsPanel: View {
     @EnvironmentObject private var enhancementService: AIEnhancementService
@@ -9,6 +10,7 @@ struct EnhancementSettingsPanel: View {
     @AppStorage("MLXIdleEvictSeconds") private var mlxIdleEvictSeconds = 1800
     @State private var isShortEnhancementExpanded = false
     @State private var isHandlingToggleChange = false
+    @State private var didCopyTimingsPath = false
 
     var onDismiss: () -> Void
 
@@ -166,11 +168,36 @@ struct EnhancementSettingsPanel: View {
                             Text("Never").tag(Int.max)
                         }
                         .pickerStyle(.menu)
+
+                        // W11.D — empirical timing log access. Every MLX
+                        // enhancement appends one row to the CSV under
+                        // Application Support so the user can verify perf
+                        // changes quantitatively.
+                        HStack(spacing: 8) {
+                            Button(action: openTimingsFolder) {
+                                Label("Open timings folder", systemImage: "folder")
+                            }
+                            .buttonStyle(.bordered)
+                            .help("Reveal enhancement-timings.csv in Finder")
+
+                            Button(action: copyTimingsPath) {
+                                Label(
+                                    didCopyTimingsPath ? "Copied!" : "Copy CSV path",
+                                    systemImage: didCopyTimingsPath ? "checkmark" : "doc.on.doc"
+                                )
+                            }
+                            .buttonStyle(.bordered)
+                            .help("Copy the absolute CSV path to the clipboard")
+                        }
                     } header: {
                         HStack(spacing: 4) {
                             Text("MLX (on-device)")
                             InfoTip("How long the on-device model stays in memory after the last enhancement. Higher values trade memory for fewer cold-load spikes; lower values free memory faster. Applies on the next time the MLX provider is reloaded.")
                         }
+                    } footer: {
+                        Text("Each MLX enhancement appends a row to enhancement-timings.csv (timestamp, model, prompt mode, prep/ttft/gen/total seconds, gap, outcome).")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
                     }
                 }
 
@@ -193,6 +220,30 @@ struct EnhancementSettingsPanel: View {
             .scrollContentBackground(.hidden)
         }
         .tint(Palette.accent)
+    }
+
+    // MARK: - W11.D timings actions
+
+    private func openTimingsFolder() {
+        let url = EnhancementTimingLogger.csvURL()
+        // Reveal the CSV in Finder. If the file doesn't yet exist (no
+        // enhancement has run since install), reveal the parent directory
+        // instead so the user lands somewhere useful.
+        if FileManager.default.fileExists(atPath: url.path) {
+            NSWorkspace.shared.activateFileViewerSelecting([url])
+        } else {
+            NSWorkspace.shared.open(url.deletingLastPathComponent())
+        }
+    }
+
+    private func copyTimingsPath() {
+        let url = EnhancementTimingLogger.csvURL()
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(url.path, forType: .string)
+        didCopyTimingsPath = true
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+            didCopyTimingsPath = false
+        }
     }
 }
 

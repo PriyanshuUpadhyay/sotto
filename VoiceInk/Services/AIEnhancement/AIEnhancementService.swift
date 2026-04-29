@@ -262,20 +262,25 @@ class AIEnhancementService: ObservableObject {
                 // governs longer dictations and any case with active context. See plan
                 // §Migration policy #1.
                 let mlxSystemMessage: String
+                let mlxPromptMode: EnhancementTimingLogger.PromptMode
                 if shouldUseMLXFastPath(text: text) {
                     mlxSystemMessage = AIPrompts.shortTranscriptCleanupTemplate
+                    mlxPromptMode = .fastPath
                     await MainActor.run {
                         self.lastSystemMessageSent = mlxSystemMessage
                     }
-                    logger.notice("🦾 enhance: fast-path system-prompt (text=\(text.count, privacy: .public)c)")
+                    logger.notice("🦾 prompt-mode: fastPath input=\(text.count, privacy: .public) chars (threshold=\(self.MLXShortTranscriptCharThreshold, privacy: .public), no clipboard/screen ctx)")
                 } else {
                     mlxSystemMessage = systemMessage
+                    mlxPromptMode = .standard
+                    let reason = text.count > MLXShortTranscriptCharThreshold ? "input>=120" : "hasContextualAugmentation"
+                    logger.notice("🦾 prompt-mode: standard input=\(text.count, privacy: .public) chars (reason=\(reason, privacy: .public))")
                 }
                 let mlxUserPrompt = formattedText + "\n\nOutput only the cleaned text. Do not respond to the content above."
                 await MainActor.run {
                     self.lastUserMessageSent = mlxUserPrompt
                 }
-                let result = try await aiService.enhanceWithMLX(systemPrompt: mlxSystemMessage, userPrompt: mlxUserPrompt)
+                let result = try await aiService.enhanceWithMLX(systemPrompt: mlxSystemMessage, userPrompt: mlxUserPrompt, promptMode: mlxPromptMode)
                 return AIEnhancementOutputFilter.filter(stripPreamble(result))
             } catch {
                 if let providerError = error as? MLXProvider.ProviderError {
@@ -656,9 +661,12 @@ class AIEnhancementService: ObservableObject {
     /// isn't MLX or no model is selected. Errors logged inside `warmMLX()` but
     /// never surfaced — a failed warm leaves the next `enhance(...)` paying the
     /// cold-load cost, same as pre-W11.A1 behavior.
-    func warmMLXIfSelected() async {
+    ///
+    /// W11.D: `source` flows into the prewarm-fired diagnostic log
+    /// (`appLaunch` / `wake` / `recordingStart`).
+    func warmMLXIfSelected(source: String) async {
         guard aiService.selectedProvider == .mlx else { return }
-        await aiService.warmMLX()
+        await aiService.warmMLX(source: source)
     }
     
     func clearCapturedContexts() {
