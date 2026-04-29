@@ -44,6 +44,7 @@ enum AppDefaults {
             "ShortEnhancementWordThreshold": 3,
             "EnhancementTimeoutSeconds": 7,
             "EnhancementRetryOnTimeout": true,
+            "MLXIdleEvictSeconds": 1800,
 
             // Model
             "PrewarmModelOnWake": true,

@@ -8,6 +8,11 @@ final class ModelPrewarmService: ObservableObject {
     private let transcriptionModelManager: TranscriptionModelManager
     private let whisperModelManager: WhisperModelManager
     private let modelContext: ModelContext
+    /// W11.A1: optional dependency. Injected post-init via the app-level service
+    /// container so MLX prewarm can fire alongside transcription model prewarm.
+    /// nil-safe: if not wired, MLX prewarm degrades to no-op (recording-start
+    /// hook still fires).
+    private weak var enhancementService: AIEnhancementService?
     private let logger = Logger(subsystem: "com.prakashjoshipax.voiceink", category: "ModelPrewarm")
     private lazy var serviceRegistry = TranscriptionServiceRegistry(
         modelProvider: whisperModelManager,
@@ -17,12 +22,25 @@ final class ModelPrewarmService: ObservableObject {
     private let prewarmAudioURL = Bundle.main.url(forResource: "esc", withExtension: "wav")
     private let prewarmEnabledKey = "PrewarmModelOnWake"
 
-    init(transcriptionModelManager: TranscriptionModelManager, whisperModelManager: WhisperModelManager, modelContext: ModelContext) {
+    init(
+        transcriptionModelManager: TranscriptionModelManager,
+        whisperModelManager: WhisperModelManager,
+        modelContext: ModelContext,
+        enhancementService: AIEnhancementService? = nil
+    ) {
         self.transcriptionModelManager = transcriptionModelManager
         self.whisperModelManager = whisperModelManager
         self.modelContext = modelContext
+        self.enhancementService = enhancementService
         setupNotifications()
         schedulePrewarmOnAppLaunch()
+    }
+
+    /// W11.A1: injected post-init when the app-level service container is fully
+    /// wired and `AIEnhancementService` is available. Safe to call multiple
+    /// times.
+    func attachEnhancementService(_ service: AIEnhancementService) {
+        self.enhancementService = service
     }
 
     // MARK: - Notification Setup
@@ -66,52 +84,85 @@ final class ModelPrewarmService: ObservableObject {
     private func performPrewarm() async {
         guard shouldPrewarm() else { return }
 
-        guard let audioURL = prewarmAudioURL else {
-            logger.error("❌ Prewarm audio file (esc.wav) not found")
-            return
+        // Transcription model prewarm — runs only when a local whisper/fluidAudio
+        // model is currently selected.
+        if let currentModel = transcriptionModelManager.currentTranscriptionModel,
+           transcriptionPrewarmable(currentModel) {
+            if let audioURL = prewarmAudioURL {
+                logger.notice("Prewarming \(currentModel.displayName, privacy: .public)")
+                let startTime = Date()
+                do {
+                    let _ = try await serviceRegistry.transcribe(audioURL: audioURL, model: currentModel)
+                    let duration = Date().timeIntervalSince(startTime)
+                    logger.notice("Prewarm completed in \(String(format: "%.2f", duration), privacy: .public)s")
+                } catch {
+                    logger.error("❌ Prewarm failed: \(error.localizedDescription, privacy: .public)")
+                }
+            } else {
+                logger.error("❌ Prewarm audio file (esc.wav) not found")
+            }
         }
 
-        guard let currentModel = transcriptionModelManager.currentTranscriptionModel else {
-            logger.notice("No model selected, skipping prewarm")
-            return
-        }
-
-        logger.notice("Prewarming \(currentModel.displayName, privacy: .public)")
-        let startTime = Date()
-
-        do {
-            let _ = try await serviceRegistry.transcribe(audioURL: audioURL, model: currentModel)
-            let duration = Date().timeIntervalSince(startTime)
-
-            logger.notice("Prewarm completed in \(String(format: "%.2f", duration), privacy: .public)s")
-
-        } catch {
-            logger.error("❌ Prewarm failed: \(error.localizedDescription, privacy: .public)")
+        // W11.A1: MLX enhance prewarm — orthogonal to transcription model. Loads
+        // weights into memory so first-enhance-after-wake skips cold-load. No-op
+        // when MLX isn't the active enhance provider OR no model is downloaded.
+        if isMLXEnhanceProviderReady(), let enhancementService {
+            let warmStart = Date()
+            await enhancementService.warmMLXIfSelected()
+            let warmDuration = Date().timeIntervalSince(warmStart)
+            logger.notice("MLX warm completed in \(String(format: "%.2f", warmDuration), privacy: .public)s")
         }
     }
 
     // MARK: - Validation
 
     private func shouldPrewarm() -> Bool {
-        // Check if user has enabled prewarming
+        // Check if user has enabled prewarming.
         let isEnabled = UserDefaults.standard.bool(forKey: prewarmEnabledKey)
         guard isEnabled else {
             logger.notice("Prewarm disabled by user")
             return false
         }
 
-        // Only prewarm local models (Parakeet and Whisper need ANE compilation)
-        guard let model = transcriptionModelManager.currentTranscriptionModel else {
-            return false
+        // Transcription path: prewarm if active model is a local whisper/fluidAudio.
+        if let model = transcriptionModelManager.currentTranscriptionModel,
+           transcriptionPrewarmable(model) {
+            return true
         }
 
+        // W11.A1: MLX enhance prewarm path — orthogonal to transcription. Returns
+        // true when MLX is the selected enhance provider and the model is
+        // downloaded; performPrewarm() dispatches the actual warm.
+        if isMLXEnhanceProviderReady() {
+            return true
+        }
+
+        logger.notice("Skipping prewarm — no warmable provider")
+        return false
+    }
+
+    private func transcriptionPrewarmable(_ model: any TranscriptionModel) -> Bool {
         switch model.provider {
         case .whisper, .fluidAudio:
             return true
         default:
-            logger.notice("Skipping prewarm - cloud models don't need it")
             return false
         }
+    }
+
+    /// W11.A1: true when MLX is the active enhance provider and a model is
+    /// downloaded. The active-provider check requires an `AIEnhancementService`
+    /// reference — without it (e.g. construction order race), we still allow
+    /// prewarm based on the downloaded-model state and let `warmMLXIfSelected`
+    /// no-op if MLX isn't actually selected.
+    private func isMLXEnhanceProviderReady() -> Bool {
+        let modelId = UserDefaults.standard.string(forKey: "mlx_selected_model_id") ?? ""
+        guard !modelId.isEmpty else { return false }
+        guard MLXModelDownloader.status(for: modelId) == .downloaded else { return false }
+        if let enhancementService {
+            return enhancementService.aiService.selectedProvider == .mlx
+        }
+        return true
     }
 
     deinit {

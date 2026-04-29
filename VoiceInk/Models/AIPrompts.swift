@@ -39,6 +39,19 @@ enum AIPrompts {
     </SYSTEM_INSTRUCTIONS>
     """
     
+    /// W11.A2: minimal cleanup-only system prompt for the short-transcript
+    /// fast-path. ~50 tokens vs. the ~1,200-token full wrapper. Used only when
+    /// userPrompt is ≤120 chars (≈30 tokens) AND no clipboard / screen / vocab
+    /// context is active. See plan
+    /// docs/superpowers/plans/W11A-pipeline-fixes.md §Migration policy #1.
+    static let shortTranscriptCleanupTemplate = """
+    You are a text-cleanup engine. Output ONLY the cleaned dictation:
+    - Fix obvious grammar, remove fillers, keep names and numbers.
+    - Apply standard punctuation (periods, commas, question marks).
+    - No preamble, no commentary, no tags, no quotes.
+    - If the dictation is empty, output an empty string.
+    """
+
     static let assistantMode = """
     <SYSTEM_INSTRUCTIONS>
     You are a powerful AI assistant. Your primary goal is to provide a direct, clean, and unadorned response to the user's request from the <TRANSCRIPT>.

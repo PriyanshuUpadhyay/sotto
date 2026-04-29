@@ -6,6 +6,7 @@ struct EnhancementSettingsPanel: View {
     @AppStorage("ShortEnhancementWordThreshold") private var shortEnhancementWordThreshold = 3
     @AppStorage("EnhancementTimeoutSeconds") private var enhancementTimeoutSeconds = 7
     @AppStorage("EnhancementRetryOnTimeout") private var retryOnTimeout = true
+    @AppStorage("MLXIdleEvictSeconds") private var mlxIdleEvictSeconds = 1800
     @State private var isShortEnhancementExpanded = false
     @State private var isHandlingToggleChange = false
 
@@ -149,6 +150,27 @@ struct EnhancementSettingsPanel: View {
                     HStack(spacing: 4) {
                         Text("Request Timeout")
                         InfoTip("Set how long to wait for the AI provider to respond. If no response is received within this duration, you can either fail immediately and paste the original transcription, or retry the request (up to 3 attempts).")
+                    }
+                }
+
+                if enhancementService.aiService.selectedProvider == .mlx {
+                    Section {
+                        Picker("Idle eviction", selection: $mlxIdleEvictSeconds) {
+                            Text("60 seconds").tag(60)
+                            Text("5 minutes").tag(300)
+                            Text("10 minutes").tag(600)
+                            Text("20 minutes").tag(1200)
+                            Text("30 minutes").tag(1800)
+                            Text("45 minutes").tag(2700)
+                            Text("1 hour").tag(3600)
+                            Text("Never").tag(Int.max)
+                        }
+                        .pickerStyle(.menu)
+                    } header: {
+                        HStack(spacing: 4) {
+                            Text("MLX (on-device)")
+                            InfoTip("How long the on-device model stays in memory after the last enhancement. Higher values trade memory for fewer cold-load spikes; lower values free memory faster. Applies on the next time the MLX provider is reloaded.")
+                        }
                     }
                 }
 

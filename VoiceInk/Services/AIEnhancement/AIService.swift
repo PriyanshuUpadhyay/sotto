@@ -279,7 +279,12 @@ class AIService: ObservableObject {
             Task { await old.reset() }
         }
         AIService.mlxProviderCache.removeAll()
-        let provider = MLXProvider(modelId: modelId, idleEvictSeconds: 600)
+        // W11.A6: idle-evict seconds is now user-configurable via the
+        // EnhancementSettingsPanel slider (default 1800s = 30 min). Falls back to
+        // 1800 if the AppStorage key is missing or zero.
+        let storedEvict = UserDefaults.standard.integer(forKey: "MLXIdleEvictSeconds")
+        let resolvedEvict: TimeInterval = storedEvict > 0 ? TimeInterval(storedEvict) : 1800
+        let provider = MLXProvider(modelId: modelId, idleEvictSeconds: resolvedEvict)
         AIService.mlxProviderCache[modelId] = provider
         return provider
     }
@@ -554,6 +559,24 @@ class AIService: ObservableObject {
         let modelId = UserDefaults.standard.string(forKey: "mlx_selected_model_id") ?? ""
         let provider = mlxProvider(for: modelId)
         return try await provider.enhance(systemPrompt: systemPrompt, userPrompt: userPrompt)
+    }
+
+    /// W11.A1: load MLX weights into memory without running enhance. Used by
+    /// the prewarm path (wake/launch) and the recording-start fire-and-forget
+    /// hook so first-enhance-after-idle skips cold-load. Failures are logged
+    /// but never thrown — a failed warm degrades to pre-W11.A1 behavior (the
+    /// next `enhance(...)` pays the cold-load cost).
+    func warmMLX() async {
+        let modelId = UserDefaults.standard.string(forKey: "mlx_selected_model_id") ?? ""
+        guard !modelId.isEmpty else { return }
+        guard MLXModelDownloader.status(for: modelId) == .downloaded else { return }
+        let provider = mlxProvider(for: modelId)
+        do {
+            try await provider.warm()
+        } catch {
+            Logger(subsystem: "com.prakashjoshipax.voiceink", category: "AIService")
+                .notice("🦾 warmMLX failed: \(error.localizedDescription, privacy: .public)")
+        }
     }
 
     private func refreshLocalCLIConfigurationState() {

@@ -251,7 +251,24 @@ class AIEnhancementService: ObservableObject {
             do {
                 // Same prompt-shape choice as Foundation Models: pass raw transcript so
                 // the smaller on-device models don't echo XML wrappers verbatim.
-                let result = try await aiService.enhanceWithMLX(systemPrompt: systemMessage, userPrompt: text)
+                //
+                // W11.A2 short-transcript fast-path: when the dictation is ≤120 chars
+                // (≈30 tokens) AND no clipboard/screen context is active, swap the
+                // ~1,200-token full wrapper for the ~50-token cleanup template. Drops
+                // system prefill cost ~30-50% on short cleanups. The full wrapper still
+                // governs longer dictations and any case with active context. See plan
+                // §Migration policy #1.
+                let mlxSystemMessage: String
+                if shouldUseMLXFastPath(text: text) {
+                    mlxSystemMessage = AIPrompts.shortTranscriptCleanupTemplate
+                    await MainActor.run {
+                        self.lastSystemMessageSent = mlxSystemMessage
+                    }
+                    logger.notice("🦾 enhance: fast-path system-prompt (text=\(text.count, privacy: .public)c)")
+                } else {
+                    mlxSystemMessage = systemMessage
+                }
+                let result = try await aiService.enhanceWithMLX(systemPrompt: mlxSystemMessage, userPrompt: text)
                 return AIEnhancementOutputFilter.filter(stripPreamble(result))
             } catch {
                 if let providerError = error as? MLXProvider.ProviderError {
@@ -333,6 +350,27 @@ class AIEnhancementService: ObservableObject {
         } catch {
             throw EnhancementError.customError(error.localizedDescription)
         }
+    }
+
+    /// W11.A2: 30-token threshold expressed as 120 chars (matching the
+    /// `userPrompt.count / 4` heuristic in `MLXProvider.swift` line 119).
+    /// Bumping this raises fast-path coverage at the risk of producing thin
+    /// cleanup on medium dictations. Plan §Migration policy #1.
+    private let MLXShortTranscriptCharThreshold = 120
+
+    private func shouldUseMLXFastPath(text: String) -> Bool {
+        guard text.count <= MLXShortTranscriptCharThreshold else { return false }
+        return !hasNonEmptyContextualAugmentation()
+    }
+
+    private func hasNonEmptyContextualAugmentation() -> Bool {
+        if useClipboardContext, let s = lastCapturedClipboard, !s.isEmpty {
+            return true
+        }
+        if useScreenCaptureContext, let s = screenCaptureService.lastCapturedText, !s.isEmpty {
+            return true
+        }
+        return false
     }
 
     /// Belt-and-suspenders: strip the conversational preamble Apple's 3B foundation
@@ -601,6 +639,15 @@ class AIEnhancementService: ObservableObject {
 
     func captureClipboardContext() {
         lastCapturedClipboard = NSPasteboard.general.string(forType: .string)
+    }
+
+    /// W11.A1: fire-and-forget MLX warm-up. Safe no-op when the active provider
+    /// isn't MLX or no model is selected. Errors logged inside `warmMLX()` but
+    /// never surfaced — a failed warm leaves the next `enhance(...)` paying the
+    /// cold-load cost, same as pre-W11.A1 behavior.
+    func warmMLXIfSelected() async {
+        guard aiService.selectedProvider == .mlx else { return }
+        await aiService.warmMLX()
     }
     
     func clearCapturedContexts() {

@@ -58,6 +58,42 @@ actor MLXProvider {
 
     func enhance(systemPrompt: String, userPrompt: String) async throws -> String {
         #if canImport(MLXLLM)
+        // W11.A5: wall-clock timeout reuses the existing user-set
+        // `EnhancementTimeoutSeconds` (default 7s). Caps cold + warm + rambling
+        // outputs the same way remote-API providers are already capped at
+        // AIEnhancementService.swift:74. UserDefaults read is thread-safe inside
+        // an actor. Plan §Migration policy #7-#8.
+        let storedTimeout = UserDefaults.standard.integer(forKey: "EnhancementTimeoutSeconds")
+        let effectiveTimeout: TimeInterval = storedTimeout > 0 ? TimeInterval(storedTimeout) : 7
+
+        return try await withThrowingTaskGroup(of: String.self) { group in
+            group.addTask { [systemPrompt, userPrompt] in
+                try await self.runEnhance(systemPrompt: systemPrompt, userPrompt: userPrompt)
+            }
+            group.addTask { [effectiveTimeout, modelId] in
+                try await Task.sleep(nanoseconds: UInt64(effectiveTimeout * 1_000_000_000))
+                Self.logger.warning("🦾 enhance: TIMEOUT after \(effectiveTimeout, format: .fixed(precision: 1), privacy: .public)s — cancelling generation for model=\(modelId, privacy: .public)")
+                throw ProviderError.generationFailed("Timed out after \(Int(effectiveTimeout))s")
+            }
+            do {
+                guard let result = try await group.next() else {
+                    group.cancelAll()
+                    throw ProviderError.generationFailed("Enhancement task group returned no result")
+                }
+                group.cancelAll()
+                return result
+            } catch {
+                group.cancelAll()
+                throw error
+            }
+        }
+        #else
+        throw ProviderError.frameworkUnavailable
+        #endif
+    }
+
+    #if canImport(MLXLLM)
+    private func runEnhance(systemPrompt: String, userPrompt: String) async throws -> String {
         guard !modelId.isEmpty else { throw ProviderError.noModelSelected }
         try Task.checkCancellation()
 
@@ -76,8 +112,13 @@ actor MLXProvider {
         // input. Cap tokens at ~3x input length (chars/4 ≈ token estimate) plus a
         // floor so very short transcripts still have headroom. Clamps the worst case
         // where small models ramble and burn the full 1024-token window.
+        // W11.A7: floor 192→96 for very-short transcripts (<30 chars); ceiling
+        // 768→512 universally. Real cleanup output is 80-200 tokens; 512 is still
+        // 2.5× expected. See plan docs/superpowers/plans/W11A-pipeline-fixes.md
+        // §Migration policy #10.
         let approxInputTokens = userPrompt.count / 4
-        let dynamicMaxTokens = max(192, min(768, approxInputTokens * 3))
+        let floor = userPrompt.count < 30 ? 96 : 192
+        let dynamicMaxTokens = max(floor, min(512, approxInputTokens * 3))
 
         do {
             try Task.checkCancellation()
@@ -91,10 +132,12 @@ actor MLXProvider {
             let input = try await container.prepare(input: userInput)
             let prepElapsed = Date().timeIntervalSince(prepStart)
 
+            // W11.A4: temperature=0.0 routes to ArgMaxSampler; topP omitted (ignored
+            // at temp=0). Quality-neutral on cleanup task; cuts 5-15ms per 100 tokens
+            // and is forward-compatible with W11.C speculative decoding.
             let parameters = GenerateParameters(
                 maxTokens: dynamicMaxTokens,
-                temperature: 0.1,
-                topP: 0.9
+                temperature: 0.0
             )
             Self.logger.notice("🦾 enhance: prep=\(prepElapsed, format: .fixed(precision: 2), privacy: .public)s maxTokens=\(dynamicMaxTokens, privacy: .public) input=\(userPrompt.count, privacy: .public)c")
 
@@ -140,10 +183,8 @@ actor MLXProvider {
             Self.logger.error("🦾 MLX generate failed: \(error.localizedDescription, privacy: .public)")
             throw ProviderError.generationFailed("\(modelId): \(error.localizedDescription)")
         }
-        #else
-        throw ProviderError.frameworkUnavailable
-        #endif
     }
+    #endif
 
     /// Drop the loaded model and cancel pending eviction. Called when the user
     /// switches to a different MLX model or away from MLX entirely.
@@ -154,6 +195,21 @@ actor MLXProvider {
         modelContainer = nil
         #endif
         lastUsedAt = nil
+    }
+
+    /// W11.A1: load weights into memory without running enhance. Idempotent —
+    /// a second call when warm is a cheap actor-state check on the cached
+    /// `modelContainer`. Used by the prewarm hook + recording-start fire-and-
+    /// forget warm path so first-enhance-after-idle skips cold-load.
+    func warm() async throws {
+        #if canImport(MLXLLM)
+        guard !modelId.isEmpty else { throw ProviderError.noModelSelected }
+        _ = try await loadModel()
+        self.lastUsedAt = Date()
+        self.scheduleEvictionCheck()
+        #else
+        throw ProviderError.frameworkUnavailable
+        #endif
     }
 
     // MARK: - Loading
