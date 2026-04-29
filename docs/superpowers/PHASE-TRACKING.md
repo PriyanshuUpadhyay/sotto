@@ -17,14 +17,14 @@ Status legend: ⬜ pending · 🟡 in_progress · ✅ done · ⏸ blocked / defe
 | **W11.D** — Enhancement timing telemetry (new) | ✅ | Merged 2026-04-30 (`42edcbe`). CSV at `~/Library/Application Support/<bundle>/enhancement-timings.csv`; diagnostic logs for fastPath/prewarm/idle-evict/timeout; UI buttons in Settings. |
 | **W11-prompt-fix** — MLX prompt-wrap correctness | ✅ | Merged 2026-04-29 (`3247736`). Unblocks empirical perf measurement (broken prompt was masking timing differences). |
 | **W11-models-expand** — registry + auto-detect cache | ✅ | Merged 2026-04-29 (`14f092a`). 5 new curated entries + `MLXModelDownloader.detectInstalledModels()` + DETECTED picker section. |
-| **W11.B** — Apple Foundation Models primary path | ⬜ | Bump deployment target → macOS 26.0; new `AFMProvider` actor; conditional routing AFM↔MLX. Biggest packet of the roadmap. |
+| **W11.B** — Apple Foundation Models primary path | ✅ | Merged 2026-04-30 (`e228f73`). Deployment target 14.4 → 26.0. AFMProvider replaces FoundationModelsProvider. Routing: AFM-first when `SystemLanguageModel.default.isAvailable`; only `safetyRefusal` falls back to MLX silently, other errors propagate. AFM prewarm wired. CSV `promptMode=afm` populated. Live AFM-disabled fallback path not exercised pre-merge (deferred to user-machine validation). |
 | **W11.C** — Speculative decoding opt-in (MLX fallback) | ⬜ | Add `mlx-community/speculative-decoding` SPM dep + hidden Qwen3-0.6B draft + Settings toggle. |
 
 **Phase 1 sequencing (locked):**
 1. ✅ W11.D timing telemetry (merged `42edcbe`)
 2. ✅ W11.A.A3 KV-cache reuse (merged `201fb8f`, opt-in)
-3. ⬅ **W11.B AFM primary path** — biggest packet of the roadmap; bumps deployment target → macOS 26.0
-4. W11.C spec-decode opt-in (smaller, MLX fallback path)
+3. ✅ W11.B AFM primary path (merged `e228f73`, deployment target → macOS 26.0)
+4. ⬅ **W11.C spec-decode opt-in** — last Phase 1 packet
 
 ---
 
