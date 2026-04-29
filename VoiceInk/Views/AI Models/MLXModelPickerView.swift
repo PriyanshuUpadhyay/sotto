@@ -1,4 +1,7 @@
 import SwiftUI
+import os
+
+private let mlxPickerLogger = Logger(subsystem: "com.prakashjoshipax.voiceink", category: "MLXModelPicker")
 
 // MARK: - MLXModelPickerView
 //
@@ -16,6 +19,10 @@ struct MLXModelPickerView: View {
     @AppStorage("mlx_selected_model_id") private var selectedModelId: String = ""
 
     @State private var statuses: [String: MLXModelStatus] = [:]
+    /// W11.B: any locally cached repo not in `MLXModelRegistry.curated` whose
+    /// snapshot config.json declares a `model_type` registered in
+    /// mlx-swift-lm 3.31.3. Refreshed alongside curated statuses.
+    @State private var detectedModels: [DetectedMLXModel] = []
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -29,6 +36,25 @@ struct MLXModelPickerView: View {
             ForEach(MLXModelRegistry.curated) { model in
                 modelRow(model)
                     .padding(.vertical, 4)
+            }
+
+            // W11.B detected-models section. Only renders when the cache
+            // holds at least one MLXLM-loadable repo that is NOT already
+            // in the curated list — surfaces side-loaded repos (HF CLI /
+            // mlx-lm) and curated entries dropped in a later registry
+            // refresh that still hold disk weight. Uncurated: no speed,
+            // quality, or latency claims.
+            if !detectedModels.isEmpty {
+                Divider().padding(.vertical, 6)
+                Text("Detected models")
+                    .font(.headline)
+                Text("Found in the HuggingFace cache. Uncurated — no speed / quality / latency claims.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                ForEach(detectedModels) { dm in
+                    detectedRow(dm)
+                        .padding(.vertical, 4)
+                }
             }
         }
         .task { refreshAllStatuses() }
@@ -110,6 +136,20 @@ struct MLXModelPickerView: View {
             .padding(.vertical, 2.5)
             .background(Capsule().fill(Palette.warn.opacity(0.16)))
             .overlay(Capsule().stroke(Palette.warn.opacity(0.42), lineWidth: 0.5))
+    }
+
+    /// Neutral chip mirroring `experimentalChip`'s shape but without the
+    /// warn-coloured fill — detected models aren't necessarily problematic,
+    /// just uncurated. Spec §5 row W6 vocabulary.
+    private var detectedChip: some View {
+        Text("DETECTED")
+            .font(.system(size: 9.5, weight: .semibold, design: .monospaced))
+            .tracking(0.06 * 9.5)
+            .foregroundColor(Palette.onyxFg)
+            .padding(.horizontal, 7)
+            .padding(.vertical, 2.5)
+            .background(Capsule().fill(Color.white.opacity(0.06)))
+            .overlay(Capsule().stroke(Palette.hairline, lineWidth: 0.5))
     }
 
     private func ratingChip(label: String, value: Int) -> some View {
@@ -234,6 +274,86 @@ struct MLXModelPickerView: View {
                 aiService.notifyMLXSelectionChanged()
                 aiService.refreshAPIKeyValidity()
             }
+        }
+        refreshDetected()
+    }
+
+    /// W11.B: rebuild the detected-models list, dropping any repo already
+    /// in `MLXModelRegistry.curated` so users don't see the same row twice.
+    private func refreshDetected() {
+        let curatedIds = Set(MLXModelRegistry.curated.map(\.id))
+        detectedModels = MLXModelDownloader
+            .detectInstalledModelsDetailed()
+            .filter { !curatedIds.contains($0.id) }
+    }
+
+    @ViewBuilder
+    private func detectedRow(_ dm: DetectedMLXModel) -> some View {
+        let isActive = selectedModelId == dm.id
+
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(alignment: .center, spacing: 8) {
+                Text(dm.id)
+                    .font(.system(size: 12.5, weight: .semibold, design: .monospaced))
+                    .foregroundColor(.primary)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+                if isActive { activeChip }
+                detectedChip
+                Spacer()
+                if !isActive {
+                    Button("Use") {
+                        selectedModelId = dm.id
+                        aiService.notifyMLXSelectionChanged()
+                        aiService.refreshAPIKeyValidity()
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                }
+                Button("Delete") { deleteDetected(dm) }
+                    .buttonStyle(.borderless)
+                    .controlSize(.small)
+                    .foregroundStyle(.secondary)
+            }
+
+            HStack(spacing: 6) {
+                Text(dm.sizeDisplay)
+                    .font(.system(size: 10.5, weight: .medium, design: .monospaced))
+                    .tracking(0.06 * 10.5)
+                    .foregroundColor(Palette.onyxMute)
+            }
+        }
+        .padding(12)
+        .background(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(isActive ? Palette.accent.opacity(0.10) : Color.clear)
+                .background(
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .fill(.ultraThinMaterial)
+                )
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .stroke(isActive ? Palette.accent.opacity(0.55) : Palette.hairline,
+                        lineWidth: isActive ? 1.5 : 1)
+        )
+    }
+
+    private func deleteDetected(_ dm: DetectedMLXModel) {
+        do {
+            try MLXModelDownloader.delete(dm.id)
+            if selectedModelId == dm.id {
+                selectedModelId = ""
+                aiService.notifyMLXSelectionChanged()
+            }
+            aiService.refreshAPIKeyValidity()
+            refreshDetected()
+        } catch {
+            // Detected rows have no per-row status slot; surface failure as
+            // a console log. Worst case: row reappears next refresh — the
+            // user can retry. Keeping the path minimal so the curated path
+            // is unaffected.
+            mlxPickerLogger.error("🦾 detected delete failed: \(error.localizedDescription, privacy: .public)")
         }
     }
 

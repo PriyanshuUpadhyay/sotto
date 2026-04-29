@@ -7,6 +7,29 @@ import HuggingFace
 
 private let mlxRegistryLogger = Logger(subsystem: "com.prakashjoshipax.voiceink", category: "MLXModelDownloader")
 
+/// W11.B detected-model row payload. A repo found in the HF cache that is
+/// either NOT in `MLXModelRegistry.curated` (side-loaded via the HF CLI /
+/// mlx-lm) or has been evicted from the curated lineup but still holds disk
+/// weight. The picker surfaces these in a separate "Detected models" section
+/// so users can `Use` or `Delete` without speed/quality curation. No latency
+/// claim is made — these are uncurated.
+struct DetectedMLXModel: Identifiable, Hashable {
+    /// HF repo id, e.g. "mlx-community/SmolLM3-3B-4bit".
+    let id: String
+    /// Aggregate on-disk byte count for the repo (snapshot + blobs). 0 when
+    /// scan can't size the dir (sandbox / permission issue) — UI shows "—".
+    let sizeBytes: UInt64
+
+    /// Human-readable size string: "1.7 GB" / "335 MB" / "—".
+    var sizeDisplay: String {
+        guard sizeBytes > 0 else { return "—" }
+        let gb = Double(sizeBytes) / 1_073_741_824.0
+        if gb >= 1.0 { return String(format: "%.1f GB", gb) }
+        let mb = Double(sizeBytes) / 1_048_576.0
+        return String(format: "%.0f MB", mb)
+    }
+}
+
 struct MLXModelEntry: Identifiable, Hashable {
     let id: String              // HF repo, e.g. "mlx-community/Qwen3-4B-Instruct-2507-4bit-DWQ-2510"
     let displayName: String
@@ -103,6 +126,57 @@ enum MLXModelRegistry {
             qualityRating: 6,
             expectedLatencySeconds: 3.0...7.0
         ),
+        // W11.B additions — diversifies the lineup beyond the Qwen-only W10
+        // set. License diversity (MIT, Llama Community, Apache 2.0 from IBM
+        // and HuggingFaceTB) and an ULTRA-FAST 0.6B tier for sub-1s cleanup.
+        // Sizes / quality numbers from R1 research at
+        // `docs/superpowers/research/2026-04-29-specialized-rewrite-models.md`.
+        // Latency ranges PLACEHOLDER — refine post sequential test.
+        .init(
+            id: "mlx-community/Qwen3-0.6B-4bit",
+            displayName: "Qwen 3 0.6B (Ultra-Fast)",
+            approximateSizeGB: 0.34,
+            notes: "Alibaba. Ultra-fast tier. Apache 2.0. Smallest entry. Best for short-transcript cleanup; lower quality on complex prompts than 1.7B+. Doubles as the speculative-decoding draft model in W11.C.",
+            speedRating: 10,
+            qualityRating: 5,
+            expectedLatencySeconds: 0.5...2.0
+        ),
+        .init(
+            id: "mlx-community/Phi-3.5-mini-instruct-4bit",
+            displayName: "Phi 3.5 Mini Instruct",
+            approximateSizeGB: 2.15,
+            notes: "Microsoft. License: MIT (more permissive than Llama Community). MMLU 69, strong on reasoning-heavy prompts.",
+            speedRating: 7,
+            qualityRating: 7,
+            expectedLatencySeconds: 3.0...7.0
+        ),
+        .init(
+            id: "mlx-community/Llama-3.2-3B-Instruct-4bit",
+            displayName: "Llama 3.2 3B Instruct",
+            approximateSizeGB: 1.81,
+            notes: "Meta. Open-Rewrite 40.1 (best-in-class for rewriting). License: Llama 3.2 Community (NOT Apache) — requires 'Built with Llama' attribution. Flag for legal review before promoting to default.",
+            speedRating: 7,
+            qualityRating: 8,
+            expectedLatencySeconds: 3.0...7.0
+        ),
+        .init(
+            id: "mlx-community/granite-3.3-2b-instruct-4bit",
+            displayName: "Granite 3.3 2B Instruct",
+            approximateSizeGB: 1.43,
+            notes: "IBM. Apache 2.0. Sweet-spot 2B with strong instruction-following. Less community testing than Qwen / Llama.",
+            speedRating: 8,
+            qualityRating: 6,
+            expectedLatencySeconds: 2.0...5.0
+        ),
+        .init(
+            id: "mlx-community/SmolLM3-3B-4bit-DWQ",
+            displayName: "SmolLM 3 3B (DWQ)",
+            approximateSizeGB: 1.7,
+            notes: "HuggingFaceTB. Apache 2.0. IFEval 76.7 (no-think) — best in 3B class. DWQ quant. smollm3 type registered in mlx-swift-lm 3.31.3.",
+            speedRating: 7,
+            qualityRating: 7,
+            expectedLatencySeconds: 3.0...6.0
+        ),
     ]
 }
 
@@ -115,6 +189,106 @@ enum MLXModelStatus: Equatable {
 
 #if canImport(MLXLLM)
 enum MLXModelDownloader {
+    /// Snapshot of `LLMTypeRegistry.shared` registered model types in
+    /// mlx-swift-lm 3.31.3, transcribed from
+    /// `Libraries/MLXLLM/LLMModelFactory.swift`. Used to filter detected
+    /// repos in the HF cache to ones we can actually load. Keep this in
+    /// sync if mlx-swift-lm is bumped — surfacing a repo whose type isn't
+    /// registered would mislead the user into picking a model that fails
+    /// at load. R1 research §3.7 + reference list at
+    /// `docs/superpowers/research/2026-04-29-specialized-rewrite-models.md`.
+    private static let registeredMLXLLMModelTypes: Set<String> = [
+        "mistral", "mistral3",
+        "llama",
+        "phi", "phi3", "phimoe",
+        "gemma", "gemma2", "gemma3", "gemma3_text", "gemma3n",
+        "gemma4", "gemma4_text",
+        "qwen2", "qwen3", "qwen3_moe", "qwen3_next",
+        "qwen3_5", "qwen3_5_moe", "qwen3_5_text",
+        "minicpm", "starcoder2", "cohere", "openelm", "internlm2",
+        "deepseek_v3",
+        "granite", "granitemoehybrid",
+        "mimo", "mimo_v2_flash", "minimax",
+        "glm4", "glm4_moe", "glm4_moe_lite",
+        "acereason", "falcon_h1", "bitnet",
+        "smollm3", "ernie4_5", "lfm2",
+        "baichuan_m1", "exaone4", "gpt_oss",
+        "lille-130m",
+        "olmoe", "olmo2", "olmo3",
+        "bailing_moe", "lfm2_moe", "nanochat", "nemotron_h",
+        "afmoe", "jamba_3b", "apertus",
+    ]
+
+    /// Repo-id strings of all locally cached models that mlx-swift-lm 3.31.3
+    /// can load. Scans `cache.cacheDirectory` for `models--<ns>--<name>`
+    /// directories whose snapshot `config.json` declares a `model_type`
+    /// registered in `LLMTypeRegistry.shared`. Used by the picker UI to
+    /// surface side-loaded repos (e.g. ones the user pulled via mlx-lm
+    /// from the command line) and curated entries that have been removed
+    /// in a later registry refresh but still hold disk weight.
+    ///
+    /// Sorted alphabetically. Returns `[]` when the cache directory can't
+    /// be enumerated (sandbox / permission issue) or when no eligible repo
+    /// is found. Curated-list duplicates are NOT filtered here — the picker
+    /// view dedupes against `MLXModelRegistry.curated` so this helper stays
+    /// schema-agnostic.
+    static func detectInstalledModels() -> [String] {
+        detectInstalledModelsDetailed().map(\.id)
+    }
+
+    /// `detectInstalledModels` plus on-disk byte counts. Used by the picker
+    /// UI to render a size column without a second filesystem walk.
+    static func detectInstalledModelsDetailed() -> [DetectedMLXModel] {
+        guard let cache = MLXProvider.sharedHubClient.cache else { return [] }
+        let fm = FileManager.default
+        let root = cache.cacheDirectory
+        guard let entries = try? fm.contentsOfDirectory(
+            at: root,
+            includingPropertiesForKeys: [.isDirectoryKey],
+            options: [.skipsHiddenFiles]
+        ) else {
+            mlxRegistryLogger.notice("🦾 detect: cache enumerate failed at \(root.path, privacy: .public)")
+            return []
+        }
+
+        var results: [DetectedMLXModel] = []
+        for url in entries {
+            let isDir = (try? url.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) ?? false
+            guard isDir else { continue }
+            let dirName = url.lastPathComponent
+            // HF Python-compat layout: `models--<namespace>--<name>`. The
+            // intermediate `--` is the kind/ns separator; the second `--`
+            // separates ns from name. HF repo names don't carry `--` in
+            // practice (single dashes only), so a first-occurrence split is
+            // both correct and defensive against mangled directory names.
+            guard dirName.hasPrefix("models--") else { continue }
+            let stripped = String(dirName.dropFirst("models--".count))
+            guard let sep = stripped.range(of: "--") else { continue }
+            let namespace = String(stripped[stripped.startIndex..<sep.lowerBound])
+            let repoName = String(stripped[sep.upperBound..<stripped.endIndex])
+            guard !namespace.isEmpty, !repoName.isEmpty else { continue }
+            let repoId = "\(namespace)/\(repoName)"
+            guard let repo = Repo.ID(rawValue: repoId),
+                  let commit = cache.resolveRevision(repo: repo, kind: .model, ref: "main"),
+                  let snapshotURL = try? cache.snapshotPath(repo: repo, kind: .model, commitHash: commit) else {
+                continue
+            }
+            let cfgURL = snapshotURL.appendingPathComponent("config.json")
+            guard fm.fileExists(atPath: cfgURL.path),
+                  let data = try? Data(contentsOf: cfgURL),
+                  let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                  let modelType = json["model_type"] as? String,
+                  Self.registeredMLXLLMModelTypes.contains(modelType) else {
+                continue
+            }
+            let bytes = (try? url.directoryAllocatedSize()) ?? 0
+            results.append(DetectedMLXModel(id: repoId, sizeBytes: UInt64(max(bytes, 0))))
+        }
+        results.sort { $0.id < $1.id }
+        mlxRegistryLogger.notice("🦾 detect: found \(results.count, privacy: .public) eligible cached repos")
+        return results
+    }
+
     /// `swift-huggingface` writes the snapshot under
     /// `<cache>/models--<namespace>--<name>/snapshots/<commit-hash>/{config.json, *.safetensors, ...}`
     /// and tracks the HEAD commit in a `refs/main` file. We resolve "main" via
@@ -189,6 +363,8 @@ enum MLXModelDownloader {
 #else
 enum MLXModelDownloader {
     static func status(for repoId: String) -> MLXModelStatus { .failed("MLX framework unavailable") }
+    static func detectInstalledModels() -> [String] { [] }
+    static func detectInstalledModelsDetailed() -> [DetectedMLXModel] { [] }
     static func download(
         _ repoId: String,
         approximateSizeGB: Double,
