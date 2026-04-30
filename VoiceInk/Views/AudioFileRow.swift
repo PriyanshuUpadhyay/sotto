@@ -83,7 +83,7 @@ struct AudioFileRow: View {
 
             Text(phase.rawValue)
                 .font(.caption)
-                .foregroundColor(.accentColor)
+                .foregroundColor(Palette.accent)
         }
     }
 
@@ -169,7 +169,7 @@ struct AudioFileRow: View {
         } label: {
             Text(tab.rawValue)
                 .font(.subheadline.weight(selectedTab == tab ? .semibold : .regular))
-                .foregroundColor(selectedTab == tab ? .accentColor : .secondary)
+                .foregroundColor(selectedTab == tab ? Palette.accent : .secondary)
                 .padding(.horizontal, 10)
                 .padding(.vertical, 4)
                 .background(

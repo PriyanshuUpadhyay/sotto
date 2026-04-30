@@ -95,110 +95,98 @@ struct PermissionCard: View {
     @State private var isRefreshing = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            HStack(spacing: 16) {
-                // Icon with background
-                ZStack {
-                    RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        .fill((isGranted ? Palette.success : Palette.warn).opacity(0.18))
-                        .frame(width: 44, height: 44)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 10, style: .continuous)
-                                .stroke((isGranted ? Palette.success : Palette.warn).opacity(0.36), lineWidth: 0.5)
-                        )
+        GlassCard(cornerRadius: 14, padding: 20) {
+            VStack(alignment: .leading, spacing: 16) {
+                HStack(spacing: 16) {
+                    // Icon with background
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 10, style: .continuous)
+                            .fill((isGranted ? Palette.success : Palette.warn).opacity(0.18))
+                            .frame(width: 44, height: 44)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                    .stroke((isGranted ? Palette.success : Palette.warn).opacity(0.36), lineWidth: 0.5)
+                            )
 
-                    Image(systemName: isGranted ? "\(icon).fill" : icon)
-                        .font(.system(size: 20, weight: .semibold))
-                        .foregroundColor(isGranted ? Palette.success : Palette.warn)
-                        .symbolRenderingMode(.hierarchical)
-                }
+                        Image(systemName: isGranted ? "\(icon).fill" : icon)
+                            .font(.system(size: 20, weight: .semibold))
+                            .foregroundColor(isGranted ? Palette.success : Palette.warn)
+                            .symbolRenderingMode(.hierarchical)
+                    }
 
-                VStack(alignment: .leading, spacing: 4) {
-                    HStack {
-                        Text(title)
-                            .font(.headline)
-                        if let message = infoTipMessage {
-                            if let link = infoTipLink, !link.isEmpty {
-                                InfoTip(message, learnMoreURL: link)
-                            } else {
-                                InfoTip(message)
+                    VStack(alignment: .leading, spacing: 4) {
+                        HStack {
+                            Text(title)
+                                .font(.headline)
+                            if let message = infoTipMessage {
+                                if let link = infoTipLink, !link.isEmpty {
+                                    InfoTip(message, learnMoreURL: link)
+                                } else {
+                                    InfoTip(message)
+                                }
                             }
                         }
-                    }
-                    Text(description)
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-                }
-                
-                Spacer()
-                
-                // Status indicator with refresh
-                HStack(spacing: 12) {
-                    Button(action: {
-                        withAnimation(Animation.haloExpand) {
-                            isRefreshing = true
-                        }
-                        checkPermission()
-                        
-                        // Reset the animation after a delay
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                            isRefreshing = false
-                        }
-                    }) {
-                        Image(systemName: "arrow.clockwise")
-                            .font(.system(size: 14, weight: .medium))
+                        Text(description)
+                            .font(.subheadline)
                             .foregroundColor(.secondary)
-                            .rotationEffect(.degrees(isRefreshing ? 360 : 0))
+                    }
+
+                    Spacer()
+
+                    // Status indicator with refresh
+                    HStack(spacing: 12) {
+                        Button(action: {
+                            withAnimation(Animation.haloExpand) {
+                                isRefreshing = true
+                            }
+                            checkPermission()
+
+                            // Reset the animation after a delay
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                                isRefreshing = false
+                            }
+                        }) {
+                            Image(systemName: "arrow.clockwise")
+                                .font(.system(size: 14, weight: .medium))
+                                .foregroundColor(.secondary)
+                                .rotationEffect(.degrees(isRefreshing ? 360 : 0))
+                        }
+                        .buttonStyle(.plain)
+                        .contentShape(Rectangle())
+
+                        StatusPill(
+                            text: isGranted ? "Granted" : "Needs Access",
+                            tone: isGranted ? .positive : .warning
+                        )
+                    }
+                }
+
+                if !isGranted {
+                    Button(action: buttonAction) {
+                        HStack {
+                            Text(buttonTitle)
+                                .font(.system(size: 14, weight: .semibold))
+                            Spacer()
+                            Image(systemName: "arrow.right")
+                                .font(.system(size: 13, weight: .semibold))
+                        }
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 12)
+                        .frame(maxWidth: .infinity)
+                        .background(
+                            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                .fill(Palette.accent)
+                        )
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                .stroke(Palette.hairline, lineWidth: 1)
+                        )
                     }
                     .buttonStyle(.plain)
-                    .contentShape(Rectangle())
-                    
-                    StatusPill(
-                        text: isGranted ? "Granted" : "Needs Access",
-                        tone: isGranted ? .positive : .warning
-                    )
                 }
-            }
-            
-            if !isGranted {
-                Button(action: buttonAction) {
-                    HStack {
-                        Text(buttonTitle)
-                            .font(.system(size: 14, weight: .semibold))
-                        Spacer()
-                        Image(systemName: "arrow.right")
-                            .font(.system(size: 13, weight: .semibold))
-                    }
-                    .foregroundColor(.white)
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 12)
-                    .frame(maxWidth: .infinity)
-                    .background(
-                        RoundedRectangle(cornerRadius: 10, style: .continuous)
-                            .fill(Palette.accent)
-                    )
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 10, style: .continuous)
-                            .stroke(Palette.hairline, lineWidth: 1)
-                    )
-                }
-                .buttonStyle(.plain)
             }
         }
-        .padding(20)
-        .background(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(.ultraThinMaterial)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .fill(Color(red: 0.078, green: 0.078, blue: 0.110).opacity(0.28))
-                )
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .stroke(Palette.hairline, lineWidth: 1)
-        )
-        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
     }
 }
 

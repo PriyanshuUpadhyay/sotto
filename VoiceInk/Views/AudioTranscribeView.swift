@@ -38,7 +38,7 @@ struct AudioTranscribeView: View {
         }
         .onChange(of: transcriptionManager.lastCompletedItemId) { _, newId in
             if let newId {
-                withAnimation(.easeInOut(duration: 0.3)) {
+                withAnimation(.haloExpand) {
                     expandedItemId = newId
                 }
             }
@@ -51,37 +51,33 @@ struct AudioTranscribeView: View {
         VStack(spacing: 0) {
             Spacer()
 
-            ZStack {
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(Color(.windowBackgroundColor).opacity(0.4))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 12)
-                            .strokeBorder(
-                                style: StrokeStyle(lineWidth: 2, dash: [8])
-                            )
-                            .foregroundColor(isDropTargeted ? .accentColor : .gray.opacity(0.5))
-                    )
-                    .animation(.easeInOut(duration: 0.15), value: isDropTargeted)
+            VStack(spacing: 14) {
+                Image(systemName: "arrow.down.doc")
+                    .font(.system(size: 32))
+                    .foregroundColor(isDropTargeted ? Palette.accent : Palette.onyxMute)
 
-                VStack(spacing: 14) {
-                    Image(systemName: "arrow.down.doc")
-                        .font(.system(size: 32))
-                        .foregroundColor(isDropTargeted ? .accentColor : .gray)
+                Text("Drop audio or video files here")
+                    .font(.headline)
 
-                    Text("Drop audio or video files here")
-                        .font(.headline)
+                Text("or")
+                    .foregroundColor(.secondary)
 
-                    Text("or")
-                        .foregroundColor(.secondary)
-
-                    Button("Choose Files") {
-                        selectFiles()
-                    }
-                    .buttonStyle(.bordered)
+                Button("Choose Files") {
+                    selectFiles()
                 }
-                .padding(32)
+                .buttonStyle(.bordered)
             }
+            .padding(32)
             .frame(maxWidth: 480, maxHeight: 200)
+            .glassPanel(cornerRadius: 14)
+            .overlay(
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .strokeBorder(
+                        isDropTargeted ? Palette.accent : Palette.hairlineSoft,
+                        style: StrokeStyle(lineWidth: 2, dash: [8])
+                    )
+            )
+            .animation(.haloPhaseCrossfade, value: isDropTargeted)
 
             Text("Supports WAV, MP3, M4A, AIFF, MP4, MOV, AAC, FLAC, CAF, AMR, OGG, OPUS, 3GP")
                 .font(.caption)
@@ -107,12 +103,12 @@ struct AudioTranscribeView: View {
                             item: item,
                             isExpanded: expandedItemId == item.id,
                             onToggleExpand: {
-                                withAnimation(.easeInOut(duration: 0.2)) {
+                                withAnimation(.haloExpand) {
                                     expandedItemId = expandedItemId == item.id ? nil : item.id
                                 }
                             },
                             onRemove: {
-                                withAnimation(.easeInOut(duration: 0.2)) {
+                                withAnimation(.haloExpand) {
                                     transcriptionManager.removeFromQueue(id: item.id)
                                     if expandedItemId == item.id { expandedItemId = nil }
                                 }
@@ -157,12 +153,7 @@ struct AudioTranscribeView: View {
                         .font(.system(size: 12, weight: .medium))
                 }
                 .foregroundColor(.secondary)
-                .padding(.horizontal, 10)
-                .padding(.vertical, 5)
-                .background(
-                    Capsule()
-                        .fill(Color.secondary.opacity(0.12))
-                )
+                .glassChip(cornerRadius: 10)
             }
             .buttonStyle(.plain)
             .help("Add files")
@@ -181,13 +172,8 @@ struct AudioTranscribeView: View {
                         Text("Cancel")
                             .font(.system(size: 12, weight: .medium))
                     }
-                    .foregroundColor(.red)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 5)
-                    .background(
-                        Capsule()
-                            .fill(Color.red.opacity(0.12))
-                    )
+                    .foregroundColor(Palette.warn)
+                    .glassChip(cornerRadius: 10)
                 }
                 .buttonStyle(.plain)
                 .help("Cancel transcription")
@@ -206,15 +192,15 @@ struct AudioTranscribeView: View {
                     .padding(.vertical, 6)
                     .background(
                         Capsule()
-                            .fill(Color(.controlAccentColor))
-                            .shadow(color: Color(.controlAccentColor).opacity(0.2), radius: 2, x: 0, y: 1)
+                            .fill(Palette.accent)
+                            .shadow(color: Palette.accentGlow, radius: 2, x: 0, y: 1)
                     )
                 }
                 .buttonStyle(.plain)
             }
 
             Button {
-                withAnimation(.easeInOut(duration: 0.2)) {
+                withAnimation(.haloExpand) {
                     transcriptionManager.clearAll()
                     expandedItemId = nil
                 }
@@ -226,12 +212,7 @@ struct AudioTranscribeView: View {
                         .font(.system(size: 12, weight: .medium))
                 }
                 .foregroundColor(.secondary)
-                .padding(.horizontal, 10)
-                .padding(.vertical, 5)
-                .background(
-                    Capsule()
-                        .fill(Color.secondary.opacity(0.12))
-                )
+                .glassChip(cornerRadius: 10)
             }
             .buttonStyle(.plain)
             .help("Clear all items")
@@ -280,20 +261,20 @@ struct AudioTranscribeView: View {
     // MARK: - Drop Overlay
 
     private var dropOverlay: some View {
-        RoundedRectangle(cornerRadius: 12)
-            .strokeBorder(Color.accentColor, style: StrokeStyle(lineWidth: 2, dash: [8]))
+        RoundedRectangle(cornerRadius: 14, style: .continuous)
+            .strokeBorder(Palette.accent, style: StrokeStyle(lineWidth: 2, dash: [8]))
             .background(
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(Color.accentColor.opacity(0.06))
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .fill(Palette.accent.opacity(0.06))
             )
             .overlay {
                 Text("Drop to add files")
                     .font(.subheadline.weight(.medium))
-                    .foregroundColor(.accentColor)
+                    .foregroundColor(Palette.accent)
             }
             .padding(16)
             .transition(.opacity)
-            .animation(.easeInOut(duration: 0.15), value: isDropTargeted)
+            .animation(.haloPhaseCrossfade, value: isDropTargeted)
     }
 
     // MARK: - File Handling
