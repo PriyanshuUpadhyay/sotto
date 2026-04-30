@@ -140,6 +140,14 @@ struct VoiceInkApp: App {
         recorderUIManager.configure(engine: engine, recorder: engine.recorder, failureRegistry: failureRegistry)
         engine.recorderUIManager = recorderUIManager
 
+        // W12.B — Command Mode service singleton needs both the recorder UI
+        // (to open the recorder on Caps+9) and the enhance service (to drive
+        // the rewrite). Wired here once, after both are constructed.
+        CommandModeService.shared.configure(
+            recorderUIManager: recorderUIManager,
+            enhancementService: enhancementService
+        )
+
         // 6. Initialize model state
         // Migration and refreshAllAvailableModels must run before loadCurrentTranscriptionModel so renamed keys are remapped and imported models are present when restoring the saved selection.
         StreamingKeysMigration.run()
@@ -309,6 +317,7 @@ struct VoiceInkApp: App {
                 .environmentObject(aiService)
                 .environmentObject(enhancementService)
                 .environmentObject(failureRegistry)
+                .environmentObject(CommandModeService.shared)
                 .modelContainer(container)
                 .onAppear {
                         // Check if container initialization failed
@@ -378,6 +387,7 @@ struct VoiceInkApp: App {
                 .environmentObject(aiService)
                 .environmentObject(enhancementService)
                 .environmentObject(failureRegistry)
+                .environmentObject(CommandModeService.shared)
         } label: {
             // SwiftUI `Image(nsImage:)` so MenuBarExtra renders a real glyph;
             // an `NSViewRepresentable` label rendered 0×0 here under

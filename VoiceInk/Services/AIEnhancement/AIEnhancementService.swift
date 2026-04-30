@@ -568,6 +568,151 @@ class AIEnhancementService: ObservableObject {
         }
     }
 
+    /// W12.B Command Mode rewrite entry. Takes a captured selection + a dictated
+    /// instruction; returns the rewrite + the elapsed duration. Mirrors the
+    /// `enhance(_:)` provider routing (Ollama / LocalCLI / MLX / AFM / cloud) but
+    /// uses `AIPrompts.commandModeTemplate` for the system prompt and
+    /// `<SELECTION>...</SELECTION>` for the user prompt. The cleanup-level
+    /// directive (W12.A) is intentionally NOT prepended — Command Mode is its own
+    /// rewrite intent, not a CLEANUP intensity. See plan
+    /// `docs/superpowers/plans/W12B-command-mode.md` §Migration policy #3.
+    func commandModeRewrite(selection: String, instruction: String) async throws -> (String, TimeInterval) {
+        let startTime = Date()
+
+        guard isConfigured else {
+            throw EnhancementError.notConfigured
+        }
+        guard !selection.isEmpty, !instruction.isEmpty else {
+            throw EnhancementError.enhancementFailed
+        }
+
+        let systemMessage = String(format: AIPrompts.commandModeTemplate, instruction)
+        let userPrompt = "<SELECTION>\n\(selection)\n</SELECTION>"
+
+        logger.notice("🦾 command-mode: provider=\(self.aiService.selectedProvider.rawValue, privacy: .public) selectionChars=\(selection.count, privacy: .public) instructionChars=\(instruction.count, privacy: .public)")
+
+        await MainActor.run {
+            self.lastSystemMessageSent = systemMessage
+            self.lastUserMessageSent = userPrompt
+        }
+
+        let result: String
+
+        if aiService.selectedProvider == .ollama {
+            do {
+                result = try await aiService.enhanceWithOllama(text: userPrompt, systemPrompt: systemMessage)
+            } catch {
+                if let localError = error as? LocalAIError {
+                    throw EnhancementError.customError(localError.errorDescription ?? "An unknown Ollama error occurred.")
+                }
+                throw EnhancementError.customError(error.localizedDescription)
+            }
+        } else if aiService.selectedProvider == .localCLI {
+            do {
+                result = try await aiService.enhanceWithLocalCLI(systemPrompt: systemMessage, userPrompt: userPrompt)
+            } catch {
+                if let localError = error as? LocalCLIError {
+                    throw EnhancementError.customError(localError.errorDescription ?? "An unknown Local CLI error occurred.")
+                }
+                throw EnhancementError.customError(error.localizedDescription)
+            }
+        } else if aiService.selectedProvider == .mlx {
+            // Migration policy #9 — mirror the AFM-first / MLX-fallback routing
+            // from enhance(...) verbatim.
+            var afmRefused = false
+            if #available(macOS 26.0, *), AFMProvider.isAvailable {
+                let afmSystemPrompt = systemMessage + Self.afmOutputDirective
+                await MainActor.run { self.lastSystemMessageSent = afmSystemPrompt }
+                do {
+                    let raw = try await aiService.enhanceWithAFM(systemPrompt: afmSystemPrompt, userPrompt: userPrompt)
+                    let duration = Date().timeIntervalSince(startTime)
+                    return (AIEnhancementOutputFilter.filter(stripPreamble(raw)), duration)
+                } catch let providerError as AFMProvider.ProviderError {
+                    if case .safetyRefusal = providerError {
+                        logger.notice("🦾 command-mode: AFM refused, falling back to MLX")
+                        afmRefused = true
+                    } else {
+                        throw EnhancementError.customError(providerError.errorDescription ?? "An unknown Apple Foundation Models error occurred.")
+                    }
+                } catch is CancellationError {
+                    throw CancellationError()
+                } catch {
+                    throw EnhancementError.customError(error.localizedDescription)
+                }
+            }
+            _ = afmRefused
+
+            do {
+                // Migration policy #11 — no fast-path on Command Mode. Always uses
+                // the full commandModeTemplate.
+                let raw = try await aiService.enhanceWithMLX(systemPrompt: systemMessage, userPrompt: userPrompt, promptMode: .standard)
+                result = AIEnhancementOutputFilter.filter(stripPreamble(raw))
+            } catch {
+                if let providerError = error as? MLXProvider.ProviderError {
+                    throw EnhancementError.customError(providerError.errorDescription ?? "An unknown MLX error occurred.")
+                }
+                throw EnhancementError.customError(error.localizedDescription)
+            }
+        } else if aiService.selectedProvider == .foundationModels {
+            guard #available(macOS 26.0, *) else {
+                throw EnhancementError.customError("Apple Foundation Models requires macOS 26 or later.")
+            }
+            do {
+                let afmSystemPrompt = systemMessage + Self.afmOutputDirective
+                let raw = try await aiService.enhanceWithAFM(systemPrompt: afmSystemPrompt, userPrompt: userPrompt)
+                result = AIEnhancementOutputFilter.filter(stripPreamble(raw))
+            } catch {
+                if let providerError = error as? AFMProvider.ProviderError {
+                    throw EnhancementError.customError(providerError.errorDescription ?? "An unknown Apple Foundation Models error occurred.")
+                }
+                throw EnhancementError.customError(error.localizedDescription)
+            }
+        } else {
+            try await waitForRateLimit()
+            do {
+                let raw: String
+                switch aiService.selectedProvider {
+                case .anthropic:
+                    raw = try await AnthropicLLMClient.chatCompletion(
+                        apiKey: aiService.apiKey,
+                        model: aiService.currentModel,
+                        messages: [.user(userPrompt)],
+                        systemPrompt: systemMessage,
+                        timeout: baseTimeout
+                    )
+                default:
+                    guard let baseURL = URL(string: aiService.selectedProvider.baseURL) else {
+                        throw EnhancementError.customError("\(aiService.selectedProvider.rawValue) has an invalid API endpoint URL. Please update it in AI settings.")
+                    }
+                    let temperature = aiService.currentModel.lowercased().hasPrefix("gpt-5") ? 1.0 : 0.3
+                    let reasoningEffort = ReasoningConfig.getReasoningParameter(for: aiService.currentModel)
+                    let extraBody = ReasoningConfig.getExtraBodyParameters(for: aiService.currentModel)
+                    raw = try await OpenAILLMClient.chatCompletion(
+                        baseURL: baseURL,
+                        apiKey: aiService.apiKey,
+                        model: aiService.currentModel,
+                        messages: [.user(userPrompt)],
+                        systemPrompt: systemMessage,
+                        temperature: temperature,
+                        reasoningEffort: reasoningEffort,
+                        extraBody: extraBody,
+                        timeout: baseTimeout
+                    )
+                }
+                result = AIEnhancementOutputFilter.filter(raw.trimmingCharacters(in: .whitespacesAndNewlines))
+            } catch let error as LLMKitError {
+                throw mapLLMKitError(error)
+            } catch let error as EnhancementError {
+                throw error
+            } catch {
+                throw EnhancementError.customError(error.localizedDescription)
+            }
+        }
+
+        let duration = Date().timeIntervalSince(startTime)
+        return (result, duration)
+    }
+
     /// Live-preview enhancement run for the Prompts editor (spec §3.9 / plan §P3.E).
     ///
     /// Diverges from `enhance(_:)` on three deliberate axes:

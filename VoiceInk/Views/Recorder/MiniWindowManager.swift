@@ -27,6 +27,10 @@ class MiniWindowManager: ObservableObject {
                 .environmentObject(manager)
                 .environmentObject(enhancementService)
                 .environmentObject(failureRegistry)
+                .environmentObject(CommandModeService.shared)
+                .overlay(alignment: .top) {
+                    CommandModeBanner()
+                }
             )
         }
         setupNotifications()

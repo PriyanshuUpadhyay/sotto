@@ -12,6 +12,10 @@ extension KeyboardShortcuts.Name {
     static let retryLastTranscription = Self("retryLastTranscription")
     static let openHistoryWindow = Self("openHistoryWindow")
     static let quickAddToDictionary = Self("quickAddToDictionary")
+    /// W12.B Command Mode (master plan §0 Q5). Default Caps+9 = Hyper+9 =
+    /// Cmd+Ctrl+Opt+Shift+9. User's Karabiner Hyper layer makes this a single-key
+    /// press. Rebindable via Settings → Additional Shortcuts.
+    static let commandMode = Self("commandMode", default: .init(.nine, modifiers: [.command, .control, .option, .shift]))
 }
 
 @MainActor
@@ -203,6 +207,19 @@ class HotkeyManager: ObservableObject {
             guard let self else { return }
             Task { @MainActor in
                 DictionaryQuickAddManager.shared.toggle(modelContainer: self.engine.modelContext.container)
+            }
+        }
+
+        // W12.B — Command Mode (Caps+9 / Hyper+9). Captures the active
+        // selection, opens the recorder; the dictated text becomes the
+        // rewrite instruction. See plan §Migration policy #6.
+        KeyboardShortcuts.onKeyDown(for: .commandMode) { [weak self] in
+            Task { @MainActor in
+                guard let self else { return }
+                if self.recorderUIManager.isMiniRecorderVisible {
+                    return
+                }
+                await CommandModeService.shared.start()
             }
         }
 

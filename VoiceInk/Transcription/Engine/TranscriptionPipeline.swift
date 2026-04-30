@@ -65,6 +65,11 @@ class TranscriptionPipeline {
         // three cues (transcribe → fail → transcribe). Skip the pre-paste
         // transcribe cue when the pre-enhance one already fired.
         var didFireTranscribeCue = false
+        // W12.B — captured at the fork so the post-paste auto-send block
+        // (which fires after CommandModeService.clear() flips pendingCommand
+        // to nil) can still distinguish command-mode rewrites. Policy #14:
+        // a rewrite is the final state — never auto-Enter into Slack/etc.
+        var wasCommandMode = false
 
         logger.notice("🔄 Starting transcription...")
 
@@ -126,63 +131,115 @@ class TranscriptionPipeline {
             transcription.powerModeEmoji = powerModeEmoji
             finalPastedText = text
 
-            if let enhancementService, enhancementService.isConfigured {
-                let detectionResult = await promptDetectionService.analyzeText(text, with: enhancementService)
-                promptDetectionResult = detectionResult
-                await promptDetectionService.applyDetectionResult(detectionResult, to: enhancementService)
-            }
+            // W12.B — Command Mode fork. When CommandModeService.shared.pendingCommand
+            // is non-nil, the user pressed Caps+9 before this recording started,
+            // the selection was captured, and the dictated text is the rewrite
+            // instruction. Bypass prompt-detection (Migration policy #4) and
+            // the standard enhance gate; route through commandModeRewrite(...)
+            // and paste the rewrite in place of the selection.
+            if let pending = CommandModeService.shared.pendingCommand,
+               let enhancementService {
+                wasCommandMode = true
+                if shouldCancel() { CommandModeService.shared.clear(); await onCleanup(); return }
 
-            let isSkipShortEnhancementEnabled = UserDefaults.standard.bool(forKey: "SkipShortEnhancement")
-            let savedThreshold = UserDefaults.standard.integer(forKey: "ShortEnhancementWordThreshold")
-            let shortEnhancementWordThreshold = savedThreshold > 0 ? savedThreshold : 3
-            let shouldSkipEnhancement = isSkipShortEnhancementEnabled && WordCounter.count(in: text) <= shortEnhancementWordThreshold && !(promptDetectionResult?.shouldEnableAI == true)
-
-            if let enhancementService,
-               enhancementService.isEnhancementEnabled,
-               enhancementService.isConfigured,
-               !shouldSkipEnhancement {
-                if shouldCancel() { await onCleanup(); return }
-
-                // P3.F: transcribe-complete cue fires "ASR finishes, before
-                // enhance" per spec §3.10. The enhance step then runs (often
-                // several seconds), and enhance-complete fires before paste.
+                // Mirror the standard pre-enhance cue (§3.10). Rewrite latency
+                // is a few seconds on MLX; the cue acknowledges the dictation
+                // landed before the rewrite finishes.
                 SoundManager.shared.playTranscribeComplete()
                 didFireTranscribeCue = true
 
                 onStateChange(.enhancing)
-                let textForAI = promptDetectionResult?.processedText ?? text
+                let rewriteStart = Date()
 
                 do {
-                    let (enhancedText, enhancementDuration, promptName) = try await enhancementService.enhance(textForAI)
-                    logger.notice("📝 AI enhancement: \(enhancedText, privacy: .public)")
-                    transcription.enhancedText = enhancedText
+                    let rewrite = try await CommandModeService.shared.processInstruction(transcript: text)
+                    logger.notice("🦾 command-mode: rewrite produced (\(rewrite.count, privacy: .public) chars)")
+                    transcription.enhancedText = rewrite
                     transcription.aiEnhancementModelName = enhancementService.getAIService()?.currentModel
-                    transcription.promptName = promptName
-                    transcription.enhancementDuration = enhancementDuration
                     transcription.aiRequestSystemMessage = enhancementService.lastSystemMessageSent
                     transcription.aiRequestUserMessage = enhancementService.lastUserMessageSent
-                    finalPastedText = enhancedText
+                    transcription.enhancementDuration = Date().timeIntervalSince(rewriteStart)
+                    transcription.commandModeSelection = pending.selectionText
+                    transcription.commandModeInstruction = text
+                    finalPastedText = rewrite
                     didEnhance = true
                 } catch {
                     let errorDescription = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
                     let shortReason = String(errorDescription.prefix(80))
-                    // Don't write the error into `transcription.enhancedText` —
-                    // history views and the copy/paste path resolve text via
-                    // `enhancedText ?? text`, so persisting a failure string
-                    // there leaks "Enhancement failed: …" into the clipboard
-                    // and the history list. Leaving it nil falls through to
-                    // the raw transcript everywhere.
-                    logger.error("AI enhancement failed: \(errorDescription, privacy: .public)")
+                    logger.error("🦾 command-mode: rewrite failed — \(errorDescription, privacy: .public)")
                     await MainActor.run {
                         NotificationManager.shared.showNotification(
-                            title: "Enhancement failed: \(shortReason)",
+                            title: "Command Mode rewrite failed: \(shortReason)",
                             type: .warning
                         )
                     }
-                    // Surface to engine so the failure visual can render. Paste
-                    // still proceeds with the un-enhanced transcript (silent fallback).
-                    onFailure("Enhancement failed: \(shortReason)")
+                    // Migration policy #12 — fall-through bypass: do NOT paste
+                    // anything. The user's selection stays intact; they can
+                    // re-press Caps+9 to retry.
+                    finalPastedText = nil
+                    onFailure("Command Mode rewrite failed: \(shortReason)")
+                }
+
+                CommandModeService.shared.clear()
+            } else {
+                if let enhancementService, enhancementService.isConfigured {
+                    let detectionResult = await promptDetectionService.analyzeText(text, with: enhancementService)
+                    promptDetectionResult = detectionResult
+                    await promptDetectionService.applyDetectionResult(detectionResult, to: enhancementService)
+                }
+
+                let isSkipShortEnhancementEnabled = UserDefaults.standard.bool(forKey: "SkipShortEnhancement")
+                let savedThreshold = UserDefaults.standard.integer(forKey: "ShortEnhancementWordThreshold")
+                let shortEnhancementWordThreshold = savedThreshold > 0 ? savedThreshold : 3
+                let shouldSkipEnhancement = isSkipShortEnhancementEnabled && WordCounter.count(in: text) <= shortEnhancementWordThreshold && !(promptDetectionResult?.shouldEnableAI == true)
+
+                if let enhancementService,
+                   enhancementService.isEnhancementEnabled,
+                   enhancementService.isConfigured,
+                   !shouldSkipEnhancement {
                     if shouldCancel() { await onCleanup(); return }
+
+                    // P3.F: transcribe-complete cue fires "ASR finishes, before
+                    // enhance" per spec §3.10. The enhance step then runs (often
+                    // several seconds), and enhance-complete fires before paste.
+                    SoundManager.shared.playTranscribeComplete()
+                    didFireTranscribeCue = true
+
+                    onStateChange(.enhancing)
+                    let textForAI = promptDetectionResult?.processedText ?? text
+
+                    do {
+                        let (enhancedText, enhancementDuration, promptName) = try await enhancementService.enhance(textForAI)
+                        logger.notice("📝 AI enhancement: \(enhancedText, privacy: .public)")
+                        transcription.enhancedText = enhancedText
+                        transcription.aiEnhancementModelName = enhancementService.getAIService()?.currentModel
+                        transcription.promptName = promptName
+                        transcription.enhancementDuration = enhancementDuration
+                        transcription.aiRequestSystemMessage = enhancementService.lastSystemMessageSent
+                        transcription.aiRequestUserMessage = enhancementService.lastUserMessageSent
+                        finalPastedText = enhancedText
+                        didEnhance = true
+                    } catch {
+                        let errorDescription = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+                        let shortReason = String(errorDescription.prefix(80))
+                        // Don't write the error into `transcription.enhancedText` —
+                        // history views and the copy/paste path resolve text via
+                        // `enhancedText ?? text`, so persisting a failure string
+                        // there leaks "Enhancement failed: …" into the clipboard
+                        // and the history list. Leaving it nil falls through to
+                        // the raw transcript everywhere.
+                        logger.error("AI enhancement failed: \(errorDescription, privacy: .public)")
+                        await MainActor.run {
+                            NotificationManager.shared.showNotification(
+                                title: "Enhancement failed: \(shortReason)",
+                                type: .warning
+                            )
+                        }
+                        // Surface to engine so the failure visual can render. Paste
+                        // still proceeds with the un-enhanced transcript (silent fallback).
+                        onFailure("Enhancement failed: \(shortReason)")
+                        if shouldCancel() { await onCleanup(); return }
+                    }
                 }
             }
 
@@ -221,8 +278,14 @@ class TranscriptionPipeline {
                 let appendSpace = UserDefaults.standard.bool(forKey: "AppendTrailingSpace")
                 CursorPaster.pasteAtCursor(textToPaste + (appendSpace ? " " : ""))
 
+                // W12.B — gate auto-send on standard-recorder origin only.
+                // Command Mode rewrites are final; an auto-Enter would send the
+                // rewrite as a Slack/etc message rather than leaving the user
+                // to review + send. Policy #14 / Risks #14.
                 let powerMode = PowerModeManager.shared
-                if let activeConfig = powerMode.currentActiveConfiguration, activeConfig.autoSendKey.isEnabled {
+                if !wasCommandMode,
+                   let activeConfig = powerMode.currentActiveConfiguration,
+                   activeConfig.autoSendKey.isEnabled {
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                         CursorPaster.performAutoSend(activeConfig.autoSendKey)
                     }

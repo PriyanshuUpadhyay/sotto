@@ -185,6 +185,15 @@ struct SettingsView: View {
                     .controlSize(.small)
             }
 
+            SettingsRow(
+                iconSystemName: "text.cursor",
+                label: "Command Mode",
+                iconTint: Palette.accent
+            ) {
+                KeyboardShortcuts.Recorder(for: .commandMode)
+                    .controlSize(.small)
+            }
+
             // Custom Cancel - hierarchical
             ExpandableSettingsRow(
                 isExpanded: $isCustomCancelExpanded,

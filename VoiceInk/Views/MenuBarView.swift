@@ -22,6 +22,7 @@ struct MenuBarView: View {
     @EnvironmentObject var menuBarManager: MenuBarManager
     @EnvironmentObject var enhancementService: AIEnhancementService
     @EnvironmentObject var aiService: AIService
+    @EnvironmentObject var commandModeService: CommandModeService
 
     @Query(
         sort: [SortDescriptor(\Transcription.timestamp, order: .reverse)]
@@ -32,6 +33,12 @@ struct MenuBarView: View {
     var body: some View {
         Group {
             recordingButton
+
+            // W12.B — Command Mode status row. Disabled (info-only) per the
+            // existing menubar idiom (transcriptionRow / providerRow).
+            if commandModeService.isActive {
+                Button(commandModeRow) {}.disabled(true)
+            }
 
             Button("Show History…") {
                 menuBarManager.openHistoryWindow()
@@ -134,6 +141,15 @@ struct MenuBarView: View {
         let provider = aiService.selectedProvider.rawValue
         let connected = aiService.isAPIKeyValid ? "" : "  (not configured)"
         return "Enhancement: \(provider)\(connected)"
+    }
+
+    private var commandModeRow: String {
+        switch commandModeService.phase {
+        case .rewriting: return "Command Mode: rewriting…"
+        case .pasting:   return "Command Mode: pasting…"
+        case .recording, .capturingSelection, .idle:
+            return "Command Mode: listening…"
+        }
     }
 
     private func previewText(for t: Transcription) -> String {

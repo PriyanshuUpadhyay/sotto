@@ -186,6 +186,12 @@ class RecorderUIManager: ObservableObject {
         await MainActor.run {
             engine.recordingState = .idle
         }
+
+        // W12.B — defensive command-mode teardown. The pipeline calls clear()
+        // on success or rewrite failure; this catches the cancel-mid-dictation
+        // + Escape-mid-dictation paths. Idempotent.
+        CommandModeService.shared.clear()
+
         logger.notice("dismissMiniRecorder completed")
     }
 

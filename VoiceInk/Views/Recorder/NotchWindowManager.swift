@@ -31,6 +31,10 @@ class NotchWindowManager: ObservableObject {
                 .environmentObject(manager)
                 .environmentObject(enhancementService)
                 .environmentObject(failureRegistry)
+                .environmentObject(CommandModeService.shared)
+                .overlay(alignment: .top) {
+                    CommandModeBanner()
+                }
             )
         }
         NotificationCenter.default.addObserver(

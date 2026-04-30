@@ -26,6 +26,16 @@ final class Transcription {
     var powerModeEmoji: String?
     var transcriptionStatus: String?
 
+    /// W12.B — Command Mode origin. Non-nil when this Transcription was
+    /// produced by a Caps+9 highlight-and-rewrite rather than the standard
+    /// recorder enhance path. `text` holds the dictated instruction (the
+    /// transcribed audio); `enhancedText` holds the rewrite that was pasted;
+    /// `commandModeSelection` holds the original selection captured BEFORE
+    /// recording started. See plan
+    /// `docs/superpowers/plans/W12B-command-mode.md` §Migration policy #8.
+    var commandModeSelection: String?
+    var commandModeInstruction: String?
+
     init(text: String,
          duration: TimeInterval,
          enhancedText: String? = nil,
@@ -39,7 +49,9 @@ final class Transcription {
          aiRequestUserMessage: String? = nil,
          powerModeName: String? = nil,
          powerModeEmoji: String? = nil,
-         transcriptionStatus: TranscriptionStatus = .pending) {
+         transcriptionStatus: TranscriptionStatus = .pending,
+         commandModeSelection: String? = nil,
+         commandModeInstruction: String? = nil) {
         self.id = UUID()
         self.text = text
         self.enhancedText = enhancedText
@@ -56,5 +68,7 @@ final class Transcription {
         self.powerModeName = powerModeName
         self.powerModeEmoji = powerModeEmoji
         self.transcriptionStatus = transcriptionStatus.rawValue
+        self.commandModeSelection = commandModeSelection
+        self.commandModeInstruction = commandModeInstruction
     }
 }
