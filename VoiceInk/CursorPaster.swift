@@ -40,11 +40,20 @@ class CursorPaster {
 
         if mustForceClipboard {
             logger.notice("No focused text field — text copied to clipboard, skipping paste keystroke")
+            // W12.E paste-fallback: append the rescued text as a new
+            // Scratchpad tab so the user can recover it via ⌥+S. Does NOT
+            // open the Scratchpad window; the existing notification surfaces
+            // the rescue. Migration policy #11 + plan §Task 8.
             Task { @MainActor in
                 NotificationManager.shared.showNotification(
                     title: "Copied to clipboard (no text field focused)",
                     type: .info
                 )
+                if let container = ScratchpadModelContainerProvider.shared.modelContainer {
+                    ScratchpadWindowController.shared.appendAsNewTab(
+                        text: text, modelContainer: container
+                    )
+                }
             }
             return
         }

@@ -54,7 +54,9 @@ struct VoiceInkApp: App {
             Transcription.self,
             VocabularyWord.self,
             WordReplacement.self,
-            Snippet.self
+            Snippet.self,
+            ScratchpadDocument.self,
+            ScratchpadVersion.self
         ])
         var initializationFailed = false
 
@@ -91,6 +93,11 @@ struct VoiceInkApp: App {
         }
 
         containerInitializationFailed = initializationFailed
+
+        // W12.E — expose the container to static call sites that can't take
+        // it via injection (CursorPaster's paste-fallback branch). Plan
+        // §Task 8.2.
+        ScratchpadModelContainerProvider.shared.modelContainer = container
 
         // Initialize services with proper sharing of instances
         let aiService = AIService()
@@ -245,7 +252,15 @@ struct VoiceInkApp: App {
             let dictionaryStoreURL = appSupportURL.appendingPathComponent("dictionary.store")
 
             // Transcript configuration
-            let transcriptSchema = Schema([Transcription.self])
+            // W12.E — ScratchpadDocument + ScratchpadVersion join the local
+            // "default" store (NOT the CloudKit "dictionary" store). Single-
+            // device only per master plan §3 W12.E. Lightweight migration on
+            // first launch (net-new entities; SwiftData handles automatically).
+            let transcriptSchema = Schema([
+                Transcription.self,
+                ScratchpadDocument.self,
+                ScratchpadVersion.self
+            ])
             let transcriptConfig = ModelConfiguration(
                 "default",
                 schema: transcriptSchema,
@@ -281,7 +296,13 @@ struct VoiceInkApp: App {
     private static func createInMemoryContainer(schema: Schema, logger: Logger) -> ModelContainer? {
         do {
             // Transcript configuration
-            let transcriptSchema = Schema([Transcription.self])
+            // W12.E — Scratchpad entities join the in-memory fallback too so
+            // the first-launch fallback path keeps the API surface intact.
+            let transcriptSchema = Schema([
+                Transcription.self,
+                ScratchpadDocument.self,
+                ScratchpadVersion.self
+            ])
             let transcriptConfig = ModelConfiguration(
                 "default",
                 schema: transcriptSchema,

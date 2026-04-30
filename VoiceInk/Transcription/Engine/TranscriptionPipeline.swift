@@ -276,7 +276,20 @@ class TranscriptionPipeline {
                     SoundManager.shared.playTranscribeComplete()
                 }
                 let appendSpace = UserDefaults.standard.bool(forKey: "AppendTrailingSpace")
-                CursorPaster.pasteAtCursor(textToPaste + (appendSpace ? " " : ""))
+                let textToInsert = textToPaste + (appendSpace ? " " : "")
+
+                // W12.E dictation-into-place: when the Scratchpad is the key
+                // window AND a tab editor holds first-responder, route the
+                // transcript into the active tab at cursor position. Suppresses
+                // auto-send (no unwanted ⏎ inside the Scratchpad). First
+                // decision point — mutually exclusive with the paste-fallback
+                // branch (Migration policy #12 / #13).
+                if ScratchpadWindowController.shared.isFocusedAndKey {
+                    ScratchpadWindowController.shared.insertIntoActiveTab(textToInsert)
+                    return
+                }
+
+                CursorPaster.pasteAtCursor(textToInsert)
 
                 // W12.B — gate auto-send on standard-recorder origin only.
                 // Command Mode rewrites are final; an auto-Enter would send the

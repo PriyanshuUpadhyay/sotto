@@ -194,6 +194,16 @@ struct SettingsView: View {
                     .controlSize(.small)
             }
 
+            // W12.E Scratchpad summon shortcut. Default ⌥+S; user can rebind.
+            SettingsRow(
+                iconSystemName: "square.and.pencil",
+                label: "Toggle Scratchpad",
+                iconTint: Palette.accent
+            ) {
+                KeyboardShortcuts.Recorder(for: .scratchpadToggle)
+                    .controlSize(.small)
+            }
+
             // Custom Cancel - hierarchical
             ExpandableSettingsRow(
                 isExpanded: $isCustomCancelExpanded,

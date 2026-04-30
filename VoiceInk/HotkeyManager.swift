@@ -16,6 +16,12 @@ extension KeyboardShortcuts.Name {
     /// Cmd+Ctrl+Opt+Shift+9. User's Karabiner Hyper layer makes this a single-key
     /// press. Rebindable via Settings → Additional Shortcuts.
     static let commandMode = Self("commandMode", default: .init(.nine, modifiers: [.command, .control, .option, .shift]))
+
+    /// W12.E — Scratchpad toggle. Default ⌥+S; user can rebind via Settings.
+    /// The `default:` form is first-run-only — never overwrites a user
+    /// customization. Mirrors the `toggleEnhancement` idiom in
+    /// `MiniRecorderShortcutManager.swift`. Plan §Migration policy #10.
+    static let scratchpadToggle = Self("scratchpadToggle", default: .init(.s, modifiers: .option))
 }
 
 @MainActor
@@ -199,6 +205,16 @@ class HotkeyManager: ObservableObject {
                 HistoryWindowController.shared.showHistoryWindow(
                     modelContainer: self.engine.modelContext.container,
                     engine: self.engine
+                )
+            }
+        }
+
+        // W12.E — Scratchpad toggle. Open / focus / hide via Migration policy #9.
+        KeyboardShortcuts.onKeyUp(for: .scratchpadToggle) { [weak self] in
+            guard let self = self else { return }
+            Task { @MainActor in
+                ScratchpadWindowController.shared.toggle(
+                    modelContainer: self.engine.modelContext.container
                 )
             }
         }
