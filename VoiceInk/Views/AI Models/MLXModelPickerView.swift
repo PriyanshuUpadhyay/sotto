@@ -100,14 +100,11 @@ struct MLXModelPickerView: View {
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
         }
-        .padding(12)
-        .background(
+        .glassPanel(cornerRadius: 14)
+        .overlay(
             RoundedRectangle(cornerRadius: 14, style: .continuous)
                 .fill(isActive ? Palette.accent.opacity(0.10) : Color.clear)
-                .background(
-                    RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .fill(.ultraThinMaterial)
-                )
+                .allowsHitTesting(false)
         )
         .overlay(
             RoundedRectangle(cornerRadius: 14, style: .continuous)
@@ -323,14 +320,11 @@ struct MLXModelPickerView: View {
                     .foregroundColor(Palette.onyxMute)
             }
         }
-        .padding(12)
-        .background(
+        .glassPanel(cornerRadius: 14)
+        .overlay(
             RoundedRectangle(cornerRadius: 14, style: .continuous)
                 .fill(isActive ? Palette.accent.opacity(0.10) : Color.clear)
-                .background(
-                    RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .fill(.ultraThinMaterial)
-                )
+                .allowsHitTesting(false)
         )
         .overlay(
             RoundedRectangle(cornerRadius: 14, style: .continuous)

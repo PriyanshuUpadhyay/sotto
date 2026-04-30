@@ -8,33 +8,27 @@ struct NativeAppleModelCardView: View {
     var setDefaultAction: () -> Void
     
     var body: some View {
-        HStack(alignment: .top, spacing: 16) {
-            // Main Content
-            VStack(alignment: .leading, spacing: 6) {
-                headerSection
-                metadataSection
-                descriptionSection
+        GlassCard(cornerRadius: 16, padding: 16) {
+            HStack(alignment: .top, spacing: 16) {
+                // Main Content
+                VStack(alignment: .leading, spacing: 6) {
+                    headerSection
+                    metadataSection
+                    descriptionSection
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+                // Action Controls
+                actionSection
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            
-            // Action Controls
-            actionSection
         }
-        .padding(16)
-        .background(
-            HaloMaterial(
-                shape: RoundedRectangle(cornerRadius: 16, style: .continuous),
-                phase: .hidden
-            )
-        )
         .overlay(
             RoundedRectangle(cornerRadius: 16, style: .continuous)
                 .stroke(
-                    isCurrent ? Color.accentColor.opacity(0.45) : Color.white.opacity(0.08),
-                    lineWidth: isCurrent ? 1.5 : 0.5
+                    isCurrent ? Palette.accent.opacity(0.55) : Palette.hairline,
+                    lineWidth: isCurrent ? 1.5 : 1
                 )
         )
-        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 
     private var headerSection: some View {

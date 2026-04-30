@@ -19,34 +19,28 @@ struct WhisperModelCardView: View {
     }
     
     var body: some View {
-        HStack(alignment: .top, spacing: 16) {
-            // Main Content
-            VStack(alignment: .leading, spacing: 6) {
-                headerSection
-                metadataSection
-                descriptionSection
-                progressSection
+        GlassCard(cornerRadius: 16, padding: 16) {
+            HStack(alignment: .top, spacing: 16) {
+                // Main Content
+                VStack(alignment: .leading, spacing: 6) {
+                    headerSection
+                    metadataSection
+                    descriptionSection
+                    progressSection
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+                // Action Controls
+                actionSection
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            
-            // Action Controls
-            actionSection
         }
-        .padding(16)
-        .background(
-            HaloMaterial(
-                shape: RoundedRectangle(cornerRadius: 16, style: .continuous),
-                phase: .hidden
-            )
-        )
         .overlay(
             RoundedRectangle(cornerRadius: 16, style: .continuous)
                 .stroke(
-                    isCurrent ? Color.accentColor.opacity(0.45) : Color.white.opacity(0.08),
-                    lineWidth: isCurrent ? 1.5 : 0.5
+                    isCurrent ? Palette.accent.opacity(0.55) : Palette.hairline,
+                    lineWidth: isCurrent ? 1.5 : 1
                 )
         )
-        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 
     private var headerSection: some View {
@@ -154,8 +148,8 @@ struct WhisperModelCardView: View {
                     .padding(.vertical, 6)
                     .background(
                         Capsule()
-                            .fill(Color(.controlAccentColor))
-                            .shadow(color: Color(.controlAccentColor).opacity(0.2), radius: 2, x: 0, y: 1)
+                            .fill(Palette.accent)
+                            .shadow(color: Palette.accent.opacity(0.2), radius: 2, x: 0, y: 1)
                     )
                 }
                 .buttonStyle(.plain)
@@ -198,75 +192,69 @@ struct ImportedWhisperModelCardView: View {
     var setDefaultAction: () -> Void
 
     var body: some View {
-        HStack(alignment: .top, spacing: 16) {
-            VStack(alignment: .leading, spacing: 6) {
-                HStack(alignment: .firstTextBaseline) {
-                    Text(model.displayName)
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundColor(Color(.labelColor))
-                    Spacer()
-                }
-
-                Text("Imported local model")
-                    .font(.system(size: 11))
-                    .foregroundColor(Color(.secondaryLabelColor))
-                    .lineLimit(2)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .padding(.top, 4)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-
-            HStack(spacing: 8) {
-                if isCurrent {
-                    Text("Default Model")
-                        .font(.system(size: 12))
-                        .foregroundColor(Color(.secondaryLabelColor))
-                } else if isDownloaded {
-                    Button(action: setDefaultAction) {
-                        Text("Set as Default")
-                            .font(.system(size: 12))
+        GlassCard(cornerRadius: 16, padding: 16) {
+            HStack(alignment: .top, spacing: 16) {
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack(alignment: .firstTextBaseline) {
+                        Text(model.displayName)
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundColor(Color(.labelColor))
+                        Spacer()
                     }
-                    .buttonStyle(.bordered)
-                    .controlSize(.small)
-                }
 
-                if isDownloaded {
-                    Menu {
-                        Button(action: deleteAction) {
-                            Label("Delete Model", systemImage: "trash")
+                    Text("Imported local model")
+                        .font(.system(size: 11))
+                        .foregroundColor(Color(.secondaryLabelColor))
+                        .lineLimit(2)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .padding(.top, 4)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+                HStack(spacing: 8) {
+                    if isCurrent {
+                        Text("Default Model")
+                            .font(.system(size: 12))
+                            .foregroundColor(Color(.secondaryLabelColor))
+                    } else if isDownloaded {
+                        Button(action: setDefaultAction) {
+                            Text("Set as Default")
+                                .font(.system(size: 12))
                         }
-                        Button {
-                            if let modelURL = modelURL {
-                                NSWorkspace.shared.selectFile(modelURL.path, inFileViewerRootedAtPath: "")
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
+                    }
+
+                    if isDownloaded {
+                        Menu {
+                            Button(action: deleteAction) {
+                                Label("Delete Model", systemImage: "trash")
+                            }
+                            Button {
+                                if let modelURL = modelURL {
+                                    NSWorkspace.shared.selectFile(modelURL.path, inFileViewerRootedAtPath: "")
+                                }
+                            } label: {
+                                Label("Show in Finder", systemImage: "folder")
                             }
                         } label: {
-                            Label("Show in Finder", systemImage: "folder")
+                            Image(systemName: "ellipsis.circle")
+                                .font(.system(size: 14))
                         }
-                    } label: {
-                        Image(systemName: "ellipsis.circle")
-                            .font(.system(size: 14))
+                        .menuStyle(.borderlessButton)
+                        .menuIndicator(.hidden)
+                        .frame(width: 20, height: 20)
                     }
-                    .menuStyle(.borderlessButton)
-                    .menuIndicator(.hidden)
-                    .frame(width: 20, height: 20)
                 }
             }
         }
-        .padding(16)
-        .background(
-            HaloMaterial(
-                shape: RoundedRectangle(cornerRadius: 16, style: .continuous),
-                phase: .hidden
-            )
-        )
         .overlay(
             RoundedRectangle(cornerRadius: 16, style: .continuous)
                 .stroke(
-                    isCurrent ? Color.accentColor.opacity(0.45) : Color.white.opacity(0.08),
-                    lineWidth: isCurrent ? 1.5 : 0.5
+                    isCurrent ? Palette.accent.opacity(0.55) : Palette.hairline,
+                    lineWidth: isCurrent ? 1.5 : 1
                 )
         )
-        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 }
 

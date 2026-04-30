@@ -37,43 +37,39 @@ struct CloudModelCardView: View {
     }
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            // Main card content
-            HStack(alignment: .top, spacing: 16) {
-                VStack(alignment: .leading, spacing: 6) {
-                    headerSection
-                    metadataSection
-                    descriptionSection
+        GlassCard(cornerRadius: 16, padding: 0) {
+            VStack(alignment: .leading, spacing: 0) {
+                // Main card content
+                HStack(alignment: .top, spacing: 16) {
+                    VStack(alignment: .leading, spacing: 6) {
+                        headerSection
+                        metadataSection
+                        descriptionSection
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+
+                    actionSection
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                
-                actionSection
-            }
-            .padding(16)
-            
-            // Expandable configuration section
-            if isExpanded {
-                Divider()
-                    .padding(.horizontal, 16)
-                
-                configurationSection
-                    .padding(16)
+                .padding(16)
+
+                // Expandable configuration section
+                if isExpanded {
+                    Divider()
+                        .background(Palette.hairlineSoft)
+                        .padding(.horizontal, 16)
+
+                    configurationSection
+                        .padding(16)
+                }
             }
         }
-        .background(
-            HaloMaterial(
-                shape: RoundedRectangle(cornerRadius: 16, style: .continuous),
-                phase: .hidden
-            )
-        )
         .overlay(
             RoundedRectangle(cornerRadius: 16, style: .continuous)
                 .stroke(
-                    isCurrent ? Color.accentColor.opacity(0.45) : Color.white.opacity(0.08),
-                    lineWidth: isCurrent ? 1.5 : 0.5
+                    isCurrent ? Palette.accent.opacity(0.55) : Palette.hairline,
+                    lineWidth: isCurrent ? 1.5 : 1
                 )
         )
-        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
         .onAppear {
             loadSavedAPIKey()
         }
@@ -181,8 +177,8 @@ struct CloudModelCardView: View {
                     .padding(.vertical, 6)
                     .background(
                         Capsule()
-                            .fill(Color(.controlAccentColor))
-                            .shadow(color: Color(.controlAccentColor).opacity(0.2), radius: 2, x: 0, y: 1)
+                            .fill(Palette.accent)
+                            .shadow(color: Palette.accent.opacity(0.2), radius: 2, x: 0, y: 1)
                     )
                 }
                 .buttonStyle(.plain)
@@ -235,7 +231,7 @@ struct CloudModelCardView: View {
                     .padding(.vertical, 6)
                     .background(
                         Capsule()
-                            .fill(verificationStatus == .success ? Color(.systemGreen) : Color(.controlAccentColor))
+                            .fill(verificationStatus == .success ? Palette.success : Palette.accent)
                     )
                 }
                 .buttonStyle(.plain)
@@ -255,7 +251,7 @@ struct CloudModelCardView: View {
             } else if verificationStatus == .success {
                 Text("API key verified successfully!")
                     .font(.caption)
-                    .foregroundColor(Color(.systemGreen))
+                    .foregroundColor(Palette.success)
             }
         }
     }

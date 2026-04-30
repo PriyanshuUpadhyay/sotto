@@ -10,34 +10,29 @@ struct CustomModelCardView: View {
     var editAction: (CustomCloudModel) -> Void
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            // Main card content
-            HStack(alignment: .top, spacing: 16) {
-                VStack(alignment: .leading, spacing: 6) {
-                    headerSection
-                    metadataSection
-                    descriptionSection
+        GlassCard(cornerRadius: 16, padding: 0) {
+            VStack(alignment: .leading, spacing: 0) {
+                // Main card content
+                HStack(alignment: .top, spacing: 16) {
+                    VStack(alignment: .leading, spacing: 6) {
+                        headerSection
+                        metadataSection
+                        descriptionSection
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+
+                    actionSection
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                
-                actionSection
+                .padding(16)
             }
-            .padding(16)
         }
-        .background(
-            HaloMaterial(
-                shape: RoundedRectangle(cornerRadius: 16, style: .continuous),
-                phase: .hidden
-            )
-        )
         .overlay(
             RoundedRectangle(cornerRadius: 16, style: .continuous)
                 .stroke(
-                    isCurrent ? Color.accentColor.opacity(0.45) : Color.white.opacity(0.08),
-                    lineWidth: isCurrent ? 1.5 : 0.5
+                    isCurrent ? Palette.accent.opacity(0.55) : Palette.hairline,
+                    lineWidth: isCurrent ? 1.5 : 1
                 )
         )
-        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
     
     private var headerSection: some View {
