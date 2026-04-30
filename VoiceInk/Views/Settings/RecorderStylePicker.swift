@@ -2,21 +2,17 @@ import SwiftUI
 
 // MARK: - RecorderStylePicker
 //
-// Three visual cards — each a miniature of the corresponding recorder
+// Two visual cards — each a miniature of the corresponding recorder
 // surface — instead of the old segmented "Notch / Mini" text picker.
-// The Constellation tile previews the W2 chip cluster silhouette (anchor +
-// secondaries) so users see the new vocabulary before opting in.
 //
 // Identifier contract (matches `RecorderUIManager.recorderType`):
-//   "notch"          → Halo pill in the notch
-//   "mini"           → Halo pill floating top-of-screen
-//   "constellation"  → Constellation chip cluster (anchor + secondaries)
+//   "notch"  → Halo pill in the notch
+//   "mini"   → Halo pill floating top-of-screen
 //
-// `RecorderUIManager` currently branches on `"notch"` vs. everything else;
-// `"constellation"` falls through to the floating layout until Phase 3 wires
-// a dedicated window manager. The picker still records the user's intent
-// via `@AppStorage`-backed UserDefaults so the wiring lands without
-// re-prompting the user.
+// `RecorderUIManager` branches on `"notch"` vs. `"mini"` in
+// `showRecorderPanel`. A legacy `"constellation"` value (shipped briefly as
+// a vaporware third tile that always fell through to mini) is migrated to
+// `"mini"` on read in `RecorderUIManager.recorderType`'s initializer.
 
 struct RecorderStylePicker: View {
     @Binding var selection: String
@@ -40,15 +36,6 @@ struct RecorderStylePicker: View {
                 preview: { FloatingPreview() }
             )
             .onTapGesture { selection = "mini" }
-
-            RecorderStyleCard(
-                title: "Constellation",
-                subtitle: "Anchor · chips",
-                identifier: "constellation",
-                isSelected: selection == "constellation",
-                preview: { ConstellationPreview() }
-            )
-            .onTapGesture { selection = "constellation" }
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 4)
@@ -162,68 +149,5 @@ private struct FloatingPreview: View {
             Spacer()
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
-}
-
-// MARK: - Constellation preview
-//
-// Static miniature of the W2 chip cluster (spec §2 + §4): anchor REC chip
-// flanked by TIME (left) and PROMPT (right). Hand-painted at preview scale
-// so the tile stays motion-free — Reduce Motion compliance per spec §6.4.
-
-private struct ConstellationPreview: View {
-    var body: some View {
-        VStack(spacing: 6) {
-            Spacer().frame(height: 6)
-            HStack(spacing: 4) {
-                Spacer(minLength: 0)
-                miniSecondary(text: "00:14")
-                miniAnchor
-                miniSecondary(text: "PROMPT")
-                Spacer(minLength: 0)
-            }
-            Spacer(minLength: 0)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
-
-    private var miniAnchor: some View {
-        HStack(spacing: 3) {
-            Circle()
-                .fill(Palette.accent)
-                .frame(width: 4, height: 4)
-                .shadow(color: Palette.accent.opacity(0.7), radius: 2)
-            Text("REC")
-                .font(.system(size: 5, weight: .medium, design: .monospaced))
-                .tracking(0.3)
-                .foregroundStyle(Color.white.opacity(0.95))
-        }
-        .padding(.horizontal, 4)
-        .frame(height: 11)
-        .background(
-            RoundedRectangle(cornerRadius: 3, style: .continuous)
-                .fill(Color.black.opacity(0.55))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 3, style: .continuous)
-                        .stroke(Palette.hairline, lineWidth: 0.5)
-                )
-        )
-    }
-
-    private func miniSecondary(text: String) -> some View {
-        Text(text)
-            .font(.system(size: 5, weight: .medium, design: .monospaced))
-            .tracking(0.3)
-            .foregroundStyle(Color.white.opacity(0.85))
-            .padding(.horizontal, 4)
-            .frame(height: 11)
-            .background(
-                RoundedRectangle(cornerRadius: 3, style: .continuous)
-                    .fill(Color.black.opacity(0.55))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 3, style: .continuous)
-                            .stroke(Palette.hairline, lineWidth: 0.5)
-                    )
-            )
     }
 }

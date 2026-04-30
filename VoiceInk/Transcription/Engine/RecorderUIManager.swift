@@ -7,7 +7,12 @@ import os
 class RecorderUIManager: ObservableObject {
     @Published var miniRecorderError: String?
 
-    @Published var recorderType: String = UserDefaults.standard.string(forKey: "RecorderType") ?? "mini" {
+    @Published var recorderType: String = {
+        // Legacy "constellation" value (shipped briefly as a vaporware tile
+        // that fell through to mini) → migrate to "mini" on read.
+        let stored = UserDefaults.standard.string(forKey: "RecorderType") ?? "mini"
+        return stored == "constellation" ? "mini" : stored
+    }() {
         didSet {
             if isMiniRecorderVisible {
                 if oldValue == "notch" {
