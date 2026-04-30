@@ -2,7 +2,7 @@
 
 **Source plan:** `docs/superpowers/plans/2026-04-29-W11-W13-master-plan.md` (decisions §0)
 **Live status:** `docs/superpowers/STATUS.md`
-**Started:** 2026-04-29 · last updated: 2026-04-30
+**Started:** 2026-04-29 · last updated: 2026-04-30 (W12.A + W13.B merged)
 
 Status legend: ⬜ pending · 🟡 in_progress · ✅ done · ⏸ blocked / deferred
 
@@ -34,7 +34,7 @@ Status legend: ⬜ pending · 🟡 in_progress · ✅ done · ⏸ blocked / defe
 
 | Packet | Status | Notes |
 |---|---|---|
-| **W12.A** — Auto Cleanup levels + diff + Undo | ⬜ | Replace binary `isAIEnhancementEnabled` with 4-level dial (None/Light/Medium/High); wire `WordDiffEngine` into result UI; persist raw transcript alongside enhanced. Highest user-leverage. |
+| **W12.A** — Auto Cleanup levels + diff + Undo | ✅ | Merged 2026-04-30 (`3bf3013`). New `EnhanceLevel` enum (None/Light/Medium/High) replaces stored `isAIEnhancementEnabled: Bool` on `PowerModeConfig` + `AIEnhancementService` via dual-key Codable (decode prefers enum, falls back to legacy bool → .medium/.none; encoder writes both keys for ≥3-month downgrade tolerance) + derived computed `isEnhancementEnabled` accessor (~64 in-tree bool readers compile unchanged). Per-level system-prompt directive injected at front of `customPromptTemplate` body via new `AIPrompts.cleanupDirective(for:)`. `WordDiffEngine.tokenLevelDiff(...) -> [DiffOp]` sibling. `TranscriptionDetailView` gains Panes/Diff 2-segment picker + AttributedString inline diff (insertions `Palette.success` underline, deletions `Palette.warn` strikethrough) + "Undo AI edit" button (clears `enhancedText` + 5 metadata fields, no confirm dialog). Pickers placed at 3 surfaces: global Settings (segmented), recorder-side panel (new top Section), per-PowerMode card (inside existing `aiEnhancementCard`). Master plan correction: `Transcription.text` (raw) + `.enhancedText` already coexisted — no SwiftData migration needed. |
 | **W12.B** — Command Mode | ⬜ | Caps+9 (Hyper+9) hotkey; capture selection → record voice → enhance with spoken instruction → paste replacement + undo. |
 | **W12.C** — Voice Snippets (text expansion) | ⬜ | New `Snippet` model; pre-enhance regex (Q4=c) splices triggers into expansions; CRUD UI; import/export. |
 | **W12.D** — Hands-free + VAD + voice "press enter" | ⬜ | Continuous-mode toggle/double-tap; VAD silence threshold; voice trigger phrase strips itself + fires `autoSendKey`. |
@@ -47,7 +47,7 @@ Status legend: ⬜ pending · 🟡 in_progress · ✅ done · ⏸ blocked / defe
 | Packet | Status | Notes |
 |---|---|---|
 | **W13.A** — token sweep | ✅ | Merged 2026-04-29 (`e196cda`). 26 files swept across A/B/F axes. C/E/F deferrals routed to later packets. |
-| **W13.B** — Metrics dashboard rebuild | ⬜ | First surface a new user sees. Replace controlAccentColor hero gradient (keep gradient, swap to `Palette.accent` glow per Q9=a); replace `MetricCard` `.thinMaterial` with `GlassCard(cornerRadius: 16)`; drop rainbow per-card icon palette. |
+| **W13.B** — Metrics dashboard rebuild | ✅ | Merged 2026-04-30 (`25d8bcb`). Hero gradient SHAPE preserved per Q9=a — only source color swaps `Color(nsColor: .controlAccentColor)` → `Palette.accent` (alphas 1.0/0.85/0.70, .topLeading→.bottomTrailing, 24pt + drop shadow byte-identical). MetricCard wraps in `GlassCard(cornerRadius: 16)` and DROPS the `color: Color` parameter at type level (single `Palette.accent` icon tint, all 4 cards). HelpAndResourcesSection swaps to `glassPanel(cornerRadius: 16)` outer + `glassChip(cornerRadius: 10)` inner link rows. CopySystemInfoButton: `Capsule().fill(.thinMaterial)` → `glassChip(cornerRadius: 18)` soft-pill + 5× `spring(0.3, 0.7)` → `Animation.haloExpand`. `.rounded` font dropped from this surface entirely. Adjacent surfaces (`MetricsSetupView`, `PerformanceAnalysisView`, `PerformanceAnalysisPanelView`) deferred — out of W13.B scope. |
 | **W13.C** — Permissions + AudioTranscribe | ⬜ | Swap hand-rolled `ultraThinMaterial + obsidian fill + hairline overlay` chrome for `GlassCard(cornerRadius: 14)` / `glassPanel()`. |
 | **W13.D** — Form-host purge | ⬜ | 5 surfaces still on v1 `Form { Section { } }`: `EnhancementSettingsView`, `AudioTranscribeView` queue, `InlineHistoryView` cardList, `PromptEditorView`, `EnhancementSettingsPanel`. Migrate to W5 `ScrollView { LazyVStack { SettingsCard } }` pattern. |
 | **W13.E** — AI Models cards | ⬜ | `WhisperModelCardView`, `CloudModelCardView`, `FluidAudioModelCardView`, `MLXModelPickerView` row cards: replace direct `HaloMaterial(phase: .hidden)` + hardcoded `Color.accentColor` / `Color.white α 0.08` with `GlassCard(cornerRadius: 16)` + `Palette.accent` / `Palette.hairline`. |
