@@ -17,7 +17,6 @@ struct PerformanceAnalysisPanelView: View {
             header
                 .padding(.horizontal, 20)
                 .padding(.vertical, 12)
-                .background(Color(NSColor.windowBackgroundColor))
                 .overlay(Divider().opacity(0.5), alignment: .bottom)
                 .zIndex(1)
 
@@ -66,9 +65,9 @@ struct PerformanceAnalysisPanelView: View {
             sectionHeader("Summary")
 
             HStack(spacing: 10) {
-                summaryPill(icon: "doc.text.fill", value: "\(analysis.totalTranscripts)", label: "Total", color: .indigo)
-                summaryPill(icon: "waveform.path.ecg", value: "\(analysis.totalWithTranscriptionData)", label: "Analyzable", color: .teal)
-                summaryPill(icon: "sparkles", value: "\(analysis.totalEnhancedFiles)", label: "Enhanced", color: .mint)
+                summaryPill(icon: "doc.text.fill", value: "\(analysis.totalTranscripts)", label: "Total", color: Palette.accent)
+                summaryPill(icon: "waveform.path.ecg", value: "\(analysis.totalWithTranscriptionData)", label: "Analyzable", color: Palette.accent)
+                summaryPill(icon: "sparkles", value: "\(analysis.totalEnhancedFiles)", label: "Enhanced", color: Palette.accent)
             }
         }
     }
@@ -105,12 +104,16 @@ struct PerformanceAnalysisPanelView: View {
                 infoRow(label: "Memory", value: PerformanceAnalyzer.getMemoryInfo())
             }
             .background(
-                RoundedRectangle(cornerRadius: 10)
-                    .fill(Color(NSColor.controlBackgroundColor))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 10)
-                            .stroke(Color(NSColor.quaternaryLabelColor).opacity(0.3), lineWidth: 1)
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .fill(Color(red: 0.078, green: 0.078, blue: 0.110).opacity(0.55))
+                    .background(
+                        RoundedRectangle(cornerRadius: 10, style: .continuous)
+                            .fill(.ultraThinMaterial)
                     )
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .stroke(Palette.hairlineSoft, lineWidth: 1)
             )
             .cornerRadius(10)
         }

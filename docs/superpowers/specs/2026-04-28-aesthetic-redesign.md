@@ -79,6 +79,95 @@ Material: `.fullScreenUI` over `.behindWindow` blending. Appearance: `GlassAppea
 
 **Plan reference:** `docs/superpowers/plans/W8-adaptive-glass-app-wide.md`.
 
+### 1.X.W13 W13 polish + cohesion deltas (2026-04-30)
+
+The W13.A–G packet sweep closed the main-app cohesion gap with the floating-recorder vocabulary. The deltas below CODIFY decisions made during W13 sign-off and the merge of each packet. Source plans: `docs/superpowers/plans/W13{A..G}-*.md`.
+
+**§1.X.W13.1 Hero corner radius 24pt sanctioned exception (Q9=a)**
+
+§1 caps panels at 14-16pt corner radius. The Metrics/Dashboard hero section (`MetricsContent.heroSection`) carries dashboard centerpiece identity at 24pt corner radius — sanctioned exception. Applies only to "hero / dashboard centerpiece" surfaces (one per major destination, not per card). Plan reference: `W13B-metrics-rebuild.md` Q9=a.
+
+NOT sanctioned: 28pt+ radii anywhere (HelpAndResourcesSection at v1's 28pt was retired in W13.B). NOT sanctioned: 24pt on regular `GlassCard` / `GlassChip` surfaces.
+
+**§1.X.W13.2 Single-accent metric icon palette (W13.B)**
+
+Metric card / dashboard pill icon backgrounds key to a SINGLE palette token. Default: `Palette.accent`. Motion (or progress-bar fill) is the discriminator across cards, not per-card hue. Spec §1's rainbow palette retirement extends to data-vis chrome.
+
+Sanctioned non-state alternates: `Palette.success` (true completion / positive metric), `Palette.warn` (active power-mode signal), `Palette.neutral` (idle baseline). NEVER `.indigo / .teal / .mint / .purple / .yellow / .orange / .red / .green / .blue` direct refs.
+
+**§1.X.W13.3 `glassPanel(cornerRadius: 16)` canonical Help/Resources idiom**
+
+Help / Resources / Tip panels (e.g. `HelpAndResourcesSection`, `HistoryShortcutTipView`) use `glassPanel(cornerRadius: 16)` with inner link rows at `glassChip(cornerRadius: 10)`. Hairline strokes via `Palette.hairline` (outer) and `Palette.hairlineSoft` (inner separator). No outer shadow beyond what the primitive provides. Plan reference: `W13B-metrics-rebuild.md` HelpAndResourcesSection rebuild.
+
+**§1.X.W13.4 Soft-pill `glassChip(cornerRadius: 18)` button capsules (W13.B)**
+
+Button capsule chrome standardized at `glassChip(cornerRadius: 18)`. Replaces the `.thinMaterial` Capsule + ad-hoc spring affordance. Examples: CopySystemInfoButton, MetricsView footer button, History selection-bar "Clear" button. Reduce-Motion contract preserved (no per-button bespoke spring overrides).
+
+**§1.X.W13.5 Family-aligned strokes for AI Models cards (W13.E)**
+
+AI Models card family (Whisper / Cloud / FluidAudio / Native / Custom) uses uniform stroke vocabulary:
+- Active card (selected / current): 1.5pt `Palette.accent` border + 0.55 alpha glow shadow rad 18.
+- Rest card: 1pt `Palette.hairline` border, no glow.
+- Card body: `GlassCard(cornerRadius: 16)` (no `HaloMaterial(phase: .hidden)` direct usage).
+- Strokes NEVER use `Color.accentColor` or `Color.white.opacity(...)` directly — always `Palette.accent` / `Palette.hairline*`.
+
+Plan reference: `W13E-ai-models-cards.md`. Same vocabulary applies to `CustomPrompt.promptIcon` tile family (W13.G axis E rebuild) and to the predefined-prompt template buttons.
+
+**§1.X.W13.6 Flat sectionBlock pattern for popover / editorPane surfaces (W13.D)**
+
+`Form { Section }` host is RETIRED for main-app + popover settings surfaces. Migrated to `ScrollView { LazyVStack(spacing: 16) { SettingsCard {...} } }` per `SettingsView.swift:51-71` (W5 pattern). Surfaces affected: EnhancementSettingsView, EnhancementSettingsPanel, PromptEditorView editor panes, InlineHistoryView card list, AudioTranscribeView queue, DictionarySettingsPanel.
+
+`Form { Section }` is preserved ONLY where macOS system controls (NSPicker / NSStepper / NSColorWell) require Form context for layout correctness. Plan reference: `W13D-form-host-purge.md`.
+
+**§1.X.W13.7 HUD notification three-color palette + motion discriminator (W13.G)**
+
+`AppNotificationView` per-type colors collapse to a three-token palette + motion as discriminator. Icon, CTA chip backplate, and progress-bar fill all key to:
+- `.error` → `Palette.warn`
+- `.warning` → `Palette.warn`
+- `.info` → `Palette.accent`
+- `.success` → `Palette.success`
+
+Motion is an ADDITIONAL discriminator on top of color, not a replacement: `.error` / `.warning` shake on present, `.success` pulse, `.info` quiet. The progress-bar decrement rate (derived from `duration:` parameter) further discriminates urgency: shorter `duration` for `.error` (fast decrement), longer for `.info`. VoiceOver / iconName retains semantic accessibility (xmark.octagon.fill, exclamationmark.triangle.fill, info.circle.fill, checkmark.circle.fill).
+
+Plan reference: `W13G-polish-spec-extension.md` axis B; lead lock 2026-04-30.
+
+**§1.X.W13.8 Q7=b menubar dropdown system-default (restated)**
+
+Menubar dropdown stays system-default (`MenuBarExtra(...).menuBarExtraStyle(.menu)`). The `.window` glass popover variant was attempted and reverted per user request (sparse content + system-menu cohesion trade-off favors system-default). `MenuBarView.swift` and `MenuBarManager.swift` are OUT of all aesthetic-cohesion sweeps. Plan reference: master plan §0 Q7=b.
+
+**§1.X.W13.9 Animation token sanctioned exceptions (W13.G axis G)**
+
+Three animation literals are sanctioned exceptions to the §2.4 halo token grammar:
+
+| File:line | Literal | Use | Reason for exception |
+|---|---|---|---|
+| `Common/PromptChipPicker.swift:125, 129` | `easeOut(0.2) → easeIn(0.2)` (2-phase, total 0.4s) | Selection pulse (scaleEffect + accent shadow ramp-up + ramp-down) | No current halo token has 2-phase ramp-up/ramp-down shape. Reduce-Motion guard is in place at `:122`. |
+| `PowerMode/PowerModeStripView.swift:181` | `easeInOut(0.5).repeatForever(autoreverses: true)` | Active-mode warn dot pulse | 0.5s active-mode urgency is intentionally faster than `haloBreathe (1.6s)` enhancing-state breath. Reduce-Motion guard at `:179-180`. |
+| `PowerMode/PowerModeStripView.swift:275` | `easeInOut(0.14)` | Drag-drop reorder micro-animation | Sub-150ms; below the `haloPhaseCrossfade (0.22s)` band. No Reduce-Motion guard (flag for follow-up). |
+
+Future evolution: if these patterns recur, codify as `Animation.haloPulseTwoPhase` / `Animation.haloAttentionBreathe` / `Animation.haloMicro` in `Animation+Halo.swift`. W13.G defers token addition; current literals are sanctioned via this section.
+
+### 2.4-W13 Source-literal → Halo token mapping (canonical)
+
+W13.A established the source-literal → halo-token mapping; codified here as the canonical reference. New surfaces must NOT introduce ad-hoc `spring` / `smooth` / `easeInOut` literals; use the named token.
+
+| Source literal                                              | Halo token                  |
+|-------------------------------------------------------------|-----------------------------|
+| `.spring(response: 0.3, dampingFraction: 0.7)`              | `Animation.haloExpand`      |
+| `.spring(response: 0.3, dampingFraction: 0.8)`              | `Animation.haloExpand`      |
+| `.spring(response: 0.2, dampingFraction: 0.7)`              | `Animation.haloExpand`      |
+| `.smooth(duration: 0.3)`                                    | `Animation.haloExpand`      |
+| `.easeInOut(duration: 0.22)`                                | `Animation.haloPhaseCrossfade` |
+| `.easeInOut(duration: 0.15 / 0.18 / 0.20)`                  | `Animation.haloPhaseCrossfade` |
+| `.easeInOut(duration: 0.3)`                                 | `Animation.haloExpand`      |
+| `.easeInOut(duration: 0.5)` (NON-repeating)                 | `Animation.haloExpand` (borderline; reviewer eval) |
+| `.easeInOut(duration: 1.6).repeatForever`                   | `Animation.haloBreathe`     |
+| `.easeInOut(duration: 0.5).repeatForever`                   | (sanctioned exception per §1.X.W13.9) |
+| `.easeInOut(duration: 0.14)` and shorter                    | (sanctioned exception per §1.X.W13.9) |
+| 2-phase `easeOut(halfDuration) + easeIn(halfDuration)`      | (sanctioned exception per §1.X.W13.9) |
+
+Recorder cluster animations (`.linear(duration: 1).repeatForever` etc.) are EXCLUDED — recorder is the source of truth for halo tokens, not a consumer.
+
 ## 2. Structure — Constellation satellite cluster
 
 **Locked.** Replaces the single morphing pill with a cluster of small chips.

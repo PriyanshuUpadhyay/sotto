@@ -363,11 +363,15 @@ private struct KeyHint: View {
             .padding(.horizontal, 5)
             .padding(.vertical, 2)
             .background(
-                RoundedRectangle(cornerRadius: 4)
-                    .fill(Color(NSColor.controlBackgroundColor).opacity(0.7))
+                RoundedRectangle(cornerRadius: 6, style: .continuous)
+                    .fill(Color(red: 0.078, green: 0.078, blue: 0.110).opacity(0.55))
+                    .background(
+                        RoundedRectangle(cornerRadius: 6, style: .continuous)
+                            .fill(.ultraThinMaterial)
+                    )
                     .overlay(
-                        RoundedRectangle(cornerRadius: 4)
-                            .strokeBorder(Color.secondary.opacity(0.2), lineWidth: 0.5)
+                        RoundedRectangle(cornerRadius: 6, style: .continuous)
+                            .stroke(Palette.hairline, lineWidth: 1)
                     )
             )
     }

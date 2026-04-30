@@ -10,18 +10,18 @@ struct EnhancementPromptPopover: View {
             // Enhancement Toggle at the top
             HStack(spacing: 8) {
                 Toggle("AI Enhancement", isOn: $enhancementService.isEnhancementEnabled)
-                    .foregroundColor(.white.opacity(0.9))
+                    .foregroundColor(Palette.onyxFg)
                     .font(.headline)
                     .lineLimit(1)
-                
+
                 Spacer()
             }
             .padding(.horizontal)
             .padding(.top, 8)
-            
+
             Divider()
-                .background(Color.white.opacity(0.1))
-            
+                .background(Palette.hairlineSoft)
+
             ScrollView {
                 VStack(alignment: .leading, spacing: 4) {
                     // Available Enhancement Prompts
@@ -47,15 +47,7 @@ struct EnhancementPromptPopover: View {
         .frame(width: 200)
         .frame(maxHeight: 340)
         .padding(.vertical, 8)
-        .background(
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .fill(.ultraThinMaterial)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .stroke(Palette.hairline, lineWidth: 1)
-                )
-        )
-        .environment(\.colorScheme, .dark)
+        .glassPanel(cornerRadius: 14)
         .onAppear {
             // Set the initially selected prompt
             selectedPrompt = enhancementService.activePrompt
@@ -79,17 +71,17 @@ struct EnhancementPromptRow: View {
                 // Use the icon from the prompt
                 Image(systemName: prompt.icon)
                     .font(.system(size: 14))
-                    .foregroundColor(isDisabled ? .white.opacity(0.4) : .white.opacity(0.7))
+                    .foregroundColor(isDisabled ? Palette.onyxMute : Palette.onyxFg)
 
                 Text(prompt.title)
-                    .foregroundColor(isDisabled ? .white.opacity(0.4) : .white.opacity(0.9))
+                    .foregroundColor(isDisabled ? Palette.onyxMute : Palette.onyxFg)
                     .font(.system(size: 13))
                     .lineLimit(1)
 
                 if isSelected {
                     Spacer()
                     Image(systemName: "checkmark")
-                        .foregroundColor(isDisabled ? .green.opacity(0.7) : .green)
+                        .foregroundColor(isDisabled ? Palette.success.opacity(0.7) : Palette.success)
                         .font(.system(size: 10))
                 }
             }
@@ -99,7 +91,7 @@ struct EnhancementPromptRow: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .background(isSelected ? Color.white.opacity(0.1) : Color.clear)
+        .background(isSelected ? Palette.hairlineSoft : Color.clear)
         .cornerRadius(4)
     }
 } 

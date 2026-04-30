@@ -28,10 +28,10 @@ struct AppNotificationView: View {
 
         var iconColor: Color {
             switch self {
-            case .error: return .red
-            case .warning: return .yellow
-            case .info: return .blue
-            case .success: return .green
+            case .error: return Palette.warn
+            case .warning: return Palette.warn
+            case .info: return Palette.accent
+            case .success: return Palette.success
             }
         }
     }

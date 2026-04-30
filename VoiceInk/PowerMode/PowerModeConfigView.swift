@@ -345,8 +345,16 @@ struct ConfigurationView: View {
                     .frame(width: 26, height: 26)
                     .frame(width: 44, height: 44)
                     .background(
-                        RoundedRectangle(cornerRadius: 10)
-                            .fill(Color(NSColor.controlBackgroundColor))
+                        RoundedRectangle(cornerRadius: 10, style: .continuous)
+                            .fill(Color(red: 0.078, green: 0.078, blue: 0.110).opacity(0.55))
+                            .background(
+                                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                    .fill(.ultraThinMaterial)
+                            )
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 10, style: .continuous)
+                            .stroke(Palette.hairline, lineWidth: 1)
                     )
             }
 

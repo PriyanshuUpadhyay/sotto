@@ -423,7 +423,11 @@ struct DevicePriorityCard: View {
                         .padding(.vertical, 4)
                         .background(
                             Capsule()
-                                .fill(Color(.windowBackgroundColor).opacity(0.4))
+                                .fill(Palette.neutral.opacity(0.16))
+                        )
+                        .overlay(
+                            Capsule()
+                                .stroke(Palette.hairline, lineWidth: 0.5)
                         )
                 }
                 

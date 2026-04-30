@@ -101,21 +101,18 @@ struct PowerModeView: View {
     // MARK: - Hero header
 
     private var heroHeader: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack(spacing: 8) {
-                Text("Power Modes")
-                    .font(.system(size: 28, weight: .bold, design: .default))
-                    .foregroundColor(.primary)
+        HStack(alignment: .center, spacing: 8) {
+            SettingsSectionHeader(
+                icon: "bolt.fill",
+                title: "Power Modes",
+                subtitle: "Switch context automatically based on the active app or website.",
+                accent: Palette.warn
+            )
 
-                InfoTip(
-                    "Automatically apply custom configurations based on the app/website you are using.",
-                    learnMoreURL: "https://tryvoiceink.com/docs/power-mode"
-                )
-            }
-
-            Text("Switch context automatically based on the active app or website.")
-                .font(.system(size: 14))
-                .foregroundColor(.secondary)
+            InfoTip(
+                "Automatically apply custom configurations based on the app/website you are using.",
+                learnMoreURL: "https://tryvoiceink.com/docs/power-mode"
+            )
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 24)

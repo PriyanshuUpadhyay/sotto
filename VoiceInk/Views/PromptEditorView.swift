@@ -495,14 +495,7 @@ struct TriggerWordItemView: View {
             .buttonStyle(.plain)
             .padding(.leading, 2)
         }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 4)
-        .background(.ultraThinMaterial)
-        .cornerRadius(4)
-        .overlay(
-            RoundedRectangle(cornerRadius: 4)
-                .stroke(Color.secondary.opacity(0.2), lineWidth: 1)
-        )
+        .glassChip(cornerRadius: 10)
     }
 }
 

@@ -138,117 +138,52 @@ struct CustomPrompt: Identifiable, Codable, Equatable {
 extension CustomPrompt {
     func promptIcon(isSelected: Bool, onTap: @escaping () -> Void, onEdit: ((CustomPrompt) -> Void)? = nil, onDelete: ((CustomPrompt) -> Void)? = nil) -> some View {
         VStack(spacing: 8) {
-            ZStack {
-                // Dynamic background with blur effect
-                RoundedRectangle(cornerRadius: 14)
-                    .fill(
-                        LinearGradient(
-                            gradient: isSelected ?
-                                Gradient(colors: [
-                                    Color.accentColor.opacity(0.9),
-                                    Color.accentColor.opacity(0.7)
-                                ]) :
-                                Gradient(colors: [
-                                    Color(NSColor.controlBackgroundColor).opacity(0.95),
-                                    Color(NSColor.controlBackgroundColor).opacity(0.85)
-                                ]),
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 14)
-                            .stroke(
-                                LinearGradient(
-                                    gradient: Gradient(colors: [
-                                        isSelected ?
-                                            Color.white.opacity(0.3) : Color.white.opacity(0.15),
-                                        isSelected ?
-                                            Color.white.opacity(0.1) : Color.white.opacity(0.05)
-                                    ]),
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                ),
-                                lineWidth: 1
-                            )
-                    )
-                    .shadow(
-                        color: isSelected ?
-                            Color.accentColor.opacity(0.4) : Color.black.opacity(0.1),
-                        radius: isSelected ? 10 : 6,
-                        x: 0,
-                        y: 3
-                    )
-                
-                // Decorative background elements
-                Circle()
-                    .fill(
-                        RadialGradient(
-                            gradient: Gradient(colors: [
-                                isSelected ?
-                                    Color.white.opacity(0.15) : Color.white.opacity(0.08),
-                                Color.clear
-                            ]),
-                            center: .center,
-                            startRadius: 1,
-                            endRadius: 25
-                        )
-                    )
-                    .frame(width: 50, height: 50)
-                    .offset(x: -15, y: -15)
-                    .blur(radius: 2)
-                
-                // Icon with enhanced effects
+            // Flat glass tile — selection ring + accent glow shadow per
+            // spec §1.X.W13.5 (family-aligned strokes).
+            GlassCard(cornerRadius: 14, padding: 0) {
                 Image(systemName: icon)
                     .font(.system(size: 20, weight: .medium))
-                    .foregroundStyle(
-                        LinearGradient(
-                            colors: isSelected ?
-                                [Color.white, Color.white.opacity(0.9)] :
-                                [Color.primary.opacity(0.9), Color.primary.opacity(0.7)],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-                    .shadow(
-                        color: isSelected ?
-                            Color.white.opacity(0.5) : Color.clear,
-                        radius: 4
-                    )
-                    .shadow(
-                        color: isSelected ?
-                            Color.accentColor.opacity(0.5) : Color.clear,
-                        radius: 3
-                    )
+                    .foregroundColor(isSelected ? Palette.accent : Palette.onyxFg)
+                    .frame(width: 48, height: 48)
             }
+            .overlay(
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .stroke(
+                        isSelected ? Palette.accent : Palette.hairline,
+                        lineWidth: isSelected ? 1.5 : 1
+                    )
+            )
+            .shadow(
+                color: isSelected ? Palette.accent.opacity(0.55) : .clear,
+                radius: 18, x: 0, y: 0
+            )
             .frame(width: 48, height: 48)
-            
-            // Enhanced title styling
+
+            // Title + trigger words — type stays.
             VStack(spacing: 2) {
                 Text(title)
                     .font(.system(size: 11, weight: .medium))
-                    .foregroundColor(isSelected ?
-                        .primary : .secondary)
+                    .foregroundColor(isSelected ? .primary : .secondary)
                     .lineLimit(1)
                     .frame(maxWidth: 70)
-                
+
                 // Trigger word section with consistent height
                 ZStack(alignment: .center) {
                     if !triggerWords.isEmpty {
                         HStack(spacing: 2) {
                             Image(systemName: "mic.fill")
                                 .font(.system(size: 7))
-                                .foregroundColor(isSelected ? .accentColor.opacity(0.9) : .secondary.opacity(0.7))
-                            
+                                .foregroundColor(isSelected ? Palette.accent : Palette.onyxMute)
+
                             if triggerWords.count == 1 {
                                 Text("\"\(triggerWords[0])...\"")
                                     .font(.system(size: 8, weight: .regular))
-                                    .foregroundColor(isSelected ? .primary.opacity(0.8) : .secondary.opacity(0.7))
+                                    .foregroundColor(isSelected ? Palette.accent : Palette.onyxMute)
                                     .lineLimit(1)
                             } else {
                                 Text("\"\(triggerWords[0])...\" +\(triggerWords.count - 1)")
                                     .font(.system(size: 8, weight: .regular))
-                                    .foregroundColor(isSelected ? .primary.opacity(0.8) : .secondary.opacity(0.7))
+                                    .foregroundColor(isSelected ? Palette.accent : Palette.onyxMute)
                                     .lineLimit(1)
                             }
                         }
@@ -306,70 +241,20 @@ extension CustomPrompt {
     // Static method to create an "Add New" button with the same styling as the prompt icons
     static func addNewButton(action: @escaping () -> Void) -> some View {
         VStack(spacing: 8) {
-            ZStack {
-                // Dynamic background with blur effect - same styling as promptIcon
-                RoundedRectangle(cornerRadius: 14)
-                    .fill(
-                        LinearGradient(
-                            gradient: Gradient(colors: [
-                                Color(NSColor.controlBackgroundColor).opacity(0.95),
-                                Color(NSColor.controlBackgroundColor).opacity(0.85)
-                            ]),
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 14)
-                            .stroke(
-                                LinearGradient(
-                                    gradient: Gradient(colors: [
-                                        Color.white.opacity(0.15),
-                                        Color.white.opacity(0.05)
-                                    ]),
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                ),
-                                lineWidth: 1
-                            )
-                    )
-                    .shadow(
-                        color: Color.black.opacity(0.1),
-                        radius: 6,
-                        x: 0,
-                        y: 3
-                    )
-                
-                // Decorative background elements (same as in promptIcon)
-                Circle()
-                    .fill(
-                        RadialGradient(
-                            gradient: Gradient(colors: [
-                                Color.white.opacity(0.08),
-                                Color.clear
-                            ]),
-                            center: .center,
-                            startRadius: 1,
-                            endRadius: 25
-                        )
-                    )
-                    .frame(width: 50, height: 50)
-                    .offset(x: -15, y: -15)
-                    .blur(radius: 2)
-                
-                // Plus icon with same styling as the normal icons
+            // Mirrors `promptIcon` rest-state tile vocabulary —
+            // GlassCard + hairline stroke + accent plus glyph.
+            GlassCard(cornerRadius: 14, padding: 0) {
                 Image(systemName: "plus.circle.fill")
                     .font(.system(size: 20, weight: .medium))
-                    .foregroundStyle(
-                        LinearGradient(
-                            colors: [Color.accentColor.opacity(0.9), Color.accentColor.opacity(0.7)],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
+                    .foregroundColor(Palette.accent)
+                    .frame(width: 48, height: 48)
             }
+            .overlay(
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .stroke(Palette.hairline, lineWidth: 1)
+            )
             .frame(width: 48, height: 48)
-            
+
             // Text label with matching styling
             VStack(spacing: 2) {
                 Text("Add New")
@@ -377,7 +262,7 @@ extension CustomPrompt {
                     .foregroundColor(.secondary)
                     .lineLimit(1)
                     .frame(maxWidth: 70)
-                
+
                 // Empty space matching the trigger word area height
                 Spacer()
                     .frame(height: 16)
