@@ -33,27 +33,28 @@
 
 See `docs/superpowers/plans/2026-04-29-W11-W13-master-plan.md` — **fully populated** with W11/W12/W13 phase plans, packet sequencing, and 10 consolidated open questions for user sign-off.
 
-## Phase 1 — done so far (2026-04-29 → 2026-04-30)
+## Phase 1 — DONE (2026-04-29 → 2026-04-30)
 
-- ✅ `w11-models-expand` (merge `14f092a`) — registry + cache auto-detect
-- ✅ W13.A (merge `e196cda`) — token sweep (Phase 3 partial start)
-- ✅ W11.A (merge `84ac7bf`) — pipeline fixes (A1+A2+A4+A5+A6+A7; A3 deferred)
-- ✅ W11-prompt-fix (merge `3247736`) — MLX `<TRANSCRIPT>` wrap + convention alignment
+| # | Packet | Merge | Notes |
+|---|---|---|---|
+| 1 | `w11-models-expand` | `14f092a` | Registry + cache auto-detect; 5 new curated entries (Qwen3-0.6B, Phi-3.5-mini, Llama-3.2-3B, Granite, SmolLM3); DETECTED picker section. |
+| 2 | W11.A pipeline fixes | `84ac7bf` | A1 prewarm + A2 short-transcript fast-path + A4 greedy + A5 wall-clock timeout + A6 idle-evict slider + A7 max-tokens cap. A3 deferred at the time. |
+| 3 | W11-prompt-fix | `3247736` | MLX userPrompt now wrapped in `<TRANSCRIPT>` tags + closing suffix. Resolves Qwen3 "replies instead of cleans" bug. |
+| 4 | W11.D timing telemetry | `42edcbe` | CSV log at `~/Library/Application Support/com.prakashjoshipax.VoiceInk/enhancement-timings.csv` + diagnostic logs (prompt-mode, prewarm, idle-evict, timeout) + Settings UI buttons. |
+| 5 | W11.A.A3 KV-cache reuse | `201fb8f` | Token-diff splitter, opt-in via `MLXKVCacheReuseEnabled` UserDefault (default off). chatml templates → full benefit; legacy → graceful no-op. |
+| 6 | W11.B AFM primary path | `e228f73` | Deployment target 14.4 → 26.0. AFMProvider replaces FoundationModelsProvider. Routing: AFM-first when `SystemLanguageModel.default.isAvailable`; only `safetyRefusal` falls back to MLX silently. AFM prewarm + telemetry wired. |
+| 7 | W11.C spec-decode | ⏸ deferred | `mlx-community/speculative-decoding` Package.swift pins `mlx-swift-lm <3.0.0` — irreconcilable with our 3.31.3 pin needed for qwen3 + KV-cache. Three forward options in `PHASE-TRACKING.md`. |
+
+Plus aesthetic Phase 3 partial start (W13.A token sweep, merge `e196cda`).
 
 ## Phase tracker
 
-See `docs/superpowers/PHASE-TRACKING.md` — full status matrix for W11 / W12 / W13. Updated as packets merge.
-
-## Phase 1 — done so far (continued)
-
-- ✅ W11.D timing telemetry (merge `42edcbe`) — CSV log + diagnostic logs
+See `docs/superpowers/PHASE-TRACKING.md` — full status matrix for W11 / W12 / W13.
 
 ## Currently waiting on
 
-- **User validation pass.** Run the live build (`make local` from main produces `~/Downloads/VoiceInk.app`). Capture rows in `~/Library/Application Support/com.prakashjoshipax.VoiceInk/enhancement-timings.csv` across multiple enhancement runs at varying gap intervals (5s, 30s, 5min, 15min). Then we can decide whether A1 prewarm is doing real work or should be dropped.
+- **User validation pass.** Build at `~/Downloads/VoiceInk.app` is current as of `2026-04-30 10:24` IST (post-Phase-1). Settings → AI Enhancement → Provider must be set to **MLX** to surface the W11.D buttons + W11.B "Active path: …" indicator + W11.A.A6 idle-evict slider — they all live inside the MLX section, gated by `selectedProvider == .mlx`. CSV at `~/Library/Application Support/com.prakashjoshipax.VoiceInk/enhancement-timings.csv` captures rows automatically per enhancement.
 
-## Next packets queued (Phase 1 remaining)
+## Next phase
 
-1. W11.A.A3 follow-up (KV-cache reuse for system prefill — was deferred during W11.A)
-2. W11.B AFM primary path (deployment-target bump → macOS 26.0)
-3. W11.C spec-decode opt-in
+Phase 1 closed (modulo W11.C upstream blocker). Awaiting user direction on Phase 2 (Wispr Flow parity — recommended start: W12.A Auto Cleanup levels) or Phase 3 remainder (aesthetic — recommended start: W13.B Metrics dashboard rebuild). Both have zero file overlap; can run parallel teams.
