@@ -155,7 +155,8 @@ struct EnhancementSettingsPanel: View {
                     }
                 }
 
-                if enhancementService.aiService.selectedProvider == .mlx {
+                if enhancementService.aiService.selectedProvider == .mlx
+                    || enhancementService.aiService.selectedProvider == .foundationModels {
                     Section {
                         // W11.B — surface the active local path. AFM is the
                         // primary path on macOS 26+ with Apple Intelligence
@@ -174,22 +175,32 @@ struct EnhancementSettingsPanel: View {
                         }
                         .font(.callout)
 
-                        Picker("Idle eviction", selection: $mlxIdleEvictSeconds) {
-                            Text("60 seconds").tag(60)
-                            Text("5 minutes").tag(300)
-                            Text("10 minutes").tag(600)
-                            Text("20 minutes").tag(1200)
-                            Text("30 minutes").tag(1800)
-                            Text("45 minutes").tag(2700)
-                            Text("1 hour").tag(3600)
-                            Text("Never").tag(Int.max)
+                        // Idle eviction only governs the MLX in-memory model.
+                        // Hidden on `.foundationModels` since MLX never loads
+                        // in that path.
+                        if enhancementService.aiService.selectedProvider == .mlx {
+                            Picker(selection: $mlxIdleEvictSeconds) {
+                                Text("60 seconds").tag(60)
+                                Text("5 minutes").tag(300)
+                                Text("10 minutes").tag(600)
+                                Text("20 minutes").tag(1200)
+                                Text("30 minutes").tag(1800)
+                                Text("45 minutes").tag(2700)
+                                Text("1 hour").tag(3600)
+                                Text("Never").tag(Int.max)
+                            } label: {
+                                HStack(spacing: 4) {
+                                    Text("Idle eviction")
+                                    InfoTip("How long the MLX on-device model stays in memory after the last enhancement. Higher values trade memory for fewer cold-load spikes; lower values free memory faster. Applies on the next time the MLX provider is reloaded.")
+                                }
+                            }
+                            .pickerStyle(.menu)
                         }
-                        .pickerStyle(.menu)
 
-                        // W11.D — empirical timing log access. Every MLX
-                        // enhancement appends one row to the CSV under
-                        // Application Support so the user can verify perf
-                        // changes quantitatively.
+                        // W11.D — empirical timing log access. Every on-device
+                        // enhancement (AFM and MLX) appends one row to the CSV
+                        // under Application Support so the user can verify
+                        // perf changes quantitatively.
                         HStack(spacing: 8) {
                             Button(action: openTimingsFolder) {
                                 Label("Open timings folder", systemImage: "folder")
@@ -207,12 +218,9 @@ struct EnhancementSettingsPanel: View {
                             .help("Copy the absolute CSV path to the clipboard")
                         }
                     } header: {
-                        HStack(spacing: 4) {
-                            Text("MLX (on-device)")
-                            InfoTip("How long the on-device model stays in memory after the last enhancement. Higher values trade memory for fewer cold-load spikes; lower values free memory faster. Applies on the next time the MLX provider is reloaded.")
-                        }
+                        Text("On-device")
                     } footer: {
-                        Text("Each MLX enhancement appends a row to enhancement-timings.csv (timestamp, model, prompt mode, prep/ttft/gen/total seconds, gap, outcome).")
+                        Text("Each on-device enhancement appends a row to enhancement-timings.csv (timestamp, model, prompt mode, prep/ttft/gen/total seconds, gap, outcome).")
                             .font(.caption)
                             .foregroundColor(.secondary)
                     }
