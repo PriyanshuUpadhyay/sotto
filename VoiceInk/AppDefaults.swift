@@ -50,6 +50,9 @@ enum AppDefaults {
             // Model
             "PrewarmModelOnWake": true,
 
+            // W12.C — Snippets
+            "DebugLogSnippetExpansion": false,
+
         ])
     }
 }

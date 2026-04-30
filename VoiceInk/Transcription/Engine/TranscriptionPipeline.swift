@@ -98,6 +98,23 @@ class TranscriptionPipeline {
             text = WordReplacementService.shared.applyReplacements(to: text, using: modelContext)
             logger.notice("📝 WordReplacement: \(text, privacy: .public)")
 
+            // W12.C: pre-enhance snippet expansion. No-op when the snippet
+            // table is empty. Service caches the active list in memory; the
+            // cache invalidates on every CRUD action via `invalidateCache()`.
+            // See plan `docs/superpowers/plans/W12C-voice-snippets.md`
+            // §Migration policy #2.
+            let snippetResult = SnippetExpansionService.shared.expand(
+                text: text,
+                modelContext: modelContext
+            )
+            if snippetResult.expandedCount > 0 {
+                text = snippetResult.expanded
+                logger.notice("🦾 snippets: expanded \(snippetResult.expandedCount, privacy: .public) triggers")
+                if UserDefaults.standard.bool(forKey: "DebugLogSnippetExpansion") {
+                    logger.notice("📝 Snippet expansion: \(text, privacy: .public)")
+                }
+            }
+
             let audioAsset = AVURLAsset(url: audioURL)
             let actualDuration = (try? CMTimeGetSeconds(await audioAsset.load(.duration))) ?? 0.0
 

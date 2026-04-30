@@ -35,6 +35,18 @@ struct VocabularyWordData: Codable {
     let word: String
 }
 
+/// W12.C snippet export transit type. Plain Codable mirror of the SwiftData
+/// `Snippet` @Model — that class can't conform to Codable directly.
+/// See plan §Migration policy #8.
+struct SnippetExportData: Codable {
+    let trigger: String
+    let expansion: String
+    let tags: [String]?
+    let isEnabled: Bool?
+    let createdAt: Date?
+    let updatedAt: Date?
+}
+
 struct VoiceInkExportedSettings: Codable {
     let version: String
     let customPrompts: [CustomPrompt]
@@ -44,6 +56,7 @@ struct VoiceInkExportedSettings: Codable {
     let generalSettings: GeneralSettings?
     let customEmojis: [String]?
     let customCloudModels: [CustomCloudModel]?
+    let snippets: [SnippetExportData]?  // W12.C
 }
 
 class ImportExportService {
@@ -98,6 +111,22 @@ class ImportExportService {
             exportedWordReplacements = Dictionary(replacements.map { ($0.originalText, $0.replacementText) }, uniquingKeysWith: { _, last in last })
         }
 
+        // W12.C: fetch snippets
+        var exportedSnippets: [SnippetExportData]? = nil
+        let snippetDescriptor = FetchDescriptor<Snippet>(sortBy: [SortDescriptor(\Snippet.createdAt, order: .forward)])
+        if let snippets = try? modelContext.fetch(snippetDescriptor), !snippets.isEmpty {
+            exportedSnippets = snippets.map {
+                SnippetExportData(
+                    trigger: $0.trigger,
+                    expansion: $0.expansion,
+                    tags: $0.tags,
+                    isEnabled: $0.isEnabled,
+                    createdAt: $0.createdAt,
+                    updatedAt: $0.updatedAt
+                )
+            }
+        }
+
         let generalSettingsToExport = GeneralSettings(
             toggleMiniRecorderShortcut: KeyboardShortcuts.getShortcut(for: .toggleMiniRecorder),
             toggleMiniRecorderShortcut2: KeyboardShortcuts.getShortcut(for: .toggleMiniRecorder2),
@@ -131,7 +160,8 @@ class ImportExportService {
             wordReplacements: exportedWordReplacements,
             generalSettings: generalSettingsToExport,
             customEmojis: emojiManager.customEmojis,
-            customCloudModels: customModels
+            customCloudModels: customModels,
+            snippets: exportedSnippets  // W12.C
         )
 
         let encoder = JSONEncoder()
@@ -279,6 +309,36 @@ class ImportExportService {
                         print("Successfully imported word replacements to SwiftData.")
                     } else {
                         print("No word replacements found in the imported file. Existing replacements remain unchanged.")
+                    }
+
+                    // W12.C: import snippets — dedupe by trigger (case-sensitive).
+                    // See plan §Migration policy #13.
+                    if let snippetsToImport = importedSettings.snippets {
+                        let snippetDescriptor = FetchDescriptor<Snippet>()
+                        let existingSnippets = (try? modelContext.fetch(snippetDescriptor)) ?? []
+                        let existingTriggers = Set(existingSnippets.map { $0.trigger })
+                        var importedCount = 0
+                        for entry in snippetsToImport {
+                            if existingTriggers.contains(entry.trigger) {
+                                print("W12.C: skipping import of conflicting trigger \(entry.trigger)")
+                                continue
+                            }
+                            let newSnippet = Snippet(
+                                trigger: entry.trigger,
+                                expansion: entry.expansion,
+                                tags: entry.tags ?? [],
+                                isEnabled: entry.isEnabled ?? true,
+                                createdAt: entry.createdAt ?? Date(),
+                                updatedAt: entry.updatedAt
+                            )
+                            modelContext.insert(newSnippet)
+                            importedCount += 1
+                        }
+                        try? modelContext.save()
+                        SnippetExpansionService.shared.invalidateCache()
+                        print("Successfully imported \(importedCount) snippets to SwiftData (\(snippetsToImport.count - importedCount) skipped due to trigger conflicts).")
+                    } else {
+                        print("No snippets found in the imported file. Existing snippets remain unchanged.")
                     }
 
                     if let general = importedSettings.generalSettings {
