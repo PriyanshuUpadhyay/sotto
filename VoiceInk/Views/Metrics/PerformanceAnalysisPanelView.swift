@@ -171,7 +171,7 @@ struct PerformanceAnalysisPanelView: View {
             VStack(spacing: 3) {
                 Text(String(format: "%.1fx", modelStat.speedFactor))
                     .font(.system(size: 24, weight: .bold, design: .rounded))
-                    .foregroundColor(.mint)
+                    .foregroundColor(Palette.accent)
                 Text("Faster than Real-time")
                     .font(.system(size: 10))
                     .foregroundColor(.secondary)
@@ -185,7 +185,7 @@ struct PerformanceAnalysisPanelView: View {
                 VStack(spacing: 2) {
                     Text(formatDuration(modelStat.avgAudioDuration))
                         .font(.system(size: 11, weight: .semibold, design: .monospaced))
-                        .foregroundColor(.indigo)
+                        .foregroundColor(Palette.accent)
                     Text("Avg. Audio")
                         .font(.system(size: 9))
                         .foregroundColor(.secondary)
@@ -199,7 +199,7 @@ struct PerformanceAnalysisPanelView: View {
                 VStack(spacing: 2) {
                     Text(String(format: "%.2fs", modelStat.avgProcessingTime))
                         .font(.system(size: 11, weight: .semibold, design: .monospaced))
-                        .foregroundColor(.teal)
+                        .foregroundColor(Palette.accent)
                     Text("Avg. Processing")
                         .font(.system(size: 9))
                         .foregroundColor(.secondary)
@@ -208,7 +208,7 @@ struct PerformanceAnalysisPanelView: View {
             }
         }
         .padding(14)
-        .background(MetricCardBackground(color: .mint))
+        .background(MetricCardBackground(color: Palette.accent))
         .cornerRadius(12)
     }
 
@@ -244,14 +244,14 @@ struct PerformanceAnalysisPanelView: View {
             VStack(spacing: 3) {
                 Text(String(format: "%.2f s", modelStat.avgProcessingTime))
                     .font(.system(size: 24, weight: .bold, design: .rounded))
-                    .foregroundColor(.indigo)
+                    .foregroundColor(Palette.accent)
                 Text("Avg. Enhancement Time")
                     .font(.system(size: 10))
                     .foregroundColor(.secondary)
             }
         }
         .padding(14)
-        .background(MetricCardBackground(color: .indigo))
+        .background(MetricCardBackground(color: Palette.accent))
         .cornerRadius(12)
     }
 
