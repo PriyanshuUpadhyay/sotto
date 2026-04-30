@@ -17,7 +17,7 @@ struct AudioTranscribeView: View {
             if transcriptionManager.queue.isEmpty {
                 emptyStateView
             } else {
-                queueFormView
+                queueListView
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -89,42 +89,44 @@ struct AudioTranscribeView: View {
         .padding()
     }
 
-    // MARK: - Queue Form View
+    // MARK: - Queue List View
 
-    private var queueFormView: some View {
+    private var queueListView: some View {
         VStack(spacing: 0) {
             topBar
             Divider()
 
-            Form {
-                ForEach(transcriptionManager.queue) { item in
-                    Section {
-                        AudioFileRow(
-                            item: item,
-                            isExpanded: expandedItemId == item.id,
-                            onToggleExpand: {
-                                withAnimation(.haloExpand) {
-                                    expandedItemId = expandedItemId == item.id ? nil : item.id
+            ScrollView {
+                LazyVStack(spacing: 12) {
+                    ForEach(transcriptionManager.queue) { item in
+                        GlassCard(cornerRadius: 14) {
+                            AudioFileRow(
+                                item: item,
+                                isExpanded: expandedItemId == item.id,
+                                onToggleExpand: {
+                                    withAnimation(.haloExpand) {
+                                        expandedItemId = expandedItemId == item.id ? nil : item.id
+                                    }
+                                },
+                                onRemove: {
+                                    withAnimation(.haloExpand) {
+                                        transcriptionManager.removeFromQueue(id: item.id)
+                                        if expandedItemId == item.id { expandedItemId = nil }
+                                    }
+                                },
+                                onRetry: {
+                                    transcriptionManager.retryItem(id: item.id)
+                                    if !transcriptionManager.isProcessingQueue {
+                                        transcriptionManager.startProcessing(modelContext: modelContext, engine: engine)
+                                    }
                                 }
-                            },
-                            onRemove: {
-                                withAnimation(.haloExpand) {
-                                    transcriptionManager.removeFromQueue(id: item.id)
-                                    if expandedItemId == item.id { expandedItemId = nil }
-                                }
-                            },
-                            onRetry: {
-                                transcriptionManager.retryItem(id: item.id)
-                                if !transcriptionManager.isProcessingQueue {
-                                    transcriptionManager.startProcessing(modelContext: modelContext, engine: engine)
-                                }
-                            }
-                        )
+                            )
+                        }
                     }
                 }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
             }
-            .formStyle(.grouped)
-            .scrollContentBackground(.hidden)
             .safeAreaInset(edge: .bottom) {
                 Text("Drop files anywhere to add more")
                     .font(.caption)

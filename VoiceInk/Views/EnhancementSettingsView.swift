@@ -50,126 +50,17 @@ struct EnhancementSettingsView: View {
     }
 
     var body: some View {
-        Form {
-            Section {
-                VStack(alignment: .leading, spacing: 8) {
-                    HStack(spacing: 4) {
-                        Text("Cleanup Level")
-                            .font(.system(size: 13, weight: .medium))
-                        InfoTip(
-                            "Choose how aggressively the AI rewrites your transcript. None pastes the raw transcript verbatim. Light removes fillers. Medium fixes grammar. High polishes for clarity.",
-                            learnMoreURL: "https://tryvoiceink.com/docs/enhancements-configuring-models"
-                        )
-                        Spacer()
-                    }
-                    Picker("", selection: $enhancementService.enhanceLevel) {
-                        ForEach(EnhanceLevel.allCases, id: \.self) { level in
-                            Text(level.displayName).tag(level)
-                        }
-                    }
-                    .pickerStyle(.segmented)
-                    .labelsHidden()
-
-                    Text(enhancementService.enhanceLevel.description)
-                        .font(.system(size: 11))
-                        .foregroundColor(.secondary)
-                }
-            } header: {
-                HStack(alignment: .top, spacing: 12) {
-                    SettingsSectionHeader(
-                        icon: "wand.and.stars",
-                        title: "Enhancement",
-                        subtitle: "Pass transcripts through an LLM before pasting.",
-                        accent: Palette.accent,
-                        statusText: enhancementService.enhanceLevel.displayName,
-                        statusTone: enhancementService.enhanceLevel == .none ? .neutral : .positive
-                    )
-                    Button {
-                        withAnimation(.smooth(duration: 0.3)) {
-                            isEditingPrompt = false
-                            selectedPromptForEdit = nil
-                            isShowingSettings.toggle()
-                        }
-                    } label: {
-                        Image(systemName: "gear")
-                            .font(.system(size: 14, weight: .medium))
-                            .foregroundColor(isShowingSettings ? Palette.accent : .secondary)
-                            .frame(width: 28, height: 28)
-                            .background(
-                                RoundedRectangle(cornerRadius: 8, style: .continuous)
-                                    .fill(.ultraThinMaterial)
-                            )
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 8, style: .continuous)
-                                    .stroke(Palette.hairline, lineWidth: 1)
-                            )
-                    }
-                    .buttonStyle(.plain)
-                    .help("Enhancement settings")
-                }
+        ScrollView {
+            LazyVStack(spacing: 16) {
+                enhancementCard
+                aiProviderCard
+                promptsCard
             }
-
-            APIKeyManagementView()
-                .opacity(enhancementService.isEnhancementEnabled ? 1.0 : 0.8)
-
-            Section {
-                ReorderablePromptGrid(
-                    selectedPromptId: enhancementService.selectedPromptId,
-                    onPromptSelected: { prompt in
-                        enhancementService.setActivePrompt(prompt)
-                    },
-                    onEditPrompt: { prompt in
-                        openPromptPanel()
-                        withAnimation(.smooth(duration: 0.3)) {
-                            selectedPromptForEdit = prompt
-                        }
-                    },
-                    onDeletePrompt: { prompt in
-                        enhancementService.deletePrompt(prompt)
-                    }
-                )
-                .padding(.vertical, 8)
-            } header: {
-                HStack(alignment: .top, spacing: 12) {
-                    SettingsSectionHeader(
-                        icon: "text.bubble",
-                        title: "Enhancement Prompts",
-                        subtitle: "Pick the active style; reorder by drag.",
-                        accent: Palette.accent,
-                        statusText: "\(enhancementService.customPrompts.count)",
-                        statusTone: .neutral
-                    )
-                    Button {
-                        openPromptPanel()
-                        withAnimation(.smooth(duration: 0.3)) {
-                            isEditingPrompt = true
-                        }
-                    } label: {
-                        Image(systemName: "plus")
-                            .font(.system(size: 13, weight: .semibold))
-                            .foregroundColor(Palette.accent)
-                            .frame(width: 28, height: 28)
-                            .background(
-                                RoundedRectangle(cornerRadius: 8, style: .continuous)
-                                    .fill(Palette.accent.opacity(0.14))
-                                    .background(
-                                        RoundedRectangle(cornerRadius: 8, style: .continuous)
-                                            .fill(.ultraThinMaterial)
-                                    )
-                            )
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 8, style: .continuous)
-                                    .stroke(Palette.accent.opacity(0.42), lineWidth: 1)
-                            )
-                    }
-                    .buttonStyle(.plain)
-                    .help("Add new prompt")
-                }
-            }
-            .opacity(enhancementService.isEnhancementEnabled ? 1.0 : 0.8)
+            .padding(.horizontal, 24)
+            .padding(.vertical, 20)
+            .frame(maxWidth: 720)
+            .frame(maxWidth: .infinity)
         }
-        .formStyle(.grouped)
-        .scrollContentBackground(.hidden)
         .adaptiveGlassBackground()
         .slidingPanel(isPresented: .init(
             get: { isPanelOpen },
@@ -200,6 +91,124 @@ struct EnhancementSettingsView: View {
             }
         }
         .frame(minWidth: 500, minHeight: 400)
+    }
+
+    // MARK: - Cards
+
+    private var enhancementCard: some View {
+        ZStack(alignment: .topTrailing) {
+            SettingsCard(
+                iconSystemName: "wand.and.stars",
+                iconTint: Palette.accent,
+                title: "Enhancement",
+                subtitle: "Pass transcripts through an LLM before pasting.",
+                statusText: enhancementService.enhanceLevel.displayName,
+                statusTone: enhancementService.enhanceLevel == .none ? .neutral : .positive
+            ) {
+                VStack(alignment: .leading, spacing: 8) {
+                    Picker("", selection: $enhancementService.enhanceLevel) {
+                        ForEach(EnhanceLevel.allCases, id: \.self) { level in
+                            Text(level.displayName).tag(level)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                    .labelsHidden()
+
+                    Text(enhancementService.enhanceLevel.description)
+                        .font(.system(size: 11))
+                        .foregroundColor(.secondary)
+                }
+            }
+
+            Button {
+                withAnimation(.smooth(duration: 0.3)) {
+                    isEditingPrompt = false
+                    selectedPromptForEdit = nil
+                    isShowingSettings.toggle()
+                }
+            } label: {
+                Image(systemName: "gear")
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundColor(isShowingSettings ? Palette.accent : .secondary)
+                    .frame(width: 28, height: 28)
+                    .background(
+                        RoundedRectangle(cornerRadius: 8, style: .continuous)
+                            .fill(.ultraThinMaterial)
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 8, style: .continuous)
+                            .stroke(Palette.hairline, lineWidth: 1)
+                    )
+            }
+            .buttonStyle(.plain)
+            .help("Enhancement settings")
+            .padding(.trailing, 14)
+            .padding(.top, 14)
+        }
+    }
+
+    private var aiProviderCard: some View {
+        APIKeyManagementView()
+            .opacity(enhancementService.isEnhancementEnabled ? 1.0 : 0.8)
+    }
+
+    private var promptsCard: some View {
+        ZStack(alignment: .topTrailing) {
+            SettingsCard(
+                iconSystemName: "text.bubble",
+                iconTint: Palette.accent,
+                title: "Enhancement Prompts",
+                subtitle: "Pick the active style; reorder by drag.",
+                statusText: "\(enhancementService.customPrompts.count)",
+                statusTone: .neutral
+            ) {
+                ReorderablePromptGrid(
+                    selectedPromptId: enhancementService.selectedPromptId,
+                    onPromptSelected: { prompt in
+                        enhancementService.setActivePrompt(prompt)
+                    },
+                    onEditPrompt: { prompt in
+                        openPromptPanel()
+                        withAnimation(.smooth(duration: 0.3)) {
+                            selectedPromptForEdit = prompt
+                        }
+                    },
+                    onDeletePrompt: { prompt in
+                        enhancementService.deletePrompt(prompt)
+                    }
+                )
+                .padding(.vertical, 8)
+            }
+
+            Button {
+                openPromptPanel()
+                withAnimation(.smooth(duration: 0.3)) {
+                    isEditingPrompt = true
+                }
+            } label: {
+                Image(systemName: "plus")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundColor(Palette.accent)
+                    .frame(width: 28, height: 28)
+                    .background(
+                        RoundedRectangle(cornerRadius: 8, style: .continuous)
+                            .fill(Palette.accent.opacity(0.14))
+                            .background(
+                                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                    .fill(.ultraThinMaterial)
+                            )
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 8, style: .continuous)
+                            .stroke(Palette.accent.opacity(0.42), lineWidth: 1)
+                    )
+            }
+            .buttonStyle(.plain)
+            .help("Add new prompt")
+            .padding(.trailing, 14)
+            .padding(.top, 14)
+        }
+        .opacity(enhancementService.isEnhancementEnabled ? 1.0 : 0.8)
     }
 }
 

@@ -252,52 +252,54 @@ struct InlineHistoryView: View {
     // MARK: - Card List
 
     private var cardListView: some View {
-        Form {
-            ForEach(displayedTranscriptions) { transcription in
-                Section {
-                    HistoryCardRow(
-                        transcription: transcription,
-                        isExpanded: expandedId == transcription.id,
-                        isChecked: selectedTranscriptions.contains(transcription),
-                        onToggleExpand: {
-                            withAnimation(Animation.haloPhaseCrossfade) {
-                                expandedId = expandedId == transcription.id ? nil : transcription.id
+        ScrollView {
+            LazyVStack(spacing: 12) {
+                ForEach(displayedTranscriptions) { transcription in
+                    GlassCard(cornerRadius: 14) {
+                        HistoryCardRow(
+                            transcription: transcription,
+                            isExpanded: expandedId == transcription.id,
+                            isChecked: selectedTranscriptions.contains(transcription),
+                            onToggleExpand: {
+                                withAnimation(Animation.haloPhaseCrossfade) {
+                                    expandedId = expandedId == transcription.id ? nil : transcription.id
+                                }
+                            },
+                            onToggleCheck: { toggleSelection(transcription) },
+                            onShowInfo: {
+                                panelTranscriptionId = transcription.id
+                                panelMode = .info
+                                withAnimation(Animation.haloExpand) {
+                                    isPanelPresented = true
+                                }
                             }
-                        },
-                        onToggleCheck: { toggleSelection(transcription) },
-                        onShowInfo: {
-                            panelTranscriptionId = transcription.id
-                            panelMode = .info
-                            withAnimation(Animation.haloExpand) {
-                                isPanelPresented = true
-                            }
-                        }
-                    )
-                }
-            }
-
-            if hasMoreContent {
-                Section {
-                    Button(action: {
-                        Task { await loadMoreContent() }
-                    }) {
-                        HStack(spacing: 8) {
-                            if isLoading {
-                                ProgressView().controlSize(.small)
-                            }
-                            Text(isLoading ? "Loading..." : "Load More")
-                                .font(.system(size: 13, weight: .medium))
-                        }
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 4)
+                        )
                     }
-                    .buttonStyle(.plain)
-                    .disabled(isLoading)
+                }
+
+                if hasMoreContent {
+                    GlassCard(cornerRadius: 14) {
+                        Button(action: {
+                            Task { await loadMoreContent() }
+                        }) {
+                            HStack(spacing: 8) {
+                                if isLoading {
+                                    ProgressView().controlSize(.small)
+                                }
+                                Text(isLoading ? "Loading..." : "Load More")
+                                    .font(.system(size: 13, weight: .medium))
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 4)
+                        }
+                        .buttonStyle(.plain)
+                        .disabled(isLoading)
+                    }
                 }
             }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
         }
-        .formStyle(.grouped)
-        .scrollContentBackground(.hidden)
     }
 
     // MARK: - Sliding Panel

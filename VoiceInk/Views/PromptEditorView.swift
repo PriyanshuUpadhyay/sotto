@@ -221,148 +221,147 @@ struct PromptEditorView: View {
     // MARK: - Predefined Prompt Form
 
     private var predefinedPromptForm: some View {
-        Form {
-            Section {
-                Text("System prompts ship with VoiceInk. You can view their instructions here and customize trigger words below. To author your own prompt, tap + on the Enhancement Prompts panel.")
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
-            } header: {
-                Text("Editing: \(title)")
-            }
-
-            Section {
-                ZStack(alignment: .topLeading) {
-                    TextEditor(text: .constant(promptText))
-                        .font(.system(.body, design: .monospaced))
-                        .frame(minHeight: 220)
-                        .scrollContentBackground(.hidden)
-                        .disabled(true)
-                        .opacity(0.95)
+        ScrollView {
+            VStack(alignment: .leading, spacing: 20) {
+                sectionBlock(label: "EDITING: \(title.uppercased())") {
+                    Text("System prompts ship with VoiceInk. You can view their instructions here and customize trigger words below. To author your own prompt, tap + on the Enhancement Prompts panel.")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
 
-                HStack {
-                    Spacer()
-                    Button {
-                        let pb = NSPasteboard.general
-                        pb.clearContents()
-                        pb.setString(promptText, forType: .string)
-                    } label: {
-                        Label("Copy", systemImage: "doc.on.doc")
+                sectionBlock(
+                    label: "SYSTEM PROMPT (READ-ONLY)",
+                    info: "This is the instruction set sent to the LLM for this prompt. It updates automatically with each VoiceInk release."
+                ) {
+                    VStack(alignment: .leading, spacing: 10) {
+                        ZStack(alignment: .topLeading) {
+                            TextEditor(text: .constant(promptText))
+                                .font(.system(.body, design: .monospaced))
+                                .frame(minHeight: 220)
+                                .scrollContentBackground(.hidden)
+                                .disabled(true)
+                                .opacity(0.95)
+                        }
+
+                        HStack {
+                            Spacer()
+                            Button {
+                                let pb = NSPasteboard.general
+                                pb.clearContents()
+                                pb.setString(promptText, forType: .string)
+                            } label: {
+                                Label("Copy", systemImage: "doc.on.doc")
+                            }
+                            .buttonStyle(.bordered)
+                            .controlSize(.small)
+                        }
                     }
-                    .buttonStyle(.bordered)
-                    .controlSize(.small)
                 }
-            } header: {
-                HStack(spacing: 4) {
-                    Text("System Prompt (read-only)")
-                    InfoTip("This is the instruction set sent to the LLM for this prompt. It updates automatically with each VoiceInk release.")
-                }
-            }
 
-            Section {
-                TriggerWordsEditor(triggerWords: $triggerWords)
-            } header: {
-                HStack(spacing: 4) {
-                    Text("Trigger Words")
-                    InfoTip("Add words that automatically activate this prompt. For example, 'summarize', 'email', 'translate'.")
+                sectionBlock(
+                    label: "TRIGGER WORDS",
+                    info: "Add words that automatically activate this prompt. For example, 'summarize', 'email', 'translate'."
+                ) {
+                    TriggerWordsEditor(triggerWords: $triggerWords)
                 }
             }
+            .padding(.horizontal, 20)
+            .padding(.vertical, 16)
         }
-        .formStyle(.grouped)
-        .scrollContentBackground(.hidden)
     }
 
     // MARK: - Custom Prompt Form
 
     private var customPromptForm: some View {
-        Form {
-            Section {
-                HStack(alignment: .center, spacing: 14) {
-                    Button(action: { showingIconPicker = true }) {
-                        Image(systemName: selectedIcon)
-                            .font(.system(size: 22))
-                            .foregroundColor(.primary)
-                            .frame(width: 44, height: 44)
-                            .background(.ultraThinMaterial)
-                            .cornerRadius(10)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 10)
-                                    .stroke(Color.secondary.opacity(0.2), lineWidth: 1)
-                            )
-                    }
-                    .buttonStyle(.plain)
-                    .popover(isPresented: $showingIconPicker, arrowEdge: .bottom) {
-                        IconPickerPopover(selectedIcon: $selectedIcon, isPresented: $showingIconPicker)
-                    }
+        ScrollView {
+            VStack(alignment: .leading, spacing: 20) {
+                sectionBlock(label: "DETAILS") {
+                    VStack(alignment: .leading, spacing: 10) {
+                        HStack(alignment: .center, spacing: 14) {
+                            Button(action: { showingIconPicker = true }) {
+                                Image(systemName: selectedIcon)
+                                    .font(.system(size: 22))
+                                    .foregroundColor(.primary)
+                                    .frame(width: 44, height: 44)
+                                    .background(.ultraThinMaterial)
+                                    .cornerRadius(10)
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 10)
+                                            .stroke(Color.secondary.opacity(0.2), lineWidth: 1)
+                                    )
+                            }
+                            .buttonStyle(.plain)
+                            .popover(isPresented: $showingIconPicker, arrowEdge: .bottom) {
+                                IconPickerPopover(selectedIcon: $selectedIcon, isPresented: $showingIconPicker)
+                            }
 
-                    TextField("Prompt Name", text: $title)
-                        .textFieldStyle(.roundedBorder)
-                }
+                            TextField("Prompt Name", text: $title)
+                                .textFieldStyle(.roundedBorder)
+                        }
 
-                TextField("Brief description", text: $description)
-                    .textFieldStyle(.roundedBorder)
-            } header: {
-                Text("Details")
-            }
-
-            Section {
-                ZStack(alignment: .topLeading) {
-                    TextEditor(text: $promptText)
-                        .font(.system(.body, design: .monospaced))
-                        .frame(minHeight: 160)
-                        .scrollContentBackground(.hidden)
-
-                    if promptText.isEmpty {
-                        Text("Enter your custom prompt instructions here...")
-                            .font(.system(.body, design: .monospaced))
-                            .foregroundStyle(.tertiary)
-                            .padding(.leading, 5)
-                            .allowsHitTesting(false)
+                        TextField("Brief description", text: $description)
+                            .textFieldStyle(.roundedBorder)
                     }
                 }
 
-                Toggle(isOn: $useSystemInstructions) {
-                    HStack(spacing: 4) {
-                        Text("Use System Template")
-                        InfoTip("If enabled, your instructions are combined with a general-purpose template to improve transcription quality.\n\nDisable for full control over the AI's system prompt (for advanced users).")
-                    }
-                }
-                .toggleStyle(.switch)
-            } header: {
-                Text("Instructions")
-            }
+                sectionBlock(label: "INSTRUCTIONS") {
+                    VStack(alignment: .leading, spacing: 12) {
+                        ZStack(alignment: .topLeading) {
+                            TextEditor(text: $promptText)
+                                .font(.system(.body, design: .monospaced))
+                                .frame(minHeight: 160)
+                                .scrollContentBackground(.hidden)
 
-            Section {
-                TriggerWordsEditor(triggerWords: $triggerWords)
-            } header: {
-                HStack(spacing: 4) {
-                    Text("Trigger Words")
-                    InfoTip("Add words that automatically activate this prompt. For example, 'summarize', 'email', 'translate'.")
-                }
-            }
-
-            if case .add = mode {
-                Section {
-                    Menu {
-                        ForEach(PromptTemplates.all, id: \.title) { template in
-                            Button {
-                                title = template.title
-                                promptText = template.promptText
-                                selectedIcon = template.icon
-                                description = template.description
-                            } label: {
-                                Label(template.title, systemImage: template.icon)
+                            if promptText.isEmpty {
+                                Text("Enter your custom prompt instructions here...")
+                                    .font(.system(.body, design: .monospaced))
+                                    .foregroundStyle(.tertiary)
+                                    .padding(.leading, 5)
+                                    .allowsHitTesting(false)
                             }
                         }
-                    } label: {
-                        Label("Start with Template", systemImage: "sparkles")
+
+                        Toggle(isOn: $useSystemInstructions) {
+                            HStack(spacing: 4) {
+                                Text("Use System Template")
+                                InfoTip("If enabled, your instructions are combined with a general-purpose template to improve transcription quality.\n\nDisable for full control over the AI's system prompt (for advanced users).")
+                            }
+                        }
+                        .toggleStyle(.switch)
                     }
-                    .menuStyle(.borderlessButton)
+                }
+
+                sectionBlock(
+                    label: "TRIGGER WORDS",
+                    info: "Add words that automatically activate this prompt. For example, 'summarize', 'email', 'translate'."
+                ) {
+                    TriggerWordsEditor(triggerWords: $triggerWords)
+                }
+
+                if case .add = mode {
+                    sectionBlock(label: "TEMPLATES") {
+                        Menu {
+                            ForEach(PromptTemplates.all, id: \.title) { template in
+                                Button {
+                                    title = template.title
+                                    promptText = template.promptText
+                                    selectedIcon = template.icon
+                                    description = template.description
+                                } label: {
+                                    Label(template.title, systemImage: template.icon)
+                                }
+                            }
+                        } label: {
+                            Label("Start with Template", systemImage: "sparkles")
+                        }
+                        .menuStyle(.borderlessButton)
+                    }
                 }
             }
+            .padding(.horizontal, 20)
+            .padding(.vertical, 16)
         }
-        .formStyle(.grouped)
-        .scrollContentBackground(.hidden)
     }
 
     private func save() {
@@ -390,6 +389,35 @@ struct PromptEditorView: View {
             )
             enhancementService.updatePrompt(updatedPrompt)
         }
+    }
+}
+
+// MARK: - sectionBlock helper
+//
+// Compact section block for surfaces hosted inside an existing GlassCard
+// (PromptEditorView's `editorPane`). Mirrors EnhancementSettingsPanel's
+// `sectionBlock` — duplicated by design per W13.D plan §S3.12 / Open Q #2 to
+// avoid scope drift; both helpers keep cognitive parity for narrow popover
+// surfaces where SettingsCard would double-layer over panel-glass.
+
+@ViewBuilder
+fileprivate func sectionBlock<Content: View>(
+    label: String,
+    info: String? = nil,
+    @ViewBuilder content: () -> Content
+) -> some View {
+    VStack(alignment: .leading, spacing: 10) {
+        HStack(spacing: 4) {
+            Text(label)
+                .font(.system(size: 10.5, weight: .medium, design: .monospaced))
+                .tracking(0.06 * 10.5)
+                .foregroundColor(Palette.onyxMute.opacity(0.7))
+            if let info {
+                InfoTip(info)
+            }
+            Spacer()
+        }
+        content()
     }
 }
 

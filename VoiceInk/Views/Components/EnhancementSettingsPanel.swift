@@ -52,220 +52,245 @@ struct EnhancementSettingsPanel: View {
                 alignment: .bottom
             )
 
-            // Content
-            Form {
-                Section {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Picker("", selection: $enhancementService.enhanceLevel) {
-                            ForEach(EnhanceLevel.allCases, id: \.self) { level in
-                                Text(level.displayName).tag(level)
-                            }
-                        }
-                        .pickerStyle(.segmented)
-                        .labelsHidden()
+            // Content — flat sectionBlock VStack (no Form, no SettingsCard).
+            // The popover IS the card; sections are dividers within it. See
+            // W13.D plan §S2 — SettingsCard would double-layer over the
+            // panel's existing `.adaptiveGlassBackground(intensity: .panel)`.
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: 20) {
+                    cleanupLevelSection
+                    contextSection
+                    shortTranscriptionsSection
+                    requestTimeoutSection
 
-                        Text(enhancementService.enhanceLevel.description)
-                            .font(.caption)
-                            .foregroundColor(.secondary)
+                    if enhancementService.aiService.selectedProvider == .mlx
+                        || enhancementService.aiService.selectedProvider == .foundationModels {
+                        onDeviceSection
                     }
-                } header: {
+
+                    shortcutsSection
+                    lastSystemPromptSection
+                }
+                .padding(.horizontal, 20)
+                .padding(.vertical, 16)
+            }
+        }
+        .tint(Palette.accent)
+    }
+
+    // MARK: - Sections
+
+    private var cleanupLevelSection: some View {
+        sectionBlock(
+            label: "CLEANUP LEVEL",
+            info: "None pastes raw transcripts. Light removes fillers. Medium fixes grammar. High polishes for clarity."
+        ) {
+            VStack(alignment: .leading, spacing: 8) {
+                Picker("", selection: $enhancementService.enhanceLevel) {
+                    ForEach(EnhanceLevel.allCases, id: \.self) { level in
+                        Text(level.displayName).tag(level)
+                    }
+                }
+                .pickerStyle(.segmented)
+                .labelsHidden()
+
+                Text(enhancementService.enhanceLevel.description)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+        }
+    }
+
+    private var contextSection: some View {
+        sectionBlock(label: "CONTEXT") {
+            VStack(alignment: .leading, spacing: 12) {
+                Toggle(isOn: $enhancementService.useClipboardContext) {
                     HStack(spacing: 4) {
-                        Text("Cleanup Level")
-                        InfoTip("None pastes raw transcripts. Light removes fillers. Medium fixes grammar. High polishes for clarity.")
+                        Text("Clipboard Context")
+                        InfoTip("Use clipboard text to understand context for better enhancement.")
                     }
                 }
+                .toggleStyle(.switch)
 
-                Section {
-                    Toggle(isOn: $enhancementService.useClipboardContext) {
-                        HStack(spacing: 4) {
-                            Text("Clipboard Context")
-                            InfoTip("Use clipboard text to understand context for better enhancement.")
-                        }
+                Toggle(isOn: $enhancementService.useScreenCaptureContext) {
+                    HStack(spacing: 4) {
+                        Text("Screen Context")
+                        InfoTip("Capture on-screen text to understand context for better enhancement.")
                     }
-                    .toggleStyle(.switch)
-
-                    Toggle(isOn: $enhancementService.useScreenCaptureContext) {
-                        HStack(spacing: 4) {
-                            Text("Screen Context")
-                            InfoTip("Capture on-screen text to understand context for better enhancement.")
-                        }
-                    }
-                    .toggleStyle(.switch)
-                } header: {
-                    Text("Context")
                 }
+                .toggleStyle(.switch)
+            }
+        }
+    }
 
-                Section {
-                    VStack(alignment: .leading, spacing: 0) {
-                        HStack {
-                            Toggle(isOn: Binding(
-                                get: { isSkipShortEnhancementEnabled },
-                                set: { newValue in
-                                    isHandlingToggleChange = true
-                                    isSkipShortEnhancementEnabled = newValue
-                                    if newValue {
-                                        withAnimation(.easeInOut(duration: 0.2)) {
-                                            isShortEnhancementExpanded = true
-                                        }
-                                    } else {
-                                        withAnimation(.easeInOut(duration: 0.2)) {
-                                            isShortEnhancementExpanded = false
-                                        }
-                                    }
-                                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                                        isHandlingToggleChange = false
-                                    }
-                                }
-                            )) {
-                                HStack(spacing: 4) {
-                                    Text("Skip short transcriptions")
-                                    InfoTip("Automatically skip AI enhancement when the transcription has very few words. Short phrases like \"yes\", \"thank you\", or quick commands don't benefit from enhancement.")
-                                }
-                            }
-                            .toggleStyle(.switch)
-
-                            Spacer()
-
-                            Image(systemName: "chevron.right")
-                                .font(.system(size: 12, weight: .semibold))
-                                .foregroundColor(.secondary)
-                                .rotationEffect(.degrees(isSkipShortEnhancementEnabled && isShortEnhancementExpanded ? 90 : 0))
-                                .opacity(isSkipShortEnhancementEnabled ? 1 : 0.4)
-                        }
-                        .contentShape(Rectangle())
-                        .onTapGesture {
-                            guard !isHandlingToggleChange else { return }
-                            if isSkipShortEnhancementEnabled {
+    private var shortTranscriptionsSection: some View {
+        sectionBlock(label: "SHORT TRANSCRIPTIONS") {
+            VStack(alignment: .leading, spacing: 0) {
+                HStack {
+                    Toggle(isOn: Binding(
+                        get: { isSkipShortEnhancementEnabled },
+                        set: { newValue in
+                            isHandlingToggleChange = true
+                            isSkipShortEnhancementEnabled = newValue
+                            if newValue {
                                 withAnimation(.easeInOut(duration: 0.2)) {
-                                    isShortEnhancementExpanded.toggle()
+                                    isShortEnhancementExpanded = true
                                 }
+                            } else {
+                                withAnimation(.easeInOut(duration: 0.2)) {
+                                    isShortEnhancementExpanded = false
+                                }
+                            }
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                                isHandlingToggleChange = false
                             }
                         }
-
-                        if isSkipShortEnhancementEnabled && isShortEnhancementExpanded {
-                            Picker("Minimum words", selection: $shortEnhancementWordThreshold) {
-                                ForEach(1...15, id: \.self) { count in
-                                    Text("\(count) \(count == 1 ? "word" : "words")").tag(count)
-                                }
-                            }
-                            .padding(.top, 12)
-                            .padding(.leading, 4)
-                            .transition(.opacity.combined(with: .move(edge: .top)))
+                    )) {
+                        HStack(spacing: 4) {
+                            Text("Skip short transcriptions")
+                            InfoTip("Automatically skip AI enhancement when the transcription has very few words. Short phrases like \"yes\", \"thank you\", or quick commands don't benefit from enhancement.")
                         }
                     }
-                    .animation(.easeInOut(duration: 0.2), value: isShortEnhancementExpanded)
+                    .toggleStyle(.switch)
+
+                    Spacer()
+
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundColor(.secondary)
+                        .rotationEffect(.degrees(isSkipShortEnhancementEnabled && isShortEnhancementExpanded ? 90 : 0))
+                        .opacity(isSkipShortEnhancementEnabled ? 1 : 0.4)
+                }
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    guard !isHandlingToggleChange else { return }
+                    if isSkipShortEnhancementEnabled {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            isShortEnhancementExpanded.toggle()
+                        }
+                    }
                 }
 
-                Section {
-                    Picker("Timeout duration", selection: $enhancementTimeoutSeconds) {
-                        ForEach([3, 5, 7, 10, 15, 20, 30, 40, 50, 60], id: \.self) { seconds in
-                            Text("\(seconds) seconds").tag(seconds)
+                if isSkipShortEnhancementEnabled && isShortEnhancementExpanded {
+                    Picker("Minimum words", selection: $shortEnhancementWordThreshold) {
+                        ForEach(1...15, id: \.self) { count in
+                            Text("\(count) \(count == 1 ? "word" : "words")").tag(count)
                         }
                     }
-                    .pickerStyle(.menu)
+                    .padding(.top, 12)
+                    .padding(.leading, 4)
+                    .transition(.opacity.combined(with: .move(edge: .top)))
+                }
+            }
+            .animation(.easeInOut(duration: 0.2), value: isShortEnhancementExpanded)
+        }
+    }
 
-                    Picker("On timeout", selection: $retryOnTimeout) {
-                        Text("Fail immediately").tag(false)
-                        Text("Retry").tag(true)
-                    }
-                    .pickerStyle(.menu)
-                } header: {
-                    HStack(spacing: 4) {
-                        Text("Request Timeout")
-                        InfoTip("Set how long to wait for the AI provider to respond. If no response is received within this duration, you can either fail immediately and paste the original transcription, or retry the request (up to 3 attempts).")
+    private var requestTimeoutSection: some View {
+        sectionBlock(
+            label: "REQUEST TIMEOUT",
+            info: "Set how long to wait for the AI provider to respond. If no response is received within this duration, you can either fail immediately and paste the original transcription, or retry the request (up to 3 attempts)."
+        ) {
+            VStack(alignment: .leading, spacing: 12) {
+                Picker("Timeout duration", selection: $enhancementTimeoutSeconds) {
+                    ForEach([3, 5, 7, 10, 15, 20, 30, 40, 50, 60], id: \.self) { seconds in
+                        Text("\(seconds) seconds").tag(seconds)
                     }
                 }
+                .pickerStyle(.menu)
 
-                if enhancementService.aiService.selectedProvider == .mlx
-                    || enhancementService.aiService.selectedProvider == .foundationModels {
-                    Section {
-                        // W11.B — surface the active local path. AFM is the
-                        // primary path on macOS 26+ with Apple Intelligence
-                        // enabled; MLX is the fallback. Informational only,
-                        // no toggle.
-                        HStack(spacing: 6) {
-                            Image(systemName: enhancementService.activeLocalPathDescription.hasPrefix("Apple")
-                                  ? "applelogo"
-                                  : "cpu")
-                                .foregroundColor(.secondary)
-                            Text("Active path:")
-                                .foregroundColor(.secondary)
-                            Text(enhancementService.activeLocalPathDescription)
-                                .foregroundColor(.primary)
-                            Spacer()
-                        }
-                        .font(.callout)
+                Picker("On timeout", selection: $retryOnTimeout) {
+                    Text("Fail immediately").tag(false)
+                    Text("Retry").tag(true)
+                }
+                .pickerStyle(.menu)
+            }
+        }
+    }
 
-                        // Idle eviction only governs the MLX in-memory model.
-                        // Hidden on `.foundationModels` since MLX never loads
-                        // in that path.
-                        if enhancementService.aiService.selectedProvider == .mlx {
-                            Picker(selection: $mlxIdleEvictSeconds) {
-                                Text("60 seconds").tag(60)
-                                Text("5 minutes").tag(300)
-                                Text("10 minutes").tag(600)
-                                Text("20 minutes").tag(1200)
-                                Text("30 minutes").tag(1800)
-                                Text("45 minutes").tag(2700)
-                                Text("1 hour").tag(3600)
-                                Text("Never").tag(Int.max)
-                            } label: {
-                                HStack(spacing: 4) {
-                                    Text("Idle eviction")
-                                    InfoTip("How long the MLX on-device model stays in memory after the last enhancement. Higher values trade memory for fewer cold-load spikes; lower values free memory faster. Applies on the next time the MLX provider is reloaded.")
-                                }
-                            }
-                            .pickerStyle(.menu)
-                        }
-
-                        // W11.D — empirical timing log access. Every on-device
-                        // enhancement (AFM and MLX) appends one row to the CSV
-                        // under Application Support so the user can verify
-                        // perf changes quantitatively.
-                        HStack(spacing: 8) {
-                            Button(action: openTimingsFolder) {
-                                Label("Open timings folder", systemImage: "folder")
-                            }
-                            .buttonStyle(.bordered)
-                            .help("Reveal enhancement-timings.csv in Finder")
-
-                            Button(action: copyTimingsPath) {
-                                Label(
-                                    didCopyTimingsPath ? "Copied!" : "Copy CSV path",
-                                    systemImage: didCopyTimingsPath ? "checkmark" : "doc.on.doc"
-                                )
-                            }
-                            .buttonStyle(.bordered)
-                            .help("Copy the absolute CSV path to the clipboard")
-                        }
-                    } header: {
-                        Text("On-device")
-                    } footer: {
-                        Text("Each on-device enhancement appends a row to enhancement-timings.csv (timestamp, model, prompt mode, prep/ttft/gen/total seconds, gap, outcome).")
-                            .font(.caption)
+    @ViewBuilder
+    private var onDeviceSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            sectionBlock(label: "ON-DEVICE") {
+                VStack(alignment: .leading, spacing: 12) {
+                    // W11.B — surface the active local path. AFM is the
+                    // primary path on macOS 26+ with Apple Intelligence
+                    // enabled; MLX is the fallback. Informational only,
+                    // no toggle.
+                    HStack(spacing: 6) {
+                        Image(systemName: enhancementService.activeLocalPathDescription.hasPrefix("Apple")
+                              ? "applelogo"
+                              : "cpu")
                             .foregroundColor(.secondary)
+                        Text("Active path:")
+                            .foregroundColor(.secondary)
+                        Text(enhancementService.activeLocalPathDescription)
+                            .foregroundColor(.primary)
+                        Spacer()
                     }
-                }
+                    .font(.callout)
 
-                Section {
-                    EnhancementShortcutsView()
-                } header: {
-                    Text("Shortcuts")
-                }
+                    // Idle eviction only governs the MLX in-memory model.
+                    // Hidden on `.foundationModels` since MLX never loads
+                    // in that path.
+                    if enhancementService.aiService.selectedProvider == .mlx {
+                        Picker(selection: $mlxIdleEvictSeconds) {
+                            Text("60 seconds").tag(60)
+                            Text("5 minutes").tag(300)
+                            Text("10 minutes").tag(600)
+                            Text("20 minutes").tag(1200)
+                            Text("30 minutes").tag(1800)
+                            Text("45 minutes").tag(2700)
+                            Text("1 hour").tag(3600)
+                            Text("Never").tag(Int.max)
+                        } label: {
+                            HStack(spacing: 4) {
+                                Text("Idle eviction")
+                                InfoTip("How long the MLX on-device model stays in memory after the last enhancement. Higher values trade memory for fewer cold-load spikes; lower values free memory faster. Applies on the next time the MLX provider is reloaded.")
+                            }
+                        }
+                        .pickerStyle(.menu)
+                    }
 
-                Section {
-                    LastSystemPromptViewer()
-                } header: {
-                    HStack(spacing: 4) {
-                        Text("Last Sent System Prompt")
-                        InfoTip("The exact system prompt sent to the LLM on your last enhancement, including custom vocabulary and any clipboard or screen context that was attached. Useful for debugging why the model did or didn't follow an instruction.")
+                    // W11.D — empirical timing log access. Every on-device
+                    // enhancement (AFM and MLX) appends one row to the CSV
+                    // under Application Support so the user can verify
+                    // perf changes quantitatively.
+                    HStack(spacing: 8) {
+                        Button(action: openTimingsFolder) {
+                            Label("Open timings folder", systemImage: "folder")
+                        }
+                        .buttonStyle(.bordered)
+                        .help("Reveal enhancement-timings.csv in Finder")
+
+                        Button(action: copyTimingsPath) {
+                            Label(
+                                didCopyTimingsPath ? "Copied!" : "Copy CSV path",
+                                systemImage: didCopyTimingsPath ? "checkmark" : "doc.on.doc"
+                            )
+                        }
+                        .buttonStyle(.bordered)
+                        .help("Copy the absolute CSV path to the clipboard")
                     }
                 }
             }
-            .formStyle(.grouped)
-            .scrollContentBackground(.hidden)
+            sectionFooter("Each on-device enhancement appends a row to enhancement-timings.csv (timestamp, model, prompt mode, prep/ttft/gen/total seconds, gap, outcome).")
         }
-        .tint(Palette.accent)
+    }
+
+    private var shortcutsSection: some View {
+        sectionBlock(label: "SHORTCUTS") {
+            EnhancementShortcutsView()
+        }
+    }
+
+    private var lastSystemPromptSection: some View {
+        sectionBlock(
+            label: "LAST SENT SYSTEM PROMPT",
+            info: "The exact system prompt sent to the LLM on your last enhancement, including custom vocabulary and any clipboard or screen context that was attached. Useful for debugging why the model did or didn't follow an instruction."
+        ) {
+            LastSystemPromptViewer()
+        }
     }
 
     // MARK: - W11.D timings actions
@@ -291,6 +316,42 @@ struct EnhancementSettingsPanel: View {
             didCopyTimingsPath = false
         }
     }
+}
+
+// MARK: - sectionBlock / sectionFooter helpers
+//
+// Compact section block + footer for narrow popover surfaces. Mirrors
+// `APIKeyManagementView.sectionLabel(_:count:)` vocabulary so the popover
+// reads as ONE glass surface with hierarchical sections (no SettingsCard
+// double-layering over the panel's `.adaptiveGlassBackground(intensity: .panel)`).
+// Used in EnhancementSettingsPanel sections per W13.D plan §S2.10.
+
+@ViewBuilder
+fileprivate func sectionBlock<Content: View>(
+    label: String,
+    info: String? = nil,
+    @ViewBuilder content: () -> Content
+) -> some View {
+    VStack(alignment: .leading, spacing: 10) {
+        HStack(spacing: 4) {
+            Text(label)
+                .font(.system(size: 10.5, weight: .medium, design: .monospaced))
+                .tracking(0.06 * 10.5)
+                .foregroundColor(Palette.onyxMute.opacity(0.7))
+            if let info {
+                InfoTip(info)
+            }
+            Spacer()
+        }
+        content()
+    }
+}
+
+fileprivate func sectionFooter(_ text: String) -> some View {
+    Text(text)
+        .font(.caption)
+        .foregroundColor(.secondary)
+        .fixedSize(horizontal: false, vertical: true)
 }
 
 // MARK: - Last System Prompt Viewer

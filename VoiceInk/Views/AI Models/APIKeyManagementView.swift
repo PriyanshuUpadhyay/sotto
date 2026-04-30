@@ -86,7 +86,14 @@ struct APIKeyManagementView: View {
     }
 
     var body: some View {
-        Section {
+        SettingsCard(
+            iconSystemName: "sparkles.rectangle.stack",
+            iconTint: Palette.accent,
+            title: "AI Provider Integration",
+            subtitle: "Pick the model that shapes enhanced transcripts.",
+            statusText: providerStatusText,
+            statusTone: providerStatusTone
+        ) {
             VStack(alignment: .leading, spacing: 12) {
                 // Compact identity preview — chip for the active provider.
                 ProviderChip(
@@ -133,15 +140,6 @@ struct APIKeyManagementView: View {
                 }
             }
             .padding(.vertical, 4)
-        } header: {
-            SettingsSectionHeader(
-                icon: "sparkles.rectangle.stack",
-                title: "AI Provider Integration",
-                subtitle: "Pick the model that shapes enhanced transcripts.",
-                accent: Palette.accent,
-                statusText: providerStatusText,
-                statusTone: providerStatusTone
-            )
         }
         .onAppear {
             // Pre-expand the active provider so users land on a configurable card.
