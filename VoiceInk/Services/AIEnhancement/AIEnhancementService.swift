@@ -214,18 +214,37 @@ class AIEnhancementService: ObservableObject {
 
         let finalContextSection = allContextSections + customVocabularySection
 
+        // W12.A bug-fix (2026-04-30): the level directive must be SPLICED
+        // INSIDE the customPromptTemplate's <SYSTEM_INSTRUCTIONS> block, not
+        // prepended OUTSIDE it. Prepending fragmented the prompt — Qwen3-Instruct
+        // saw a bare `<CLEANUP_LEVEL>` content tag + a standalone "Apply X
+        // cleanup" directive at the top, then the strong "TRANSCRIPTION
+        // ENHANCER, DO NOT RESPOND" framing arrived later. On question-like
+        // dictations the model regressed to chat-instruct mode and answered
+        // the question instead of cleaning the transcript. Splicing inside
+        // keeps the directive bounded by the framing on both sides.
+        //
+        // Assistant mode is intentionally exempt — the user wants a response,
+        // not a cleanup, so the cleanup directive must NOT reframe it.
         let levelDirective = AIPrompts.cleanupDirective(for: enhanceLevel)
+        let systemPrompt: String
 
         if let activePrompt = activePrompt {
             if activePrompt.id == PredefinedPrompts.assistantPromptId {
-                return levelDirective + activePrompt.promptText + finalContextSection
+                systemPrompt = activePrompt.promptText
+            } else if activePrompt.useSystemInstructions {
+                let combinedBody = levelDirective + activePrompt.promptText
+                systemPrompt = String(format: AIPrompts.customPromptTemplate, combinedBody)
             } else {
-                return levelDirective + activePrompt.finalPromptText + finalContextSection
+                systemPrompt = levelDirective + activePrompt.promptText
             }
         } else {
             let defaultPrompt = allPrompts.first(where: { $0.id == PredefinedPrompts.defaultPromptId }) ?? allPrompts.first!
-            return levelDirective + defaultPrompt.finalPromptText + finalContextSection
+            let combinedBody = levelDirective + defaultPrompt.promptText
+            systemPrompt = String(format: AIPrompts.customPromptTemplate, combinedBody)
         }
+
+        return systemPrompt + finalContextSection
     }
 
     private func makeRequest(text: String, mode: EnhancementPrompt) async throws -> String {
