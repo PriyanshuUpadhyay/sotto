@@ -53,6 +53,35 @@ enum AIPrompts {
     - If the dictation is empty, output an empty string.
     """
 
+    /// W12.A per-level cleanup directive prepended to the standard system
+    /// prompt body. Maps the user's `EnhanceLevel` selection onto an explicit
+    /// transformation budget the model is told to respect. See plan
+    /// `docs/superpowers/plans/W12A-auto-cleanup-levels.md` §Migration policy #5.
+    static func cleanupDirective(for level: EnhanceLevel) -> String {
+        switch level {
+        case .none:
+            return ""  // defensive — caller short-circuits on .none upstream
+        case .light:
+            return """
+            <CLEANUP_LEVEL>Light</CLEANUP_LEVEL>
+            Apply Light cleanup ONLY: remove disfluencies (um, uh, like, you know, false starts, repeated words). Apply standard punctuation. Preserve the speaker's exact wording, grammar, and tone — do NOT rephrase, do NOT correct grammar, do NOT change vocabulary.
+
+            """
+        case .medium:
+            return """
+            <CLEANUP_LEVEL>Medium</CLEANUP_LEVEL>
+            Apply Medium cleanup: remove disfluencies, fix obvious grammar errors (subject-verb agreement, tense consistency), apply standard punctuation, normalize sentence boundaries. Preserve the speaker's vocabulary and tone — do NOT polish style, do NOT reword for concision.
+
+            """
+        case .high:
+            return """
+            <CLEANUP_LEVEL>High</CLEANUP_LEVEL>
+            Apply High cleanup: remove disfluencies, fix grammar, normalize sentence flow, and tighten prose for clarity and readability. May reword for concision and merge run-on thoughts. Preserve all factual content, names, numbers, and the speaker's intent — do NOT add information, do NOT inject opinions.
+
+            """
+        }
+    }
+
     static let assistantMode = """
     <SYSTEM_INSTRUCTIONS>
     You are a powerful AI assistant. Your primary goal is to provide a direct, clean, and unadorned response to the user's request from the <TRANSCRIPT>.

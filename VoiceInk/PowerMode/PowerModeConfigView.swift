@@ -31,7 +31,7 @@ struct ConfigurationView: View {
     @State private var selectedEmoji: String = "💼"
     @State private var isShowingEmojiPicker = false
     @State private var isShowingAppPicker = false
-    @State private var isAIEnhancementEnabled: Bool
+    @State private var enhanceLevel: EnhanceLevel
     @State private var selectedPromptId: UUID?
     @State private var selectedTranscriptionModelName: String?
     @State private var selectedLanguage: String?
@@ -80,7 +80,7 @@ struct ConfigurationView: View {
         case .add:
             let newId = UUID()
             _powerModeConfigId = State(initialValue: newId)
-            _isAIEnhancementEnabled = State(initialValue: false)
+            _enhanceLevel = State(initialValue: .default)
             _selectedPromptId = State(initialValue: nil)
             _selectedTranscriptionModelName = State(initialValue: nil)
             _selectedLanguage = State(initialValue: nil)
@@ -96,7 +96,7 @@ struct ConfigurationView: View {
             // Fetch latest version in case config was modified elsewhere
             let latestConfig = powerModeManager.getConfiguration(with: config.id) ?? config
             _powerModeConfigId = State(initialValue: latestConfig.id)
-            _isAIEnhancementEnabled = State(initialValue: latestConfig.isAIEnhancementEnabled)
+            _enhanceLevel = State(initialValue: latestConfig.enhanceLevel)
             _selectedPromptId = State(initialValue: latestConfig.selectedPrompt.flatMap { UUID(uuidString: $0) })
             _selectedTranscriptionModelName = State(initialValue: latestConfig.selectedTranscriptionModelName)
             _selectedLanguage = State(initialValue: latestConfig.selectedLanguage)
@@ -146,7 +146,7 @@ struct ConfigurationView: View {
                 }
             }
 
-            if isAIEnhancementEnabled && selectedPromptId == nil {
+            if enhanceLevel != .none && selectedPromptId == nil {
                 selectedPromptId = enhancementService.allPrompts.first?.id
             }
 
@@ -518,10 +518,23 @@ struct ConfigurationView: View {
             subtitle: "Reshape transcripts with the model of your choice."
         ) {
             VStack(alignment: .leading, spacing: 12) {
-                Toggle("AI Enhancement", isOn: $isAIEnhancementEnabled)
-                    .toggleStyle(SwitchToggleStyle(tint: Palette.accent))
-                    .onChange(of: isAIEnhancementEnabled) { _, newValue in
-                        if newValue {
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack {
+                        Text("Cleanup Level")
+                            .font(.system(size: 13, weight: .medium))
+                        Spacer()
+                    }
+                    Picker("", selection: $enhanceLevel) {
+                        ForEach(EnhanceLevel.allCases, id: \.self) { level in
+                            Text(level.displayName).tag(level)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                    .labelsHidden()
+                    .onChange(of: enhanceLevel) { _, newValue in
+                        // Mirror the legacy onChange — when the user dials AWAY from .none,
+                        // seed defaults so the rest of the card has something to render.
+                        if newValue != .none {
                             if selectedAIProvider == nil {
                                 selectedAIProvider = aiService.selectedProvider.rawValue
                             }
@@ -533,8 +546,12 @@ struct ConfigurationView: View {
                             }
                         }
                     }
+                    Text(enhanceLevel.description)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
 
-                if isAIEnhancementEnabled {
+                if enhanceLevel != .none {
                     aiProviderPicker
                     aiModelPicker
                     enhancementPromptPicker
@@ -701,7 +718,7 @@ struct ConfigurationView: View {
                 emoji: selectedEmoji,
                 appConfigs: selectedAppConfigs.isEmpty ? nil : selectedAppConfigs,
                 urlConfigs: websiteConfigs.isEmpty ? nil : websiteConfigs,
-                isAIEnhancementEnabled: isAIEnhancementEnabled,
+                enhanceLevel: enhanceLevel,
                 selectedPrompt: selectedPromptId?.uuidString,
                 selectedTranscriptionModelName: selectedTranscriptionModelName,
                 selectedLanguage: selectedLanguage,
@@ -716,7 +733,7 @@ struct ConfigurationView: View {
             var updatedConfig = config
             updatedConfig.name = configName
             updatedConfig.emoji = selectedEmoji
-            updatedConfig.isAIEnhancementEnabled = isAIEnhancementEnabled
+            updatedConfig.enhanceLevel = enhanceLevel
             updatedConfig.selectedPrompt = selectedPromptId?.uuidString
             updatedConfig.selectedTranscriptionModelName = selectedTranscriptionModelName
             updatedConfig.selectedLanguage = selectedLanguage

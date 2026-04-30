@@ -160,8 +160,12 @@ class SystemInfoService {
     }
 
     private func getAIEnhancementStatus() -> String {
-        let enhancementEnabled = UserDefaults.standard.bool(forKey: "isAIEnhancementEnabled")
-        return enhancementEnabled ? "Enabled" : "Disabled"
+        // W12.A: read canonical level; fall back to legacy bool. Surface the
+        // level's display name so the system info display reflects the dial.
+        let enhanceLevelRaw = UserDefaults.standard.string(forKey: "enhanceLevel")
+        let enhanceLevel = enhanceLevelRaw.flatMap(EnhanceLevel.init(rawValue:))
+            ?? EnhanceLevel.from(legacyBool: UserDefaults.standard.bool(forKey: "isAIEnhancementEnabled"))
+        return enhanceLevel == .none ? "Disabled" : "Enabled (\(enhanceLevel.displayName))"
     }
 
     private func getAIProvider() -> String {

@@ -27,7 +27,11 @@ struct PowerModeConfig: Codable, Identifiable, Equatable {
     var emoji: String
     var appConfigs: [AppConfig]?
     var urlConfigs: [URLConfig]?
-    var isAIEnhancementEnabled: Bool
+
+    /// W12.A: 4-level cleanup intensity. Replaces the legacy stored
+    /// `isAIEnhancementEnabled: Bool`. See plan §Migration policy #1.
+    var enhanceLevel: EnhanceLevel
+
     var selectedPrompt: String?
     var selectedTranscriptionModelName: String?
     var selectedLanguage: String?
@@ -38,15 +42,26 @@ struct PowerModeConfig: Codable, Identifiable, Equatable {
     var isEnabled: Bool = true
     var isDefault: Bool = false
     var hotkeyShortcut: String? = nil
-        
+
+    /// Derived view of `enhanceLevel` for back-compat with call sites that
+    /// haven't migrated yet (Migration policy #2). DO NOT add new readers.
+    var isAIEnhancementEnabled: Bool {
+        get { enhanceLevel != .none }
+        set { enhanceLevel = newValue ? .medium : .none }
+    }
+
     enum CodingKeys: String, CodingKey {
-        case id, name, emoji, appConfigs, urlConfigs, isAIEnhancementEnabled, selectedPrompt, selectedLanguage, useScreenCapture, selectedAIProvider, selectedAIModel, isAutoSendEnabled, autoSendKey, isEnabled, isDefault, hotkeyShortcut
+        case id, name, emoji, appConfigs, urlConfigs
+        case enhanceLevel                    // W12.A canonical
+        case isAIEnhancementEnabled          // W12.A legacy fallback
+        case selectedPrompt, selectedLanguage, useScreenCapture, selectedAIProvider, selectedAIModel, isAutoSendEnabled, autoSendKey, isEnabled, isDefault, hotkeyShortcut
         case selectedWhisperModel
         case selectedTranscriptionModelName
     }
-    
+
     init(id: UUID = UUID(), name: String, emoji: String, appConfigs: [AppConfig]? = nil,
-         urlConfigs: [URLConfig]? = nil, isAIEnhancementEnabled: Bool, selectedPrompt: String? = nil,
+         urlConfigs: [URLConfig]? = nil, enhanceLevel: EnhanceLevel = .default,
+         selectedPrompt: String? = nil,
          selectedTranscriptionModelName: String? = nil, selectedLanguage: String? = nil, useScreenCapture: Bool = false,
          selectedAIProvider: String? = nil, selectedAIModel: String? = nil, autoSendKey: AutoSendKey = .none, isEnabled: Bool = true, isDefault: Bool = false, hotkeyShortcut: String? = nil) {
         self.id = id
@@ -54,7 +69,7 @@ struct PowerModeConfig: Codable, Identifiable, Equatable {
         self.emoji = emoji
         self.appConfigs = appConfigs
         self.urlConfigs = urlConfigs
-        self.isAIEnhancementEnabled = isAIEnhancementEnabled
+        self.enhanceLevel = enhanceLevel
         self.selectedPrompt = selectedPrompt
         self.useScreenCapture = useScreenCapture
         self.autoSendKey = autoSendKey
@@ -74,7 +89,16 @@ struct PowerModeConfig: Codable, Identifiable, Equatable {
         emoji = try container.decode(String.self, forKey: .emoji)
         appConfigs = try container.decodeIfPresent([AppConfig].self, forKey: .appConfigs)
         urlConfigs = try container.decodeIfPresent([URLConfig].self, forKey: .urlConfigs)
-        isAIEnhancementEnabled = try container.decode(Bool.self, forKey: .isAIEnhancementEnabled)
+
+        // W12.A: prefer canonical enum key; fall back to legacy bool.
+        if let canonical = try container.decodeIfPresent(EnhanceLevel.self, forKey: .enhanceLevel) {
+            enhanceLevel = canonical
+        } else if let legacyBool = try container.decodeIfPresent(Bool.self, forKey: .isAIEnhancementEnabled) {
+            enhanceLevel = .from(legacyBool: legacyBool)
+        } else {
+            enhanceLevel = .default
+        }
+
         selectedPrompt = try container.decodeIfPresent(String.self, forKey: .selectedPrompt)
         selectedLanguage = try container.decodeIfPresent(String.self, forKey: .selectedLanguage)
         useScreenCapture = try container.decode(Bool.self, forKey: .useScreenCapture)
@@ -109,7 +133,13 @@ struct PowerModeConfig: Codable, Identifiable, Equatable {
         try container.encode(emoji, forKey: .emoji)
         try container.encodeIfPresent(appConfigs, forKey: .appConfigs)
         try container.encodeIfPresent(urlConfigs, forKey: .urlConfigs)
-        try container.encode(isAIEnhancementEnabled, forKey: .isAIEnhancementEnabled)
+
+        // W12.A: write canonical enum + derived bool. Lets a user who downgrades
+        // to a pre-W12.A build still get on/off behavior. Drop the bool encode in
+        // a follow-up packet ≥3 months post-W12.A merge.
+        try container.encode(enhanceLevel, forKey: .enhanceLevel)
+        try container.encode(enhanceLevel != .none, forKey: .isAIEnhancementEnabled)
+
         try container.encodeIfPresent(selectedPrompt, forKey: .selectedPrompt)
         try container.encodeIfPresent(selectedLanguage, forKey: .selectedLanguage)
         try container.encode(useScreenCapture, forKey: .useScreenCapture)

@@ -13,15 +13,29 @@ enum EnhancementPrompt {
 class AIEnhancementService: ObservableObject {
     private let logger = Logger(subsystem: "com.prakashjoshipax.voiceink", category: "AIEnhancementService")
 
-    @Published var isEnhancementEnabled: Bool {
+    /// W12.A canonical state. Source of truth for enhance on/off + intensity.
+    @Published var enhanceLevel: EnhanceLevel {
         didSet {
-            UserDefaults.standard.set(isEnhancementEnabled, forKey: "isAIEnhancementEnabled")
-            if isEnhancementEnabled && selectedPromptId == nil {
+            UserDefaults.standard.set(enhanceLevel.rawValue, forKey: "enhanceLevel")
+            // Forward-compat: keep the legacy bool key in sync so a downgrade
+            // doesn't drop the user's on/off state. Drop in a follow-up packet
+            // ≥3 months post-W12.A merge.
+            UserDefaults.standard.set(enhanceLevel != .none, forKey: "isAIEnhancementEnabled")
+            if enhanceLevel != .none && selectedPromptId == nil {
                 selectedPromptId = customPrompts.first?.id
             }
             NotificationCenter.default.post(name: .AppSettingsDidChange, object: nil)
             NotificationCenter.default.post(name: .enhancementToggleChanged, object: nil)
         }
+    }
+
+    /// Derived view for back-compat (Migration policy #2). DO NOT add new readers.
+    /// Reads return `enhanceLevel != .none`; writes map `true → .medium`,
+    /// `false → .none`. Observers see the same change because `enhanceLevel`
+    /// is `@Published` and fires `objectWillChange`.
+    var isEnhancementEnabled: Bool {
+        get { enhanceLevel != .none }
+        set { enhanceLevel = newValue ? .medium : .none }
     }
 
     @Published var useClipboardContext: Bool {
@@ -86,7 +100,15 @@ class AIEnhancementService: ObservableObject {
         self.screenCaptureService = ScreenCaptureService()
         self.customVocabularyService = CustomVocabularyService.shared
 
-        self.isEnhancementEnabled = UserDefaults.standard.bool(forKey: "isAIEnhancementEnabled")
+        // W12.A: prefer canonical enhanceLevel key; fall back to legacy bool key.
+        if let raw = UserDefaults.standard.string(forKey: "enhanceLevel"),
+           let level = EnhanceLevel(rawValue: raw) {
+            self.enhanceLevel = level
+        } else if UserDefaults.standard.object(forKey: "isAIEnhancementEnabled") != nil {
+            self.enhanceLevel = .from(legacyBool: UserDefaults.standard.bool(forKey: "isAIEnhancementEnabled"))
+        } else {
+            self.enhanceLevel = .default
+        }
         self.useClipboardContext = UserDefaults.standard.bool(forKey: "useClipboardContext")
         self.useScreenCaptureContext = UserDefaults.standard.bool(forKey: "useScreenCaptureContext")
         if let savedPromptsData = UserDefaults.standard.data(forKey: "customPrompts"),
@@ -192,15 +214,17 @@ class AIEnhancementService: ObservableObject {
 
         let finalContextSection = allContextSections + customVocabularySection
 
+        let levelDirective = AIPrompts.cleanupDirective(for: enhanceLevel)
+
         if let activePrompt = activePrompt {
             if activePrompt.id == PredefinedPrompts.assistantPromptId {
-                return activePrompt.promptText + finalContextSection
+                return levelDirective + activePrompt.promptText + finalContextSection
             } else {
-                return activePrompt.finalPromptText + finalContextSection
+                return levelDirective + activePrompt.finalPromptText + finalContextSection
             }
         } else {
             let defaultPrompt = allPrompts.first(where: { $0.id == PredefinedPrompts.defaultPromptId }) ?? allPrompts.first!
-            return defaultPrompt.finalPromptText + finalContextSection
+            return levelDirective + defaultPrompt.finalPromptText + finalContextSection
         }
     }
 
@@ -215,6 +239,7 @@ class AIEnhancementService: ObservableObject {
 
         let formattedText = "\n<TRANSCRIPT>\n\(text)\n</TRANSCRIPT>"
         let systemMessage = await getSystemMessage(for: mode)
+        logger.notice("🦾 enhance: level=\(self.enhanceLevel.rawValue, privacy: .public)")
 
         await MainActor.run {
             self.lastSystemMessageSent = systemMessage

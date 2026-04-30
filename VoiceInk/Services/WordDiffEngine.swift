@@ -94,3 +94,60 @@ enum WordDiffEngine {
             .filter { !$0.isEmpty }
     }
 }
+
+extension WordDiffEngine {
+    /// W12.A token-level diff op for inline diff rendering. Emitted in
+    /// reading order — apply each op in sequence to reconstruct the edited
+    /// text, with `.equal` and `.insert` segments visible and `.delete`
+    /// segments shown stricken-through. See plan
+    /// `docs/superpowers/plans/W12A-auto-cleanup-levels.md` §Task 5.
+    enum DiffOp: Equatable {
+        case equal(String)
+        case insert(String)
+        case delete(String)
+    }
+
+    static func tokenLevelDiff(original: String, edited: String) -> [DiffOp] {
+        let origTokens = tokenize(original)
+        let editTokens = tokenize(edited)
+        guard !origTokens.isEmpty || !editTokens.isEmpty else { return [] }
+        if origTokens.isEmpty { return editTokens.map { .insert($0) } }
+        if editTokens.isEmpty { return origTokens.map { .delete($0) } }
+
+        let lcsIndices = lcsIndexPairs(origTokens, editTokens)
+
+        var ops = [DiffOp]()
+        var oi = 0
+        var ei = 0
+
+        for (anchorO, anchorE) in lcsIndices {
+            // Tokens in original before anchor that aren't in edited → delete
+            while oi < anchorO {
+                ops.append(.delete(origTokens[oi]))
+                oi += 1
+            }
+            // Tokens in edited before anchor that aren't in original → insert
+            while ei < anchorE {
+                ops.append(.insert(editTokens[ei]))
+                ei += 1
+            }
+            // The anchor itself is shared — emit as equal (use the edited
+            // form's casing since post-cleanup capitalization wins).
+            ops.append(.equal(editTokens[anchorE]))
+            oi = anchorO + 1
+            ei = anchorE + 1
+        }
+
+        // Trailing tail
+        while oi < origTokens.count {
+            ops.append(.delete(origTokens[oi]))
+            oi += 1
+        }
+        while ei < editTokens.count {
+            ops.append(.insert(editTokens[ei]))
+            ei += 1
+        }
+
+        return ops
+    }
+}

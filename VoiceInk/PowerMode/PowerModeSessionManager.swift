@@ -2,13 +2,66 @@ import Foundation
 import AppKit
 
 struct ApplicationState: Codable {
-    var isEnhancementEnabled: Bool
+    /// W12.A canonical state. Replaces stored `isEnhancementEnabled: Bool`.
+    var enhanceLevel: EnhanceLevel
     var useScreenCaptureContext: Bool
     var selectedPromptId: String?
     var selectedAIProvider: String?
     var selectedAIModel: String?
     var selectedLanguage: String?
     var transcriptionModelName: String?
+
+    enum CodingKeys: String, CodingKey {
+        case enhanceLevel
+        case isEnhancementEnabled  // legacy fallback
+        case useScreenCaptureContext, selectedPromptId, selectedAIProvider
+        case selectedAIModel, selectedLanguage, transcriptionModelName
+    }
+
+    init(enhanceLevel: EnhanceLevel,
+         useScreenCaptureContext: Bool,
+         selectedPromptId: String?,
+         selectedAIProvider: String?,
+         selectedAIModel: String?,
+         selectedLanguage: String?,
+         transcriptionModelName: String?) {
+        self.enhanceLevel = enhanceLevel
+        self.useScreenCaptureContext = useScreenCaptureContext
+        self.selectedPromptId = selectedPromptId
+        self.selectedAIProvider = selectedAIProvider
+        self.selectedAIModel = selectedAIModel
+        self.selectedLanguage = selectedLanguage
+        self.transcriptionModelName = transcriptionModelName
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        if let canonical = try c.decodeIfPresent(EnhanceLevel.self, forKey: .enhanceLevel) {
+            enhanceLevel = canonical
+        } else if let legacyBool = try c.decodeIfPresent(Bool.self, forKey: .isEnhancementEnabled) {
+            enhanceLevel = .from(legacyBool: legacyBool)
+        } else {
+            enhanceLevel = .default
+        }
+        useScreenCaptureContext = try c.decode(Bool.self, forKey: .useScreenCaptureContext)
+        selectedPromptId = try c.decodeIfPresent(String.self, forKey: .selectedPromptId)
+        selectedAIProvider = try c.decodeIfPresent(String.self, forKey: .selectedAIProvider)
+        selectedAIModel = try c.decodeIfPresent(String.self, forKey: .selectedAIModel)
+        selectedLanguage = try c.decodeIfPresent(String.self, forKey: .selectedLanguage)
+        transcriptionModelName = try c.decodeIfPresent(String.self, forKey: .transcriptionModelName)
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(enhanceLevel, forKey: .enhanceLevel)
+        try c.encode(enhanceLevel != .none, forKey: .isEnhancementEnabled)  // forward-compat
+        try c.encode(useScreenCaptureContext, forKey: .useScreenCaptureContext)
+        try c.encodeIfPresent(selectedPromptId, forKey: .selectedPromptId)
+        try c.encodeIfPresent(selectedAIProvider, forKey: .selectedAIProvider)
+        try c.encodeIfPresent(selectedAIModel, forKey: .selectedAIModel)
+        try c.encodeIfPresent(selectedLanguage, forKey: .selectedLanguage)
+        try c.encodeIfPresent(transcriptionModelName, forKey: .transcriptionModelName)
+    }
 }
 
 struct PowerModeSession: Codable {
@@ -45,7 +98,7 @@ class PowerModeSessionManager {
         // Only capture baseline if NO session exists
         if loadSession() == nil {
             let originalState = ApplicationState(
-                isEnhancementEnabled: enhancementService.isEnhancementEnabled,
+                enhanceLevel: enhancementService.enhanceLevel,
                 useScreenCaptureContext: enhancementService.useScreenCaptureContext,
                 selectedPromptId: enhancementService.selectedPromptId?.uuidString,
                 selectedAIProvider: enhancementService.getAIService()?.selectedProvider.rawValue,
@@ -94,7 +147,7 @@ class PowerModeSessionManager {
               let enhancementService = enhancementService else { return }
 
         let updatedState = ApplicationState(
-            isEnhancementEnabled: enhancementService.isEnhancementEnabled,
+            enhanceLevel: enhancementService.enhanceLevel,
             useScreenCaptureContext: enhancementService.useScreenCaptureContext,
             selectedPromptId: enhancementService.selectedPromptId?.uuidString,
             selectedAIProvider: enhancementService.getAIService()?.selectedProvider.rawValue,
@@ -112,10 +165,10 @@ class PowerModeSessionManager {
               let stateProvider = stateProvider else { return }
 
         await MainActor.run {
-            enhancementService.isEnhancementEnabled = config.isAIEnhancementEnabled
+            enhancementService.enhanceLevel = config.enhanceLevel
             enhancementService.useScreenCaptureContext = config.useScreenCapture
 
-            if config.isAIEnhancementEnabled {
+            if config.enhanceLevel != .none {
                 if let promptId = config.selectedPrompt, let uuid = UUID(uuidString: promptId) {
                     enhancementService.selectedPromptId = uuid
                 }
@@ -152,7 +205,7 @@ class PowerModeSessionManager {
               let stateProvider = stateProvider else { return }
 
         await MainActor.run {
-            enhancementService.isEnhancementEnabled = state.isEnhancementEnabled
+            enhancementService.enhanceLevel = state.enhanceLevel
             enhancementService.useScreenCaptureContext = state.useScreenCaptureContext
             enhancementService.selectedPromptId = state.selectedPromptId.flatMap(UUID.init)
 

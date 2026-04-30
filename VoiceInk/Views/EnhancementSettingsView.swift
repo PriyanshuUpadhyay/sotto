@@ -52,16 +52,28 @@ struct EnhancementSettingsView: View {
     var body: some View {
         Form {
             Section {
-                Toggle(isOn: $enhancementService.isEnhancementEnabled) {
+                VStack(alignment: .leading, spacing: 8) {
                     HStack(spacing: 4) {
-                        Text("Enable Enhancement")
+                        Text("Cleanup Level")
+                            .font(.system(size: 13, weight: .medium))
                         InfoTip(
-                            "AI enhancement lets you pass the transcribed audio through LLMs to post-process using different prompts suitable for different use cases like e-mails, summary, writing, etc.",
+                            "Choose how aggressively the AI rewrites your transcript. None pastes the raw transcript verbatim. Light removes fillers. Medium fixes grammar. High polishes for clarity.",
                             learnMoreURL: "https://tryvoiceink.com/docs/enhancements-configuring-models"
                         )
+                        Spacer()
                     }
+                    Picker("", selection: $enhancementService.enhanceLevel) {
+                        ForEach(EnhanceLevel.allCases, id: \.self) { level in
+                            Text(level.displayName).tag(level)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                    .labelsHidden()
+
+                    Text(enhancementService.enhanceLevel.description)
+                        .font(.system(size: 11))
+                        .foregroundColor(.secondary)
                 }
-                .toggleStyle(.switch)
             } header: {
                 HStack(alignment: .top, spacing: 12) {
                     SettingsSectionHeader(
@@ -69,8 +81,8 @@ struct EnhancementSettingsView: View {
                         title: "Enhancement",
                         subtitle: "Pass transcripts through an LLM before pasting.",
                         accent: Palette.accent,
-                        statusText: enhancementService.isEnhancementEnabled ? "On" : "Off",
-                        statusTone: enhancementService.isEnhancementEnabled ? .positive : .neutral
+                        statusText: enhancementService.enhanceLevel.displayName,
+                        statusTone: enhancementService.enhanceLevel == .none ? .neutral : .positive
                     )
                     Button {
                         withAnimation(.smooth(duration: 0.3)) {

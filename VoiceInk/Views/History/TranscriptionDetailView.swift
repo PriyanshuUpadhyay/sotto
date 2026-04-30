@@ -37,6 +37,23 @@ struct TranscriptionDetailView: View {
     @State private var statusMessage: StatusMessage?
     @State private var showPromptPopover = false
 
+    /// W12.A: per-detail-view diff render mode. Defaults to side-by-side
+    /// `.panes` (pre-W12.A behavior); user opts into inline `.diff`. Resets
+    /// to `.panes` on each open — no `@AppStorage` persistence in v1.
+    private enum DiffMode: String, CaseIterable {
+        case panes
+        case inline
+
+        var displayName: String {
+            switch self {
+            case .panes:  return "Panes"
+            case .inline: return "Diff"
+            }
+        }
+    }
+
+    @State private var diffMode: DiffMode = .panes
+
     @EnvironmentObject private var engine: VoiceInkEngine
     @EnvironmentObject private var enhancementService: AIEnhancementService
     @Environment(\.modelContext) private var modelContext
@@ -60,6 +77,7 @@ struct TranscriptionDetailView: View {
                         )
                     }
                     sectionDivider
+                    diffModePicker
                     textPanes
                     sectionDivider
                     actionsRow
@@ -160,16 +178,115 @@ struct TranscriptionDetailView: View {
 
     // MARK: - Text panes
 
+    @ViewBuilder
+    private var diffModePicker: some View {
+        if transcription.enhancedText?.isEmpty == false,
+           transcription.enhancedText != transcription.text {
+            Picker("", selection: $diffMode) {
+                ForEach(DiffMode.allCases, id: \.self) { mode in
+                    Text(mode.displayName).tag(mode)
+                }
+            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+            .frame(maxWidth: 200)
+            .padding(.bottom, 4)
+        }
+    }
+
+    @ViewBuilder
     private var textPanes: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            textPane(label: "Original",
-                     text: transcription.text,
-                     accent: Palette.accent)
+        switch diffMode {
+        case .panes:
+            VStack(alignment: .leading, spacing: 12) {
+                textPane(label: "Original",
+                         text: transcription.text,
+                         accent: Palette.accent)
+                if let enhanced = transcription.enhancedText, !enhanced.isEmpty {
+                    textPane(label: "Enhanced",
+                             text: enhanced,
+                             accent: Palette.accent)
+                }
+            }
+        case .inline:
             if let enhanced = transcription.enhancedText, !enhanced.isEmpty {
-                textPane(label: "Enhanced",
-                         text: enhanced,
+                inlineDiffPane(raw: transcription.text, enhanced: enhanced)
+            } else {
+                // Fallback — no enhanced text means nothing to diff.
+                textPane(label: "Original",
+                         text: transcription.text,
                          accent: Palette.accent)
             }
+        }
+    }
+
+    private func inlineDiffPane(raw: String, enhanced: String) -> some View {
+        let ops = WordDiffEngine.tokenLevelDiff(original: raw, edited: enhanced)
+        let attributed = renderDiff(ops: ops)
+
+        return VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 6) {
+                Circle().fill(Palette.accent).frame(width: 6, height: 6)
+                Text("AI EDITS")
+                    .font(.system(size: 9, weight: .semibold, design: .monospaced))
+                    .foregroundColor(.secondary)
+                    .tracking(0.06 * 9)
+                Spacer()
+                HStack(spacing: 8) {
+                    legendChip(color: Palette.success, label: "added")
+                    legendChip(color: Palette.warn, label: "removed")
+                }
+                .font(.system(size: 9, weight: .medium))
+            }
+            ScrollView {
+                Text(attributed)
+                    .font(.system(size: 13, weight: .regular))
+                    .lineSpacing(2)
+                    .textSelection(.enabled)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(12)
+            }
+            .frame(maxHeight: 360)
+            .background(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .fill(Palette.accent.opacity(0.06))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .stroke(Palette.accent.opacity(0.18), lineWidth: 0.5)
+            )
+        }
+    }
+
+    private func renderDiff(ops: [WordDiffEngine.DiffOp]) -> AttributedString {
+        var out = AttributedString()
+        for (idx, op) in ops.enumerated() {
+            var seg: AttributedString
+            switch op {
+            case .equal(let s):
+                seg = AttributedString(s)
+                seg.foregroundColor = .primary
+            case .insert(let s):
+                seg = AttributedString(s)
+                seg.foregroundColor = Palette.success
+                seg.underlineStyle = .single
+            case .delete(let s):
+                seg = AttributedString(s)
+                seg.foregroundColor = Palette.warn
+                seg.strikethroughStyle = .single
+            }
+            out.append(seg)
+            if idx < ops.count - 1 {
+                out.append(AttributedString(" "))
+            }
+        }
+        return out
+    }
+
+    private func legendChip(color: Color, label: String) -> some View {
+        HStack(spacing: 4) {
+            Circle().fill(color).frame(width: 6, height: 6)
+            Text(label).foregroundColor(.secondary)
         }
     }
 
@@ -230,6 +347,15 @@ struct TranscriptionDetailView: View {
                     isLoading: isReEnhancing
                 ) {
                     reEnhance()
+                }
+                .disabled(isOperationInProgress)
+            }
+            if transcription.enhancedText != nil {
+                actionButton(
+                    label: "Undo AI edit",
+                    icon: "arrow.uturn.backward"
+                ) {
+                    undoAIEdit()
                 }
                 .disabled(isOperationInProgress)
             }
@@ -409,6 +535,24 @@ struct TranscriptionDetailView: View {
                     showStatus(error.localizedDescription, isError: true)
                 }
             }
+        }
+    }
+
+    private func undoAIEdit() {
+        transcription.enhancedText = nil
+        transcription.aiEnhancementModelName = nil
+        transcription.promptName = nil
+        transcription.enhancementDuration = nil
+        transcription.aiRequestSystemMessage = nil
+        transcription.aiRequestUserMessage = nil
+        do {
+            try modelContext.save()
+            // Snap back to Panes mode — the inline diff has nothing to render
+            // once enhancedText is nil.
+            diffMode = .panes
+            showStatus("AI edit reverted", isError: false)
+        } catch {
+            showStatus("Failed to revert: \(error.localizedDescription)", isError: true)
         }
     }
 

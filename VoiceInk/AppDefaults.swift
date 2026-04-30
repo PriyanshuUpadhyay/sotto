@@ -40,6 +40,7 @@ enum AppDefaults {
             "middleClickActivationDelay": 200,
 
             // Enhancement
+            "enhanceLevel": EnhanceLevel.default.rawValue,  // W12.A — "medium"
             "SkipShortEnhancement": true,
             "ShortEnhancementWordThreshold": 3,
             "EnhancementTimeoutSeconds": 7,

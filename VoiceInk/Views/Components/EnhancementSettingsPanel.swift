@@ -55,6 +55,27 @@ struct EnhancementSettingsPanel: View {
             // Content
             Form {
                 Section {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Picker("", selection: $enhancementService.enhanceLevel) {
+                            ForEach(EnhanceLevel.allCases, id: \.self) { level in
+                                Text(level.displayName).tag(level)
+                            }
+                        }
+                        .pickerStyle(.segmented)
+                        .labelsHidden()
+
+                        Text(enhancementService.enhanceLevel.description)
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                } header: {
+                    HStack(spacing: 4) {
+                        Text("Cleanup Level")
+                        InfoTip("None pastes raw transcripts. Light removes fillers. Medium fixes grammar. High polishes for clarity.")
+                    }
+                }
+
+                Section {
                     Toggle(isOn: $enhancementService.useClipboardContext) {
                         HStack(spacing: 4) {
                             Text("Clipboard Context")
