@@ -111,18 +111,18 @@ struct TranscriptionHistoryView: View {
                 .ignoresSafeArea()
                 .allowsHitTesting(isAnalysisPanelPresented)
                 .onTapGesture {
-                    withAnimation(.smooth(duration: 0.3)) {
+                    withAnimation(.haloExpand) {
                         isAnalysisPanelPresented = false
                     }
                 }
-                .animation(.smooth(duration: 0.3), value: isAnalysisPanelPresented)
+                .animation(.haloExpand, value: isAnalysisPanelPresented)
         }
         .overlay(alignment: .trailing) {
             if isAnalysisPanelPresented {
                 PerformanceAnalysisPanelView(
                     transcriptions: Array(selectedTranscriptions),
                     onClose: {
-                        withAnimation(.smooth(duration: 0.3)) {
+                        withAnimation(.haloExpand) {
                             isAnalysisPanelPresented = false
                         }
                     }
@@ -130,7 +130,6 @@ struct TranscriptionHistoryView: View {
                 .id(selectedTranscriptions.count)
                 .frame(width: 400)
                 .frame(maxHeight: .infinity)
-                .background(Color(NSColor.windowBackgroundColor))
                 .overlay(alignment: .leading) {
                     Rectangle()
                         .fill(Color(NSColor.separatorColor))
@@ -141,7 +140,7 @@ struct TranscriptionHistoryView: View {
                 .transition(.move(edge: .trailing))
             }
         }
-        .animation(.smooth(duration: 0.3), value: isAnalysisPanelPresented)
+        .animation(.haloExpand, value: isAnalysisPanelPresented)
         .onAppear {
             isViewCurrentlyVisible = true
             Task {
@@ -178,11 +177,7 @@ struct TranscriptionHistoryView: View {
                     .textFieldStyle(PlainTextFieldStyle())
                     .font(.system(size: 13))
             }
-            .padding(10)
-            .background(
-                RoundedRectangle(cornerRadius: 8, style: .continuous)
-                    .fill(.thinMaterial)
-            )
+            .glassChip(cornerRadius: 8)
             .padding(12)
 
             Divider()
@@ -318,7 +313,13 @@ struct TranscriptionHistoryView: View {
                         .foregroundColor(.secondary)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background(Color(NSColor.controlBackgroundColor))
+                .background(
+                    HaloMaterial(
+                        shape: Rectangle(),
+                        phase: .hidden,
+                        appearance: glassAppearance.current
+                    )
+                )
             }
         }
     }
@@ -350,7 +351,7 @@ struct TranscriptionHistoryView: View {
                     .frame(height: 16)
 
                 Button(action: {
-                    withAnimation(.smooth(duration: 0.3)) { isAnalysisPanelPresented = true }
+                    withAnimation(.haloExpand) { isAnalysisPanelPresented = true }
                 }) {
                     Image(systemName: "chart.bar.xaxis")
                         .font(.system(size: 14, weight: .regular))
@@ -389,9 +390,13 @@ struct TranscriptionHistoryView: View {
         .padding(.horizontal, 16)
         .padding(.vertical, 10)
         .background(
-            Color(NSColor.windowBackgroundColor)
-                .shadow(color: Color.black.opacity(0.15), radius: 3, y: -2)
+            HaloMaterial(
+                shape: Rectangle(),
+                phase: .hidden,
+                appearance: glassAppearance.current
+            )
         )
+        .shadow(color: Color.black.opacity(0.15), radius: 3, y: -2)
     }
     
     @MainActor

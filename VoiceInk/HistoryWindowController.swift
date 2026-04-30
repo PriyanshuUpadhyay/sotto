@@ -51,7 +51,12 @@ class HistoryWindowController: NSObject, NSWindowDelegate {
         window.delegate = self
         window.titlebarAppearsTransparent = true
         window.titleVisibility = .visible
-        window.backgroundColor = NSColor.windowBackgroundColor
+        // W13.F — adaptive glass app-wide. Non-opaque + clear bg so the SwiftUI
+        // root's HaloMaterial backdrops (sidebar, center pane) render through the
+        // NSWindow. Mirrors WindowManager.configureWindow flag pattern. Spec §1 /
+        // §6.1 / docs/superpowers/plans/W13F-history-window-glass.md.
+        window.backgroundColor = .clear
+        window.isOpaque = false
         window.isReleasedWhenClosed = false
         window.collectionBehavior = [.fullScreenPrimary]
         window.minSize = NSSize(width: 1150, height: 700)
