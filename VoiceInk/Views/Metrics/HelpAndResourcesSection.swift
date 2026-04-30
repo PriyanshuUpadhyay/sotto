@@ -5,7 +5,7 @@ struct HelpAndResourcesSection: View {
         VStack(alignment: .leading, spacing: 14) {
             Text("Help & Resources")
                 .font(.system(size: 20, weight: .bold))
-                .foregroundColor(.primary.opacity(0.8))
+                .foregroundColor(.primary)
 
             VStack(alignment: .leading, spacing: 10) {
                 resourceLink(
@@ -25,7 +25,7 @@ struct HelpAndResourcesSection: View {
                     title: "Documentation",
                     url: "https://tryvoiceink.com/docs"
                 )
-                
+
                 resourceLink(
                     icon: "exclamationmark.bubble.fill",
                     title: "Feedback or Issues?",
@@ -35,17 +35,10 @@ struct HelpAndResourcesSection: View {
                 )
             }
         }
-        .padding(18)
-        .background(
-            RoundedRectangle(cornerRadius: 28, style: .continuous)
-                .fill(Color(nsColor: .windowBackgroundColor))
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 28, style: .continuous)
-                .stroke(Color.primary.opacity(0.1), lineWidth: 1)
-        )
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .glassPanel(cornerRadius: 16)
     }
-    
+
     private func resourceLink(icon: String, title: String, url: String? = nil, action: (() -> Void)? = nil) -> some View {
         Button(action: {
             if let action = action {
@@ -57,22 +50,19 @@ struct HelpAndResourcesSection: View {
             HStack {
                 Image(systemName: icon)
                     .font(.system(size: 15, weight: .medium))
-                    .foregroundColor(.accentColor)
+                    .foregroundColor(Palette.accent)
                     .frame(width: 20)
-                
+
                 Text(title)
                     .font(.system(size: 13))
                     .fontWeight(.semibold)
-                
+
                 Spacer()
-                
+
                 Image(systemName: "arrow.up.right")
                     .foregroundColor(.secondary)
             }
-            .padding(12)
-            .background(Color.primary.opacity(0.05))
-            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-
+            .glassChip(cornerRadius: 10)
         }
         .buttonStyle(.plain)
     }

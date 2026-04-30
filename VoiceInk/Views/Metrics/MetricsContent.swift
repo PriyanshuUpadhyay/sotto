@@ -152,7 +152,7 @@ struct MetricsContent: View {
                  +
                  Text(formattedTimeSaved)
                     .fontWeight(.black)
-                    .font(.system(size: 36, design: .rounded))
+                    .font(.system(size: 36))
                     .foregroundStyle(.white)
                  +
                  Text(" with VoiceInk")
@@ -182,7 +182,7 @@ struct MetricsContent: View {
         )
         .overlay(
             RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .strokeBorder(Color.white.opacity(0.1), lineWidth: 1)
+                .strokeBorder(Palette.hairlineSoft, lineWidth: 1)
         )
         .shadow(color: Color.black.opacity(0.08), radius: 30, x: 0, y: 16)
     }
@@ -193,34 +193,30 @@ struct MetricsContent: View {
                 icon: "mic.fill",
                 title: "Sessions Recorded",
                 value: "\(totalCount)",
-                detail: "VoiceInk sessions completed",
-                color: .purple
+                detail: "VoiceInk sessions completed"
             )
 
             MetricCard(
                 icon: "text.alignleft",
                 title: "Words Dictated",
                 value: Formatters.formattedNumber(totalWords),
-                detail: "words generated",
-                color: Color(nsColor: .controlAccentColor)
+                detail: "words generated"
             )
-            
+
             MetricCard(
                 icon: "speedometer",
                 title: "Words Per Minute",
                 value: averageWordsPerMinute > 0
                     ? String(format: "%.1f", averageWordsPerMinute)
                     : "–",
-                detail: "VoiceInk vs. typing by hand",
-                color: .yellow
+                detail: "VoiceInk vs. typing by hand"
             )
-            
+
             MetricCard(
                 icon: "keyboard.fill",
                 title: "Keystrokes Saved",
                 value: Formatters.formattedNumber(totalKeystrokesSaved),
-                detail: "fewer keystrokes",
-                color: .orange
+                detail: "fewer keystrokes"
             )
         }
     }
@@ -248,9 +244,9 @@ struct MetricsContent: View {
     private var heroGradient: LinearGradient {
         LinearGradient(
             gradient: Gradient(colors: [
-                Color(nsColor: .controlAccentColor),
-                Color(nsColor: .controlAccentColor).opacity(0.85),
-                Color(nsColor: .controlAccentColor).opacity(0.7)
+                Palette.accent,
+                Palette.accent.opacity(0.85),
+                Palette.accent.opacity(0.7)
             ]),
             startPoint: .topLeading,
             endPoint: .bottomTrailing
@@ -321,30 +317,28 @@ private struct CopySystemInfoButton: View {
             HStack(spacing: 8) {
                 Image(systemName: isCopied ? "checkmark" : "doc.on.doc")
                     .rotationEffect(.degrees(isCopied ? 360 : 0))
-                    .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isCopied)
+                    .animation(.haloExpand, value: isCopied)
 
                 Text(isCopied ? "Copied!" : "Copy System Info")
-                    .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isCopied)
+                    .animation(.haloExpand, value: isCopied)
             }
             .font(.system(size: 13, weight: .medium))
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
-            .background(Capsule().fill(.thinMaterial))
+            .glassChip(cornerRadius: 18)
         }
         .buttonStyle(.plain)
         .scaleEffect(isCopied ? 1.1 : 1.0)
-        .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isCopied)
+        .animation(.haloExpand, value: isCopied)
     }
 
     private func copySystemInfo() {
         SystemInfoService.shared.copySystemInfoToClipboard()
 
-        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+        withAnimation(.haloExpand) {
             isCopied = true
         }
 
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+            withAnimation(.haloExpand) {
                 isCopied = false
             }
         }
