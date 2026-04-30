@@ -3,8 +3,15 @@ import SwiftUI
 /// W12.B Command Mode banner. Single-line pill rendered above the recorder
 /// chrome when `CommandModeService.isActive == true`. Honors plan §Migration
 /// policy #10 — informational only, no captured-selection preview.
+///
+/// Reads `CommandModeService.shared` directly via `@ObservedObject` rather
+/// than the environment — when this view is hosted inside the recorder
+/// window managers' `AnyView`-wrapped trees, the `@EnvironmentObject`
+/// lookup raced with SwiftUI's `DynamicContainerInfo.updateItems` and
+/// crashed (`_assertionFailure` on missing env). Singleton + observed
+/// object sidesteps the timing entirely.
 struct CommandModeBanner: View {
-    @EnvironmentObject var commandModeService: CommandModeService
+    @ObservedObject var commandModeService: CommandModeService = .shared
 
     var body: some View {
         if commandModeService.isActive {
