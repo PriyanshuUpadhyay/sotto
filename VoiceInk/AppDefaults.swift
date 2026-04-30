@@ -53,6 +53,11 @@ enum AppDefaults {
             // W12.C — Snippets
             "DebugLogSnippetExpansion": false,
 
+            // Hands-free (W12.D)
+            "HandsFreeVADThresholdDb": Double(-40.0),
+            "HandsFreeSilenceDurationMs": 1500,
+            "HandsFreeTriggerPhrasesJSON": #"["press enter","submit","send it","send message"]"#,
+
         ])
     }
 }

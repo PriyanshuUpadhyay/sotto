@@ -264,6 +264,19 @@ class TranscriptionPipeline {
 
         if let textToPaste = finalPastedText,
            transcription.transcriptionStatus == TranscriptionStatus.completed.rawValue {
+
+            // W12.D: hands-free voice-trigger detection. Runs only when a
+            // hands-free session is active; returns nil otherwise. Hands-free
+            // inactive → identical paste behavior as pre-W12.D (Migration #2).
+            let isHandsFreeActive = HandsFreeSessionService.shared.state != .inactive
+            let triggerHit: VoiceTriggerFilter.TriggerHit? = isHandsFreeActive
+                ? VoiceTriggerFilter.detectTrigger(
+                    in: textToPaste,
+                    against: HandsFreeSessionService.shared.mode.triggerPhrases
+                  )
+                : nil
+            let pasteText = triggerHit?.cleanedText ?? textToPaste
+
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.015) {
                 // P3.F: pre-paste cue. enhance-complete if enhancement actually
                 // ran (slightly softer stacked arpeggio), else transcribe-
@@ -276,7 +289,7 @@ class TranscriptionPipeline {
                     SoundManager.shared.playTranscribeComplete()
                 }
                 let appendSpace = UserDefaults.standard.bool(forKey: "AppendTrailingSpace")
-                let textToInsert = textToPaste + (appendSpace ? " " : "")
+                let textToInsert = pasteText + (appendSpace ? " " : "")
 
                 // W12.E dictation-into-place: when the Scratchpad is the key
                 // window AND a tab editor holds first-responder, route the
@@ -293,14 +306,21 @@ class TranscriptionPipeline {
 
                 // W12.B — gate auto-send on standard-recorder origin only.
                 // Command Mode rewrites are final; an auto-Enter would send the
-                // rewrite as a Slack/etc message rather than leaving the user
-                // to review + send. Policy #14 / Risks #14.
-                let powerMode = PowerModeManager.shared
-                if !wasCommandMode,
-                   let activeConfig = powerMode.currentActiveConfiguration,
-                   activeConfig.autoSendKey.isEnabled {
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                        CursorPaster.performAutoSend(activeConfig.autoSendKey)
+                // rewrite as a Slack/etc message. Policy #14 / Risks #14.
+                // W12.D Migration #8: voice trigger overrides PowerMode autoSend
+                // so a "press enter" utterance fires Enter exactly once.
+                if !wasCommandMode {
+                    if let hit = triggerHit {
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                            CursorPaster.performAutoSend(hit.autoSend)
+                        }
+                    } else {
+                        let powerMode = PowerModeManager.shared
+                        if let activeConfig = powerMode.currentActiveConfiguration, activeConfig.autoSendKey.isEnabled {
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                                CursorPaster.performAutoSend(activeConfig.autoSendKey)
+                            }
+                        }
                     }
                 }
             }
@@ -312,6 +332,12 @@ class TranscriptionPipeline {
             await promptDetectionService.restoreOriginalSettings(result, to: enhancementService)
         }
 
-        await onDismiss()
+        // W12.D: skip the pipeline-tail dismiss while a hands-free session is
+        // active. Dismiss would hide the recorder panel + release model
+        // resources between utterances, which breaks re-arm. The session
+        // service runs `dismissMiniRecorder()` once at session end instead.
+        if HandsFreeSessionService.shared.state == .inactive {
+            await onDismiss()
+        }
     }
 }

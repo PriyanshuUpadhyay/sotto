@@ -254,6 +254,51 @@ class VoiceInkEngine: NSObject, ObservableObject {
         response(true)
     }
 
+    // MARK: - Hands-free commit (W12.D)
+
+    /// W12.D hands-free commit: stop the current recording, run the pipeline
+    /// for the captured utterance, then optionally start a new recording so
+    /// the next utterance can begin immediately. Each utterance is its own
+    /// `Transcription` row (matches existing schema).
+    ///
+    /// - Parameter restartAfter: `true` (hands-free in progress) → re-arm the
+    ///   recorder for the next utterance. `false` (session ending or one-shot
+    ///   drain) → leave the recorder stopped.
+    ///
+    /// The `RecorderUIManager` panel lifecycle is owned by
+    /// `HandsFreeSessionService` (panel shown at session start, dismissed at
+    /// session end). This method calls `toggleRecord` directly so the panel
+    /// stays visible across utterance commits.
+    func commitUtterance(restartAfter: Bool = true) async {
+        guard recordingState == .recording else {
+            logger.notice("🦾 hands-free: commitUtterance skipped — state=\(String(describing: self.recordingState), privacy: .public)")
+            return
+        }
+        logger.notice("🦾 hands-free: commitUtterance restartAfter=\(restartAfter, privacy: .public)")
+
+        // Stop + run pipeline via the existing toggleRecord flow.
+        await toggleRecord()
+
+        guard restartAfter else { return }
+
+        // Wait for recordingState to settle to .idle. The pipeline tail in
+        // runPipeline sets recordingState back to .idle at `:292-294`. Use a
+        // bounded spin-wait so a slow pipeline doesn't permanently block the
+        // hands-free session.
+        var spins = 0
+        while recordingState != .idle, spins < 100 {
+            try? await Task.sleep(nanoseconds: 20_000_000)  // 20ms
+            spins += 1
+        }
+        guard recordingState == .idle else {
+            logger.error("🦾 hands-free: commitUtterance abort — recordingState=\(String(describing: self.recordingState), privacy: .public) after pipeline spin-wait")
+            return
+        }
+        // Re-arm. Reuse PowerMode state implicitly (toggleRecord re-reads it
+        // at recording start).
+        await toggleRecord()
+    }
+
     // MARK: - Pipeline Dispatch
 
     private func runPipeline(on transcription: Transcription, audioURL: URL) async {

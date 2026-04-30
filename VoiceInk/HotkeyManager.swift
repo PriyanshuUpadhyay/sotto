@@ -22,6 +22,10 @@ extension KeyboardShortcuts.Name {
     /// customization. Mirrors the `toggleEnhancement` idiom in
     /// `MiniRecorderShortcutManager.swift`. Plan §Migration policy #10.
     static let scratchpadToggle = Self("scratchpadToggle", default: .init(.s, modifiers: .option))
+
+    /// W12.D — Hands-free toggle. UNBOUND on first run (locked answer Q1);
+    /// user binds explicitly via Settings.
+    static let handsFreeToggle = Self("handsFreeToggle")
 }
 
 @MainActor
@@ -239,6 +243,20 @@ class HotkeyManager: ObservableObject {
             }
         }
 
+        // W12.D: hands-free toggle. UNBOUND on first run (lead Q1) — the user
+        // assigns the shortcut explicitly via HandsFreeSettingsView. The
+        // service is a single-instance global (Migration policy #3); the
+        // toggle hops onto MainActor before driving the recorder cycle.
+        KeyboardShortcuts.onKeyUp(for: .handsFreeToggle) { [weak self] in
+            guard let self else { return }
+            Task { @MainActor in
+                await HandsFreeSessionService.shared.toggle(
+                    engine: self.engine,
+                    recorderUIManager: self.recorderUIManager
+                )
+            }
+        }
+
         Task { @MainActor in
             try? await Task.sleep(nanoseconds: 100_000_000)
             self.setupHotkeyMonitoring()
@@ -421,6 +439,18 @@ class HotkeyManager: ObservableObject {
 
     private func processKeyPress(isKeyPressed: Bool, eventTime: TimeInterval, mode: HotkeyMode) async {
         guard isKeyPressed != currentKeyState else { return }
+
+        // W12.D collision policy (Migration #3): a normal hotkey press while
+        // hands-free is active ENDS the session and consumes the press. The
+        // user's normal-recorder intent takes effect on the NEXT press —
+        // starting a recorder on the same press is a usability footgun.
+        if isKeyPressed && HandsFreeSessionService.shared.state != .inactive {
+            currentKeyState = true
+            keyPressEventTime = eventTime
+            await HandsFreeSessionService.shared.endSession(reason: .otherHotkey)
+            return
+        }
+
         currentKeyState = isKeyPressed
 
         if isKeyPressed {
@@ -483,6 +513,17 @@ class HotkeyManager: ObservableObject {
         }
 
         guard !shortcutCurrentKeyState else { return }
+
+        // W12.D collision policy (Migration #3): if hands-free is active,
+        // consume this press to end the session. Leave shortcutCurrentKeyState
+        // false so the matching key-up's `guard shortcutCurrentKeyState`
+        // returns early without firing the existing toggle/push-to-talk path.
+        if HandsFreeSessionService.shared.state != .inactive {
+            lastShortcutTriggerTime = Date()
+            await HandsFreeSessionService.shared.endSession(reason: .otherHotkey)
+            return
+        }
+
         shortcutCurrentKeyState = true
         lastShortcutTriggerTime = Date()
         shortcutKeyPressEventTime = eventTime

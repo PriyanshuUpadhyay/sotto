@@ -30,6 +30,7 @@ enum MenuBarIconRenderer {
         case recording
         case transcribing
         case enhancing
+        case handsFree  // W12.D
 
         init(_ state: RecordingState) {
             switch state {
@@ -37,6 +38,17 @@ enum MenuBarIconRenderer {
             case .transcribing: self = .transcribing
             case .enhancing:    self = .enhancing
             default:            self = .idle
+            }
+        }
+
+        /// W12.D: hands-free overrides the inner recording state — when
+        /// active, the user wants to see "I'm in hands-free" regardless of
+        /// whether the recorder is currently capturing or committing.
+        init(handsFree: HandsFreeSessionState, recordingState: RecordingState) {
+            if handsFree != .inactive {
+                self = .handsFree
+            } else {
+                self.init(recordingState)
             }
         }
     }
@@ -56,6 +68,13 @@ enum MenuBarIconRenderer {
             return template("waveform", weight: .regular, label: "VoiceInk transcribing")
         case .enhancing:
             return template("sparkles", weight: .regular, label: "VoiceInk enhancing")
+        case .handsFree:  // W12.D
+            return tinted(
+                "ear.fill",
+                weight: .semibold,
+                color: NSColor(Palette.accent),
+                label: "VoiceInk hands-free"
+            )
         }
     }
 
@@ -108,6 +127,7 @@ enum MenuBarIconRenderer {
         case .transcribing: return "VoiceInk transcribing, \(suffix)"
         case .enhancing:    return "VoiceInk enhancing, \(suffix)"
         case .idle:         return "VoiceInk idle, \(suffix)"
+        case .handsFree:    return "VoiceInk hands-free, \(suffix)"
         }
     }
 
@@ -160,13 +180,26 @@ final class RecordingStateObserver: ObservableObject {
     @MainActor
     func bind(to engine: VoiceInkEngine) {
         stateCancellable?.cancel()
-        stateCancellable = engine.$recordingState
-            .receive(on: DispatchQueue.main)
-            .map(MenuBarIconRenderer.IconState.init)
-            .removeDuplicates()
-            .sink { [weak self] next in
-                self?.iconState = next
-            }
+        // W12.D: combine engine recording state with hands-free session state
+        // so the menubar reflects "I'm in hands-free" whenever the session is
+        // active, regardless of inner recorder phase. CombineLatest emits on
+        // every change to either side; `removeDuplicates` short-circuits idle
+        // re-publishes.
+        stateCancellable = Publishers.CombineLatest(
+            engine.$recordingState,
+            HandsFreeSessionService.shared.$state
+        )
+        .receive(on: DispatchQueue.main)
+        .map { recordingState, handsFreeState in
+            MenuBarIconRenderer.IconState(
+                handsFree: handsFreeState,
+                recordingState: recordingState
+            )
+        }
+        .removeDuplicates()
+        .sink { [weak self] next in
+            self?.iconState = next
+        }
     }
 
     @MainActor
@@ -214,6 +247,7 @@ struct MenuBarIcon: View {
             case .recording:    return "VoiceInk recording"
             case .transcribing: return "VoiceInk transcribing"
             case .enhancing:    return "VoiceInk enhancing"
+            case .handsFree:    return "VoiceInk hands-free"
             }
         }()
         guard observer.unresolvedFailures > 0 else { return base }
@@ -241,6 +275,7 @@ private struct MenuBarIconPreviewHarness: View {
                 Text("Recording").tag(MenuBarIconRenderer.IconState.recording)
                 Text("Transcribing").tag(MenuBarIconRenderer.IconState.transcribing)
                 Text("Enhancing").tag(MenuBarIconRenderer.IconState.enhancing)
+                Text("Hands-free").tag(MenuBarIconRenderer.IconState.handsFree)  // W12.D
             }
             .pickerStyle(.segmented)
 
