@@ -59,6 +59,7 @@ struct AddCustomModelCardView: View {
             
             // Expandable Form Section
             if isExpanded {
+                GlassCard(cornerRadius: 12, padding: 16) {
                 VStack(alignment: .leading, spacing: 20) {
                     // Header
                     HStack {
@@ -84,7 +85,7 @@ struct AddCustomModelCardView: View {
                     // Disclaimer
                     HStack(spacing: 8) {
                         Image(systemName: "exclamationmark.triangle.fill")
-                            .foregroundColor(.orange)
+                            .foregroundColor(Palette.warn)
                             .font(.caption)
                         Text("Only OpenAI-compatible transcription APIs are supported")
                             .font(.caption)
@@ -92,7 +93,7 @@ struct AddCustomModelCardView: View {
                     }
                     .padding(.horizontal, 12)
                     .padding(.vertical, 8)
-                    .background(Color.orange.opacity(0.1))
+                    .background(Palette.warn.opacity(0.1))
                     .cornerRadius(8)
                     
                     // Form fields
@@ -151,15 +152,7 @@ struct AddCustomModelCardView: View {
                         .disabled(!isFormValid || isSaving)
                     }
                 }
-                .padding(16)
-                .background(
-                    RoundedRectangle(cornerRadius: 12)
-                        .fill(Color(.windowBackgroundColor))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 12)
-                                .stroke(Color(.separatorColor), lineWidth: 1)
-                        )
-                )
+                }
             }
         }
         .alert("Validation Errors", isPresented: $showingAlert) {
