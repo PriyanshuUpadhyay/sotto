@@ -298,7 +298,11 @@ class AIEnhancementService: ObservableObject {
             // transparently retry with MLX. Other AFM errors propagate as
             // EnhancementError so the user sees them. AFM-unavailable users
             // get the unchanged MLX path.
-            if #available(macOS 26.0, *), AFMProvider.isAvailable {
+            //
+            // W14.A — `ForceMLXOverAFM` UserDefault opts out of AFM-first
+            // routing, sending the request directly to MLX. Default off.
+            let forceMLX = UserDefaults.standard.bool(forKey: "ForceMLXOverAFM")
+            if #available(macOS 26.0, *), AFMProvider.isAvailable, !forceMLX {
                 let afmSystemPrompt = systemMessage + Self.afmOutputDirective
                 await MainActor.run {
                     self.lastSystemMessageSent = afmSystemPrompt

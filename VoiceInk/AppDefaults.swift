@@ -49,6 +49,14 @@ enum AppDefaults {
 
             // Model
             "PrewarmModelOnWake": true,
+            // W14.B — granular AFM-prewarm gate. PrewarmModelOnWake remains the
+            // master switch; this lets users disable AFM warm specifically (for
+            // empirical A/B of cold-vs-warm AFM ttft) without losing
+            // transcription-model prewarm.
+            "PrewarmAFMEnhancement": true,
+            // W14.A — force `.mlx` selection to use real MLX inference instead
+            // of W11.B's AFM-first routing. Default off (AFM-first stays).
+            "ForceMLXOverAFM": false,
 
             // W12.C — Snippets
             "DebugLogSnippetExpansion": false,
