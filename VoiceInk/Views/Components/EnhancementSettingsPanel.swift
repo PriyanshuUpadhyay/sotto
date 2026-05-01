@@ -8,6 +8,15 @@ struct EnhancementSettingsPanel: View {
     @AppStorage("EnhancementTimeoutSeconds") private var enhancementTimeoutSeconds = 7
     @AppStorage("EnhancementRetryOnTimeout") private var retryOnTimeout = true
     @AppStorage("MLXIdleEvictSeconds") private var mlxIdleEvictSeconds = 1800
+    @AppStorage("ForceMLXOverAFM") private var forceMLXOverAFM = false
+    @AppStorage("PrewarmAFMEnhancement") private var prewarmAFMEnhancement = true
+
+    /// W14 — wraps `AFMProvider.isAvailable` behind the required `#available`
+    /// guard so toggle visibility checks can stay inline in the ViewBuilder.
+    private var afmAvailable: Bool {
+        if #available(macOS 26.0, *) { return AFMProvider.isAvailable }
+        return false
+    }
     @State private var isShortEnhancementExpanded = false
     @State private var isHandlingToggleChange = false
     @State private var didCopyTimingsPath = false
@@ -229,6 +238,34 @@ struct EnhancementSettingsPanel: View {
                         Spacer()
                     }
                     .font(.callout)
+
+                    // W14.A — Force MLX over AFM. Visible only when `.mlx`
+                    // is the active provider AND AFM is available (otherwise
+                    // there's no AFM to force away from).
+                    if enhancementService.aiService.selectedProvider == .mlx,
+                       afmAvailable {
+                        Toggle(isOn: $forceMLXOverAFM) {
+                            HStack(spacing: 4) {
+                                Text("Force MLX (skip AFM)")
+                                InfoTip("By default, selecting MLX routes through Apple Foundation Models when available (W11.B). Turn this on to send requests directly to MLX inference, bypassing AFM. Useful if you specifically want MLX behavior or if AFM rejects your prompts too aggressively.")
+                            }
+                        }
+                        .toggleStyle(.switch)
+                    }
+
+                    // W14.B — AFM prewarm gate. Visible whenever AFM is
+                    // available so the user can disable warm() calls and
+                    // empirically A/B cold-vs-warm AFM ttft.
+                    if afmAvailable {
+                        Toggle(isOn: $prewarmAFMEnhancement) {
+                            HStack(spacing: 4) {
+                                Text("Pre-warm AFM on launch / wake")
+                                InfoTip("Sends a tiny dummy prompt to Apple Foundation Models on app launch and after wake-from-sleep so the first real enhancement skips the cold-load delay. Disable to A/B test cold-vs-warm AFM ttft (the metric written to enhancement-timings.csv).")
+                            }
+                        }
+                        .toggleStyle(.switch)
+                        .disabled(!UserDefaults.standard.bool(forKey: "PrewarmModelOnWake"))
+                    }
 
                     // Idle eviction only governs the MLX in-memory model.
                     // Hidden on `.foundationModels` since MLX never loads

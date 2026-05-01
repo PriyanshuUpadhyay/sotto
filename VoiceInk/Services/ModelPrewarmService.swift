@@ -117,7 +117,14 @@ final class ModelPrewarmService: ObservableObject {
         // available, because the AFM-first routing path can flip in mid-
         // session as the user toggles Apple Intelligence in System Settings.
         // The hook itself is cheap (`LanguageModelSession.prewarm()`).
-        if #available(macOS 26.0, *), AFMProvider.isAvailable, let enhancementService {
+        //
+        // W14.B — granular gate: `PrewarmAFMEnhancement` (default true) lets
+        // users disable AFM warm specifically without affecting transcription
+        // model prewarm. Useful for empirical A/B of cold-vs-warm AFM ttft.
+        if #available(macOS 26.0, *),
+           AFMProvider.isAvailable,
+           UserDefaults.standard.bool(forKey: "PrewarmAFMEnhancement"),
+           let enhancementService {
             let warmStart = Date()
             await enhancementService.warmAFMIfAvailable(source: source)
             let warmDuration = Date().timeIntervalSince(warmStart)
@@ -150,8 +157,11 @@ final class ModelPrewarmService: ObservableObject {
 
         // W11.B: AFM prewarm fires whenever Apple Foundation Models is
         // available, regardless of provider selection. The AFM-first
-        // routing kicks in for `.mlx` users too.
-        if #available(macOS 26.0, *), AFMProvider.isAvailable {
+        // routing kicks in for `.mlx` users too. W14.B — gated by
+        // `PrewarmAFMEnhancement`.
+        if #available(macOS 26.0, *),
+           AFMProvider.isAvailable,
+           UserDefaults.standard.bool(forKey: "PrewarmAFMEnhancement") {
             return true
         }
 
