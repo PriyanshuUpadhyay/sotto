@@ -4,12 +4,15 @@ import KeyboardShortcuts
 import OSLog
 
 // ViewType enum with all cases
+//
+// W14E — `.models` is the unified Models pane (transcription + LLM
+// enhancement provider). The legacy `.enhancement` case was retired and
+// its destination collapsed into `.models`. Sidebar row count drops by one.
 enum ViewType: String, CaseIterable, Identifiable {
     case metrics = "Dashboard"
     case transcribeAudio = "Transcribe Audio"
     case history = "History"
-    case models = "AI Models"
-    case enhancement = "Enhancement"
+    case models = "Models"
     case handsFree = "Hands-free"  // W12.D
     case powerMode = "Power Mode"
     case permissions = "Permissions"
@@ -26,7 +29,6 @@ enum ViewType: String, CaseIterable, Identifiable {
         case .transcribeAudio: return "waveform.circle.fill"
         case .history: return "doc.text.fill"
         case .models: return "brain.head.profile"
-        case .enhancement: return "wand.and.stars"
         case .handsFree: return "ear.fill"  // W12.D
         case .powerMode: return "sparkles.square.fill.on.square"
         case .permissions: return "shield.fill"
@@ -144,14 +146,16 @@ struct ContentView: View {
                 switch destination {
                 case "Settings":
                     selectedView = .settings
-                case "AI Models":
+                // W14E — Models pane is unified. Both legacy destinations
+                // ("AI Models" from MetricsSetupView, "Enhancement" from
+                // ImportExportService) and the new alias ("Models") route
+                // here. No deep-link callers need updating.
+                case "Models", "AI Models", "Enhancement":
                     selectedView = .models
                 case "History":
                     selectedView = .history
                 case "Permissions":
                     selectedView = .permissions
-                case "Enhancement":
-                    selectedView = .enhancement
                 case "Transcribe Audio":
                     selectedView = .transcribeAudio
                 case "Power Mode":
@@ -169,9 +173,7 @@ struct ContentView: View {
         case .metrics:
             MetricsView()
         case .models:
-            ModelManagementView()
-        case .enhancement:
-            EnhancementSettingsView()
+            ModelsView()
         case .handsFree:
             HandsFreeSettingsView()
         case .transcribeAudio:
