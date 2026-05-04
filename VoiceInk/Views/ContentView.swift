@@ -69,6 +69,10 @@ struct ContentView: View {
     @EnvironmentObject private var enhancementService: AIEnhancementService
     @AppStorage("powerModeUIFlag") private var powerModeUIFlag = false
     @State private var selectedView: ViewType? = .metrics
+    /// W14D — ⌘K command-palette sheet. Window-scoped (SwiftUI binding only,
+    /// no global `KeyboardShortcuts.Name` registration), so opening Settings
+    /// is a precondition for activation.
+    @State private var paletteOpen = false
     let appVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.0"
 
     // W14C — sidebar dot badges. Read-only state queries; no writes to W11/
@@ -146,6 +150,30 @@ struct ContentView: View {
         .adaptiveGlassBackground()
         .frame(width: 950)
         .frame(minHeight: 730)
+        // W14D — ⌘K palette activation. Hidden Button captures the binding
+        // so the shortcut is window-scoped: only fires when the Settings
+        // window is key. We don't register through `KeyboardShortcuts.Name`
+        // (that's for globally-active hotkeys); SwiftUI's binding is the
+        // right idiom for in-window navigation aids.
+        .background(
+            Button("Open command palette") {
+                paletteOpen = true
+            }
+            .keyboardShortcut("k", modifiers: .command)
+            .frame(width: 0, height: 0)
+            .opacity(0)
+            .accessibilityHidden(true)
+        )
+        .sheet(isPresented: $paletteOpen) {
+            CommandPaletteSheet(
+                powerModeFlagOn: powerModeUIFlag,
+                onSelect: { viewType in
+                    selectedView = viewType
+                    paletteOpen = false
+                },
+                onDismiss: { paletteOpen = false }
+            )
+        }
         .onAppear {
             logger.notice("ContentView appeared")
         }
