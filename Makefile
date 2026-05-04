@@ -81,13 +81,13 @@ local: check setup
 		build
 	@APP_PATH="$(LOCAL_DERIVED_DATA)/Build/Products/Debug/VoiceInk.app" && \
 	if [ -d "$$APP_PATH" ]; then \
-		echo "Copying VoiceInk.app to ~/Downloads..."; \
-		rm -rf "$$HOME/Downloads/VoiceInk.app"; \
-		ditto "$$APP_PATH" "$$HOME/Downloads/VoiceInk.app"; \
-		xattr -cr "$$HOME/Downloads/VoiceInk.app"; \
+		echo "Copying VoiceInk.app to /Applications..."; \
+		rm -rf "/Applications/VoiceInk.app"; \
+		ditto "$$APP_PATH" "/Applications/VoiceInk.app"; \
+		xattr -cr "/Applications/VoiceInk.app"; \
 		echo ""; \
-		echo "Build complete! App saved to: ~/Downloads/VoiceInk.app"; \
-		echo "Run with: open ~/Downloads/VoiceInk.app"; \
+		echo "Build complete! App saved to: /Applications/VoiceInk.app"; \
+		echo "Run with: open -a VoiceInk  (or Spotlight / Launchpad)"; \
 		echo ""; \
 		echo "Limitations of local builds:"; \
 		echo "  - No iCloud dictionary sync"; \
@@ -103,14 +103,14 @@ reload: local
 	@echo "Killing running VoiceInk instance (if any)..."
 	@/usr/bin/killall VoiceInk 2>/dev/null || true
 	@sleep 0.3
-	@echo "Launching ~/Downloads/VoiceInk.app..."
-	@open "$$HOME/Downloads/VoiceInk.app"
+	@echo "Launching /Applications/VoiceInk.app..."
+	@open "/Applications/VoiceInk.app"
 
 # Run application
 run:
-	@if [ -d "$$HOME/Downloads/VoiceInk.app" ]; then \
-		echo "Opening ~/Downloads/VoiceInk.app..."; \
-		open "$$HOME/Downloads/VoiceInk.app"; \
+	@if [ -d "/Applications/VoiceInk.app" ]; then \
+		echo "Opening /Applications/VoiceInk.app..."; \
+		open "/Applications/VoiceInk.app"; \
 	else \
 		echo "Looking for VoiceInk.app in DerivedData..."; \
 		APP_PATH=$$(find "$$HOME/Library/Developer/Xcode/DerivedData" -name "VoiceInk.app" -type d | head -1) && \
