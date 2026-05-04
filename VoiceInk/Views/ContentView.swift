@@ -66,9 +66,18 @@ struct ContentView: View {
     @EnvironmentObject private var whisperModelManager: WhisperModelManager
     @EnvironmentObject private var transcriptionModelManager: TranscriptionModelManager
     @EnvironmentObject private var hotkeyManager: HotkeyManager
+    @EnvironmentObject private var enhancementService: AIEnhancementService
     @AppStorage("powerModeUIFlag") private var powerModeUIFlag = false
     @State private var selectedView: ViewType? = .metrics
     let appVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.0"
+
+    // W14C — sidebar dot badges. Read-only state queries; no writes to W11/
+    // W14A/W14B layers. Cheap Bool diffs per row, ≤11 rows total.
+    @ObservedObject private var audioDeviceManager = AudioDeviceManager.shared
+    @ObservedObject private var powerModeManager = PowerModeManager.shared
+    @Query private var snippets: [Snippet]
+    @Query private var vocabularyWords: [VocabularyWord]
+    @Query private var wordReplacements: [WordReplacement]
 
     private var visibleViewTypes: [ViewType] {
         ViewType.allCases.filter { viewType in
@@ -104,7 +113,10 @@ struct ContentView: View {
                 ForEach(visibleViewTypes) { viewType in
                     Section {
                         NavigationLink(value: viewType) {
-                            SidebarItemView(viewType: viewType)
+                            SidebarItemView(
+                                viewType: viewType,
+                                isConfigured: isConfigured(viewType)
+                            )
                         }
                         .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
                         .listRowSeparator(.hidden)
@@ -167,6 +179,36 @@ struct ContentView: View {
         }
     }
     
+    // W14C — per-ViewType "is this customized vs default?" predicate. Read-
+    // only against existing state. Returns nil (no badge) for panes where
+    // there's no honest "configured vs default" signal — Dashboard, Transcribe
+    // Audio, History, Permissions, Settings (composite catch-all).
+    private func isConfigured(_ viewType: ViewType) -> Bool {
+        switch viewType {
+        case .metrics, .transcribeAudio, .history, .permissions, .settings:
+            return false
+        case .models:
+            // LLM provider connected = user has set up something.
+            // Default install has no API keys / no MLX model / AFM only if
+            // macOS 26+ — `connectedProviders` correctly reflects all paths.
+            return !enhancementService.aiService.connectedProviders.isEmpty
+        case .handsFree:
+            // Hotkey bound is the primary signal; trigger phrases edited
+            // also counts so power users tuning triggers without binding the
+            // hotkey still get the dot. Cheap one-liner.
+            let hotkeySet = KeyboardShortcuts.getShortcut(for: .handsFreeToggle) != nil
+            return hotkeySet || !HandsFreeMode.current().triggerPhrases.isEmpty
+        case .powerMode:
+            return !powerModeManager.enabledConfigurations.isEmpty
+        case .audioInput:
+            return audioDeviceManager.inputMode != .systemDefault
+        case .dictionary:
+            return !vocabularyWords.isEmpty || !wordReplacements.isEmpty
+        case .snippets:
+            return !snippets.isEmpty
+        }
+    }
+
     @ViewBuilder
     private func detailView(for viewType: ViewType) -> some View {
         switch viewType {
@@ -198,6 +240,11 @@ struct ContentView: View {
 
 private struct SidebarItemView: View {
     let viewType: ViewType
+    /// W14C — true when the user has customized this pane (non-default state).
+    /// Renders a small accent dot next to the trailing edge as at-a-glance
+    /// signal without restructuring the IA. Subtle, low-saturation; no new
+    /// colors. Skipped panes pass `false` so the dot is hidden.
+    let isConfigured: Bool
 
     var body: some View {
         HStack(spacing: 12) {
@@ -209,6 +256,13 @@ private struct SidebarItemView: View {
                 .font(.system(size: 14, weight: .medium))
 
             Spacer()
+
+            if isConfigured {
+                Circle()
+                    .fill(Palette.accent.opacity(0.85))
+                    .frame(width: 6, height: 6)
+                    .accessibilityLabel("Configured")
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .contentShape(Rectangle())

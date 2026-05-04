@@ -37,6 +37,11 @@ struct SettingsView: View {
     @AppStorage("clipboardRestoreDelay") private var clipboardRestoreDelay = 2.0
     @AppStorage("useAppleScriptPaste") private var useAppleScriptPaste = false
     @AppStorage("failedDwellSeconds") private var failedDwellSeconds: Double = 6.0
+    // W14C — read-only mirror of the cleanup gates owned by AudioCleanupSettingsView.
+    // Surfaces "On"/"Off" in the privacy card's statusText slot. Same keys
+    // (`IsTranscriptionCleanupEnabled` / `IsAudioCleanupEnabled`).
+    @AppStorage("IsTranscriptionCleanupEnabled") private var isTranscriptCleanupForBadge = false
+    @AppStorage("IsAudioCleanupEnabled") private var isAudioCleanupForBadge = false
     @State private var currentShortcut = KeyboardShortcuts.getShortcut(for: .toggleMiniRecorder)
     @State private var currentShortcut2 = KeyboardShortcuts.getShortcut(for: .toggleMiniRecorder2)
     @State private var isCustomCancelEnabled = KeyboardShortcuts.getShortcut(for: .cancelRecorder) != nil
@@ -151,12 +156,29 @@ struct SettingsView: View {
 
     // MARK: - Additional Shortcuts
 
+    /// W14C — count of bound secondary shortcuts (paste-orig / paste-enhanced /
+    /// retry / command-mode / scratchpad-toggle). Custom-cancel + middle-click
+    /// have their own toggle UX inside the card so they're excluded — surfacing
+    /// them here would double-count. Read-only against `KeyboardShortcuts`.
+    private var additionalShortcutsBoundCount: Int {
+        let names: [KeyboardShortcuts.Name] = [
+            .pasteLastTranscription,
+            .pasteLastEnhancement,
+            .retryLastTranscription,
+            .commandMode,
+            .scratchpadToggle
+        ]
+        return names.filter { KeyboardShortcuts.getShortcut(for: $0) != nil }.count
+    }
+
     private var additionalShortcutsCard: some View {
         SettingsCard(
             iconSystemName: "keyboard",
             iconTint: Palette.accent,
             title: "Additional Shortcuts",
-            subtitle: "Paste, retry, cancel, middle-click."
+            subtitle: "Paste, retry, cancel, middle-click.",
+            statusText: additionalShortcutsBoundCount > 0 ? "\(additionalShortcutsBoundCount) bound" : nil,
+            statusTone: .neutral
         ) {
             SettingsRow(
                 iconSystemName: "doc.on.clipboard",
@@ -330,12 +352,25 @@ struct SettingsView: View {
 
     // MARK: - Interface
 
+    /// W14C — display label for `recorderUIManager.recorderType` ("notch" /
+    /// "mini" raw strings — see `RecorderUIManager`). Mirrors the titles used
+    /// inside `RecorderStylePicker` cards.
+    private var recorderTypeDisplayName: String {
+        switch recorderUIManager.recorderType {
+        case "notch": return "Notch"
+        case "mini":  return "Floating"
+        default:      return recorderUIManager.recorderType.capitalized
+        }
+    }
+
     private var interfaceCard: some View {
         SettingsCard(
             iconSystemName: "rectangle.on.rectangle",
             iconTint: Palette.accent,
             title: "Interface",
-            subtitle: "Where the Halo recorder appears."
+            subtitle: "Where the Halo recorder appears.",
+            statusText: recorderTypeDisplayName,
+            statusTone: .neutral
         ) {
             RecorderStylePicker(selection: $recorderUIManager.recorderType)
         }
@@ -410,11 +445,14 @@ struct SettingsView: View {
     // MARK: - Privacy
 
     private var privacyCard: some View {
-        SettingsCard(
+        let cleanupOn = isTranscriptCleanupForBadge || isAudioCleanupForBadge
+        return SettingsCard(
             iconSystemName: "lock.fill",
             iconTint: Palette.success,
             title: "Privacy",
-            subtitle: "Local-first by default. Audio stays on this Mac."
+            subtitle: "Local-first by default. Audio stays on this Mac.",
+            statusText: cleanupOn ? "Auto-cleanup on" : "Default",
+            statusTone: cleanupOn ? .positive : .neutral
         ) {
             AudioCleanupSettingsView()
 

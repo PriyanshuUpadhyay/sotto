@@ -75,11 +75,14 @@ struct HandsFreeSettingsView: View {
     // MARK: - Activation
 
     private var activationCard: some View {
-        SettingsCard(
+        let isBound = KeyboardShortcuts.getShortcut(for: .handsFreeToggle) != nil
+        return SettingsCard(
             iconSystemName: "ear.fill",
             iconTint: Palette.accent,
             title: "Hands-free Mode",
-            subtitle: "Continuous dictation; voice triggers fire Enter for you."
+            subtitle: "Continuous dictation; voice triggers fire Enter for you.",
+            statusText: isBound ? "Bound" : "Not set",
+            statusTone: isBound ? .positive : .neutral
         ) {
             SettingsRow(
                 iconSystemName: "command",
@@ -100,7 +103,9 @@ struct HandsFreeSettingsView: View {
             iconSystemName: "waveform.badge.mic",
             iconTint: Palette.accent,
             title: "Voice Activity Threshold",
-            subtitle: "How loud speech must be to count as voice."
+            subtitle: "How loud speech must be to count as voice.",
+            statusText: ThresholdPreset.nearest(vadThresholdDb)?.displayName ?? "Custom",
+            statusTone: .neutral
         ) {
             Picker("Threshold", selection: presetThresholdBinding) {
                 ForEach(ThresholdPreset.allCases, id: \.self) { preset in
@@ -164,7 +169,9 @@ struct HandsFreeSettingsView: View {
             iconSystemName: "timer",
             iconTint: Palette.accent,
             title: "Silence Duration",
-            subtitle: "How long a pause must last to commit an utterance."
+            subtitle: "How long a pause must last to commit an utterance.",
+            statusText: SilencePreset(rawValue: silenceMs)?.displayName ?? "Custom",
+            statusTone: .neutral
         ) {
             Picker("Silence", selection: presetSilenceBinding) {
                 ForEach(SilencePreset.allCases, id: \.self) { preset in
@@ -203,11 +210,14 @@ struct HandsFreeSettingsView: View {
     // MARK: - Voice triggers
 
     private var triggersCard: some View {
-        SettingsCard(
+        let count = triggerPhrases.filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }.count
+        return SettingsCard(
             iconSystemName: "text.bubble",
             iconTint: Palette.accent,
             title: "Voice Triggers",
-            subtitle: "Phrases that, at the END of an utterance, press Enter for you."
+            subtitle: "Phrases that, at the END of an utterance, press Enter for you.",
+            statusText: count > 0 ? "\(count)" : nil,
+            statusTone: .neutral
         ) {
             ForEach(triggerPhrases.indices, id: \.self) { i in
                 HStack(spacing: 8) {

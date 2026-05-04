@@ -24,6 +24,10 @@ struct MetricsContent: View {
                     ScrollView {
                         VStack(spacing: 24) {
                             heroSection
+                            // W14C — at-a-glance "what's configured" summary.
+                            // Hidden in the empty-state branch above (a brand-
+                            // new install has nothing meaningful to surface).
+                            ConfigurationSummaryCard()
                             metricsSection
                             HelpAndResourcesSection()
 
