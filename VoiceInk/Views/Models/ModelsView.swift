@@ -16,19 +16,32 @@ enum ModelFilter: String, CaseIterable, Identifiable {
     var id: String { self.rawValue }
 }
 
+// MARK: - ModelTab
+//
+// W14F — top-of-page segmented control tag. Persisted via @AppStorage so the
+// user's tab choice survives app restarts.
+
+enum ModelTab: String, CaseIterable, Identifiable {
+    case enhancement = "Enhancement"
+    case transcriber = "Transcriber"
+    var id: String { rawValue }
+}
+
 // MARK: - ModelsView
 //
 // W14E — single unified Models settings pane. Replaces the legacy split
 // between "AI Models" (transcription) and "Enhancement" (LLM provider /
-// prompts) sidebar entries. The two surfaces are stitched into one
-// ScrollView with two SF-Mono uppercase section headers ("Transcription"
-// and "Enhancement"). Inner sub-tabs (Recommended/Local/Cloud/Custom) and
-// the AI Provider 2-col grid are preserved unchanged. The two formerly-
-// independent sliding panels (transcription gear, enhancement gear, prompt
-// editor) are unified behind one enum-driven `activePanel` slot.
+// prompts) sidebar entries.
 //
-// W14A Force-MLX and W14B prewarm-AFM toggles continue to live inside
-// `EnhancementSettingsPanel`'s ON-DEVICE section — no toggle moves.
+// W14F — redesign: replaces the stacked "Transcription / Enhancement" SF-Mono
+// section dividers with a top-of-page segmented control (Enhancement /
+// Transcriber). The Enhancement tab now leads with an `ActiveEnhancementProviderCard`
+// focal panel and collapses every non-active provider into an
+// `OtherEnhancementProvidersAccordion` (DisclosureGroup, collapsed by default).
+// The Transcriber tab keeps the existing pill-switcher gallery (Recommended/
+// Local/Cloud/Custom) and the on-device default-model card. The unified
+// `activePanel` sliding-panel slot, KeychainHelper writes, MLX download
+// flows, and AppStorage keys are all preserved.
 
 struct ModelsView: View {
     // MARK: Environment / shared services
@@ -47,6 +60,12 @@ struct ModelsView: View {
 
     @State private var selectedFilter: ModelFilter = .recommended
     @State private var customModelToEdit: CustomCloudModel?
+
+    // MARK: Top-level tab (W14F)
+
+    /// Persisted top-of-page segmented control. Defaults to Enhancement —
+    /// matches the user's most-frequently-tweaked surface (provider / prompt).
+    @AppStorage("ModelsViewSelectedTab") private var selectedTab: ModelTab = .enhancement
 
     // Unified delete alert for transcription model removal.
     @State private var isShowingDeleteAlert = false
@@ -95,27 +114,22 @@ struct ModelsView: View {
 
     var body: some View {
         ScrollView {
-            LazyVStack(alignment: .leading, spacing: 24) {
+            LazyVStack(alignment: .leading, spacing: 20) {
                 if SystemArchitecture.isIntelMac {
                     intelMacWarningBanner
                 }
 
-                // ─── Transcription ───
-                sectionDivider("Transcription")
-                VStack(alignment: .leading, spacing: 16) {
-                    defaultModelCard
-                    languageSelectionSection
-                    availableModelsSection
-                }
+                tabHeader
 
-                // ─── Enhancement ───
-                sectionDivider("Enhancement")
-                    .padding(.top, 8)
-                VStack(spacing: 16) {
-                    enhancementCard
-                    aiProviderCard
-                    promptsCard
+                Group {
+                    switch selectedTab {
+                    case .enhancement:
+                        enhancementBody
+                    case .transcriber:
+                        transcriberBody
+                    }
                 }
+                .transition(.opacity.combined(with: .move(edge: .top)))
             }
             .padding(.horizontal, 24)
             .padding(.vertical, 20)
@@ -141,6 +155,51 @@ struct ModelsView: View {
             )
         }
         .tint(Palette.accent)
+    }
+
+    // MARK: Top-level tab header (W14F)
+
+    /// Two-tab segmented control pinned above the body. Centred, capped at
+    /// 320pt wide so it doesn't run the full content width on a wide window.
+    private var tabHeader: some View {
+        HStack {
+            Spacer()
+            Picker("View", selection: $selectedTab) {
+                ForEach(ModelTab.allCases) { tab in
+                    Text(tab.rawValue).tag(tab)
+                }
+            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+            .frame(maxWidth: 320)
+            Spacer()
+        }
+        .padding(.bottom, 4)
+    }
+
+    // MARK: Tab bodies (W14F)
+
+    /// Enhancement tab — leads with the Enhancement-level toggle, then the
+    /// active provider as a focal expanded card, then the collapsed
+    /// "Other providers" accordion, then the prompts grid.
+    private var enhancementBody: some View {
+        VStack(spacing: 16) {
+            enhancementCard
+            ActiveEnhancementProviderCard()
+            OtherEnhancementProvidersAccordion()
+            promptsCard
+        }
+    }
+
+    /// Transcriber tab — currently-selected model card up top, then the
+    /// language picker and the existing pill-switcher gallery (Recommended /
+    /// Local / Cloud / Custom).
+    private var transcriberBody: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            defaultModelCard
+            languageSelectionSection
+            availableModelsSection
+        }
     }
 
     // MARK: Sliding-panel content
@@ -196,24 +255,6 @@ struct ModelsView: View {
         }
     }
 
-    // MARK: Section divider header
-    //
-    // SF Mono uppercase label with a hairline rule beneath. Kept file-private
-    // per W14E micro-caveat: do NOT promote to a shared component until a
-    // third caller appears.
-
-    private func sectionDivider(_ text: String) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text(text.uppercased())
-                .font(.system(size: 10.5, weight: .semibold, design: .monospaced))
-                .tracking(0.06 * 10.5)
-                .foregroundColor(Palette.onyxMute)
-            Rectangle()
-                .fill(Palette.hairlineSoft)
-                .frame(height: 1)
-        }
-    }
-
     // MARK: Transcription — Intel banner
 
     private var intelMacWarningBanner: some View {
@@ -255,19 +296,76 @@ struct ModelsView: View {
 
     // MARK: Transcription — sections
 
+    /// W14F focal "active model" card for the Transcriber tab. Shows the
+    /// currently-selected transcription model name with an ACTIVE chip and
+    /// a SF-Mono provider tag, mirroring the Enhancement-tab focal card's
+    /// vocabulary so the two tabs read as siblings.
     private var defaultModelCard: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Default Model")
-                .font(.headline)
-                .foregroundColor(.secondary)
-            Text(transcriptionModelManager.currentTranscriptionModel?.displayName ?? "No model selected")
-                .font(.title2)
-                .fontWeight(.bold)
+        let model = transcriptionModelManager.currentTranscriptionModel
+        let providerLabel = (model?.provider.rawValue ?? "—").uppercased()
+
+        return VStack(alignment: .leading, spacing: 10) {
+            // Section label — matches `ActiveEnhancementProviderCard`'s SF-Mono key.
+            HStack(spacing: 8) {
+                Text("ACTIVE MODEL")
+                    .font(.system(size: 10.5, weight: .semibold, design: .monospaced))
+                    .tracking(0.06 * 10.5)
+                    .foregroundColor(Palette.accent)
+                Rectangle()
+                    .fill(Palette.hairlineSoft)
+                    .frame(height: 1)
+            }
+
+            HStack(alignment: .center, spacing: 14) {
+                // Pictogram tile.
+                ZStack {
+                    RoundedRectangle(cornerRadius: 9, style: .continuous)
+                        .fill(Palette.accent.opacity(0.18))
+                    RoundedRectangle(cornerRadius: 9, style: .continuous)
+                        .stroke(Palette.accent.opacity(0.36), lineWidth: 0.5)
+                    Image(systemName: "waveform")
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundColor(Palette.accent)
+                }
+                .frame(width: 44, height: 44)
+
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack(spacing: 6) {
+                        Text(model?.displayName ?? "No model selected")
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundColor(.primary)
+                            .lineLimit(1)
+                            .truncationMode(.tail)
+                        if model != nil {
+                            Text("ACTIVE")
+                                .font(.system(size: 9.5, weight: .semibold, design: .monospaced))
+                                .tracking(0.06 * 9.5)
+                                .foregroundColor(Palette.accent)
+                                .padding(.horizontal, 7)
+                                .padding(.vertical, 2.5)
+                                .background(Capsule().fill(Palette.accent.opacity(0.16)))
+                                .overlay(Capsule().stroke(Palette.accent.opacity(0.42), lineWidth: 0.5))
+                        }
+                    }
+                    Text(providerLabel)
+                        .font(.system(size: 10.5, weight: .medium, design: .monospaced))
+                        .tracking(0.06 * 10.5)
+                        .foregroundColor(.secondary)
+                }
+
+                Spacer(minLength: 0)
+            }
         }
-        .padding()
+        .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .modifier(GlassChip(cornerRadius: 16, paddingH: 0, paddingV: 0))
-        .cornerRadius(10)
+        .background(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(.ultraThinMaterial)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .stroke(Palette.hairline, lineWidth: 1)
+        )
     }
 
     private var languageSelectionSection: some View {
@@ -521,11 +619,6 @@ struct ModelsView: View {
             .padding(.trailing, 14)
             .padding(.top, 14)
         }
-    }
-
-    private var aiProviderCard: some View {
-        APIKeyManagementView()
-            .opacity(enhancementService.isEnhancementEnabled ? 1.0 : 0.8)
     }
 
     private var promptsCard: some View {
