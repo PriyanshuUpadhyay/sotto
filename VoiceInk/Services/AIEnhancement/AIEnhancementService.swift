@@ -171,7 +171,7 @@ class AIEnhancementService: ObservableObject {
         let selectedTextContext: String
         if AXIsProcessTrusted() {
             if let selectedText = await SelectedTextService.fetchSelectedText(), !selectedText.isEmpty {
-                selectedTextContext = "\n\n<CURRENTLY_SELECTED_TEXT>\n\(selectedText)\n</CURRENTLY_SELECTED_TEXT>"
+                selectedTextContext = "\n\n<CURRENTLY_SELECTED_TEXT>\n\(bound(selectedText, maxBytes: 2048))\n</CURRENTLY_SELECTED_TEXT>"
             } else {
                 selectedTextContext = ""
             }
@@ -182,7 +182,7 @@ class AIEnhancementService: ObservableObject {
         let clipboardContext = if useClipboardContext,
                               let clipboardText = lastCapturedClipboard,
                               !clipboardText.isEmpty {
-            "\n\n<CLIPBOARD_CONTEXT>\n\(clipboardText)\n</CLIPBOARD_CONTEXT>"
+            "\n\n<CLIPBOARD_CONTEXT>\n\(bound(clipboardText, maxBytes: 2048))\n</CLIPBOARD_CONTEXT>"
         } else {
             ""
         }
@@ -190,7 +190,7 @@ class AIEnhancementService: ObservableObject {
         let screenCaptureContext = if useScreenCaptureContext,
                                    let capturedText = screenCaptureService.lastCapturedText,
                                    !capturedText.isEmpty {
-            "\n\n<CURRENT_WINDOW_CONTEXT>\n\(capturedText)\n</CURRENT_WINDOW_CONTEXT>"
+            "\n\n<CURRENT_WINDOW_CONTEXT>\n\(bound(capturedText, maxBytes: 2048))\n</CURRENT_WINDOW_CONTEXT>"
         } else {
             ""
         }
@@ -205,7 +205,7 @@ class AIEnhancementService: ObservableObject {
 
             The following are important vocabulary words, proper nouns, and technical terms. When these words or similar-sounding words appear in the <TRANSCRIPT>, ensure they are spelled EXACTLY as shown below:
             <CUSTOM_VOCABULARY>
-            \(customVocabulary)
+            \(bound(customVocabulary, maxBytes: 1024))
             </CUSTOM_VOCABULARY>
             """
         } else {
@@ -474,6 +474,15 @@ class AIEnhancementService: ObservableObject {
     /// Bumping this raises fast-path coverage at the risk of producing thin
     /// cleanup on medium dictations. Plan §Migration policy #1.
     private let MLXShortTranscriptCharThreshold = 120
+
+    /// T5 — gate ContextSanitizer behind a kill-switch so users can disable
+    /// the bounding/redaction at runtime if it ever over-fires on real-world
+    /// clipboards. Default true (per AppDefaults registration).
+    private func bound(_ raw: String, maxBytes: Int) -> String {
+        UserDefaults.standard.bool(forKey: "EnableContextSanitization")
+            ? ContextSanitizer.sanitize(raw, maxBytes: maxBytes)
+            : raw
+    }
 
     private func shouldUseMLXFastPath(text: String) -> Bool {
         guard text.count <= MLXShortTranscriptCharThreshold else { return false }

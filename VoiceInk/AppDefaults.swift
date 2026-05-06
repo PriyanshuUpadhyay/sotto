@@ -47,6 +47,7 @@ enum AppDefaults {
             "EnhancementRetryOnTimeout": true,
             "EnableEnhancementFailureNotification": true,
             "EnableMLXFallback": true,
+            "EnableContextSanitization": true,
             "MLXIdleEvictSeconds": 1800,
 
             // Model
