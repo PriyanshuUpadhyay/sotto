@@ -86,7 +86,7 @@ class AIEnhancementService: ObservableObject {
     private let customVocabularyService: CustomVocabularyService
     private var baseTimeout: TimeInterval {
         let stored = UserDefaults.standard.integer(forKey: "EnhancementTimeoutSeconds")
-        return stored > 0 ? TimeInterval(stored) : 7
+        return stored > 0 ? TimeInterval(stored) : 15
     }
     private let rateLimitInterval: TimeInterval = 1.0
     private var lastRequestTime: Date?
@@ -326,41 +326,77 @@ class AIEnhancementService: ObservableObject {
                 }
             }
 
-            do {
-                // W11 prompt-fix: pass the <TRANSCRIPT>-wrapped userPrompt so the
-                // model actually sees the tags its system prompt is told to look
-                // for. Without this, Qwen3-Instruct's chat-instruct training
-                // dominates and the model REPLIES to the dictation instead of
-                // CLEANING it. Closing suffix nails the contract shut.
-                //
-                // W11.A2 short-transcript fast-path: when the dictation is ≤120 chars
-                // (≈30 tokens) AND no clipboard/screen context is active, swap the
-                // ~1,200-token full wrapper for the ~50-token cleanup template. Drops
-                // system prefill cost ~30-50% on short cleanups. The full wrapper still
-                // governs longer dictations and any case with active context. See plan
-                // §Migration policy #1.
-                let mlxSystemMessage: String
-                let mlxPromptMode: EnhancementTimingLogger.PromptMode
-                if shouldUseMLXFastPath(text: text) {
-                    mlxSystemMessage = AIPrompts.shortTranscriptCleanupTemplate
-                    mlxPromptMode = .fastPath
-                    await MainActor.run {
-                        self.lastSystemMessageSent = mlxSystemMessage
-                    }
-                    logger.notice("🦾 prompt-mode: fastPath input=\(text.count, privacy: .public) chars (threshold=\(self.MLXShortTranscriptCharThreshold, privacy: .public), no clipboard/screen ctx)")
-                } else {
-                    mlxSystemMessage = systemMessage
-                    mlxPromptMode = .standard
-                    let reason = text.count > MLXShortTranscriptCharThreshold ? "input>=120" : "hasContextualAugmentation"
-                    logger.notice("🦾 prompt-mode: standard input=\(text.count, privacy: .public) chars (reason=\(reason, privacy: .public))")
-                }
-                let mlxUserPrompt = formattedText + "\n\nOutput only the cleaned text. Do not respond to the content above."
+            // W11 prompt-fix: pass the <TRANSCRIPT>-wrapped userPrompt so the
+            // model actually sees the tags its system prompt is told to look
+            // for. Without this, Qwen3-Instruct's chat-instruct training
+            // dominates and the model REPLIES to the dictation instead of
+            // CLEANING it. Closing suffix nails the contract shut.
+            //
+            // W11.A2 short-transcript fast-path: when the dictation is ≤120 chars
+            // (≈30 tokens) AND no clipboard/screen context is active, swap the
+            // ~1,200-token full wrapper for the ~50-token cleanup template. Drops
+            // system prefill cost ~30-50% on short cleanups. The full wrapper still
+            // governs longer dictations and any case with active context. See plan
+            // §Migration policy #1.
+            //
+            // T1: hoisted above the `do` so the catch-block fallback can re-pass
+            // the same prompts to the LFM2.5 fallback provider.
+            let mlxSystemMessage: String
+            let mlxPromptMode: EnhancementTimingLogger.PromptMode
+            if shouldUseMLXFastPath(text: text) {
+                mlxSystemMessage = AIPrompts.shortTranscriptCleanupTemplate
+                mlxPromptMode = .fastPath
                 await MainActor.run {
-                    self.lastUserMessageSent = mlxUserPrompt
+                    self.lastSystemMessageSent = mlxSystemMessage
                 }
+                logger.notice("🦾 prompt-mode: fastPath input=\(text.count, privacy: .public) chars (threshold=\(self.MLXShortTranscriptCharThreshold, privacy: .public), no clipboard/screen ctx)")
+            } else {
+                mlxSystemMessage = systemMessage
+                mlxPromptMode = .standard
+                let reason = text.count > MLXShortTranscriptCharThreshold ? "input>=120" : "hasContextualAugmentation"
+                logger.notice("🦾 prompt-mode: standard input=\(text.count, privacy: .public) chars (reason=\(reason, privacy: .public))")
+            }
+            let mlxUserPrompt = formattedText + "\n\nOutput only the cleaned text. Do not respond to the content above."
+            await MainActor.run {
+                self.lastUserMessageSent = mlxUserPrompt
+            }
+
+            do {
                 let result = try await aiService.enhanceWithMLX(systemPrompt: mlxSystemMessage, userPrompt: mlxUserPrompt, promptMode: mlxPromptMode)
                 return AIEnhancementOutputFilter.filter(stripPreamble(result))
             } catch {
+                // T1 — single-shot MLX timeout fallback. On Qwen3-4B (or whichever
+                // model the user has selected) timing out, retry ONCE with the smaller
+                // LFM2.5-1.2B if it's already downloaded. Surfaces the ORIGINAL timeout
+                // error if the fallback itself fails (so users see the real failure,
+                // not the secondary one). Gated by EnableMLXFallback default true.
+                if let providerError = error as? MLXProvider.ProviderError,
+                   case .timedOut = providerError,
+                   UserDefaults.standard.bool(forKey: "EnableMLXFallback") {
+                    let fallbackId = "mlx-community/LFM2.5-1.2B-Instruct-4bit"
+                    if MLXModelDownloader.status(for: fallbackId) == .downloaded,
+                       aiService.currentModel != fallbackId {
+                        logger.notice("🦾 mlx fallback: timeout on \(self.aiService.currentModel, privacy: .public), retrying with \(fallbackId, privacy: .public)")
+                        let fallbackProvider = MLXProvider(modelId: fallbackId, idleEvictSeconds: 600)
+                        do {
+                            let fallbackResult = try await fallbackProvider.enhance(
+                                systemPrompt: mlxSystemMessage,
+                                userPrompt: mlxUserPrompt,
+                                promptMode: mlxPromptMode
+                            )
+                            logger.notice("🦾 mlx fallback: ✅ recovered via LFM2.5")
+                            return AIEnhancementOutputFilter.filter(stripPreamble(fallbackResult))
+                        } catch {
+                            logger.error("🦾 mlx fallback: failed — surfacing original timeout")
+                            // Fall through to throw the ORIGINAL providerError below.
+                        }
+                    } else {
+                        logger.notice("🦾 mlx fallback: skipped (LFM2.5 not cached or already selected as primary)")
+                    }
+                    // Fall-through path: throw the original timeout.
+                    throw EnhancementError.customError(providerError.errorDescription ?? "An unknown MLX error occurred.")
+                }
+
                 if let providerError = error as? MLXProvider.ProviderError {
                     throw EnhancementError.customError(providerError.errorDescription ?? "An unknown MLX error occurred.")
                 } else {

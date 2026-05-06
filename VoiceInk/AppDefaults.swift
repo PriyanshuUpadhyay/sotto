@@ -43,9 +43,10 @@ enum AppDefaults {
             "enhanceLevel": EnhanceLevel.default.rawValue,  // W12.A — "medium"
             "SkipShortEnhancement": true,
             "ShortEnhancementWordThreshold": 3,
-            "EnhancementTimeoutSeconds": 7,
+            "EnhancementTimeoutSeconds": 15,
             "EnhancementRetryOnTimeout": true,
             "EnableEnhancementFailureNotification": true,
+            "EnableMLXFallback": true,
             "MLXIdleEvictSeconds": 1800,
 
             // Model

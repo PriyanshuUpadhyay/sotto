@@ -5,7 +5,7 @@ struct EnhancementSettingsPanel: View {
     @EnvironmentObject private var enhancementService: AIEnhancementService
     @AppStorage("SkipShortEnhancement") private var isSkipShortEnhancementEnabled = true
     @AppStorage("ShortEnhancementWordThreshold") private var shortEnhancementWordThreshold = 3
-    @AppStorage("EnhancementTimeoutSeconds") private var enhancementTimeoutSeconds = 7
+    @AppStorage("EnhancementTimeoutSeconds") private var enhancementTimeoutSeconds = 15
     @AppStorage("EnhancementRetryOnTimeout") private var retryOnTimeout = true
     @AppStorage("MLXIdleEvictSeconds") private var mlxIdleEvictSeconds = 1800
     @AppStorage("ForceMLXOverAFM") private var forceMLXOverAFM = false

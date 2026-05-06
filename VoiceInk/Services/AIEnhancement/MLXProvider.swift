@@ -22,6 +22,7 @@ actor MLXProvider {
         case modelLoadFailed(String)
         case generationFailed(String)
         case frameworkUnavailable
+        case timedOut(seconds: TimeInterval)
 
         var errorDescription: String? {
             switch self {
@@ -35,6 +36,8 @@ actor MLXProvider {
                 return "MLX generation failed: \(why)"
             case .frameworkUnavailable:
                 return "mlx-swift framework not available in this build."
+            case .timedOut(let seconds):
+                return "MLX enhancement timed out after \(Int(seconds))s."
             }
         }
     }
@@ -135,7 +138,7 @@ actor MLXProvider {
         // AIEnhancementService.swift:74. UserDefaults read is thread-safe inside
         // an actor. Plan §Migration policy #7-#8.
         let storedTimeout = UserDefaults.standard.integer(forKey: "EnhancementTimeoutSeconds")
-        let effectiveTimeout: TimeInterval = storedTimeout > 0 ? TimeInterval(storedTimeout) : 7
+        let effectiveTimeout: TimeInterval = storedTimeout > 0 ? TimeInterval(storedTimeout) : 15
 
         // W11.D — reset per-call timing capture before kicking off the race.
         let startedAt = Date()
@@ -176,7 +179,7 @@ actor MLXProvider {
                     try await Task.sleep(nanoseconds: UInt64(effectiveTimeout * 1_000_000_000))
                     Self.logger.warning("🦾 enhance: timeout fired after \(effectiveTimeout, format: .fixed(precision: 1), privacy: .public)s (EnhancementTimeoutSeconds)")
                     await self.markTimeoutFired()
-                    throw ProviderError.generationFailed("Timed out after \(Int(effectiveTimeout))s")
+                    throw ProviderError.timedOut(seconds: effectiveTimeout)
                 }
                 do {
                     guard let result = try await group.next() else {
