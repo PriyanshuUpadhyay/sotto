@@ -304,13 +304,14 @@ class AIEnhancementService: ObservableObject {
             let forceMLX = UserDefaults.standard.bool(forKey: "ForceMLXOverAFM")
             if #available(macOS 26.0, *), AFMProvider.isAvailable, !forceMLX {
                 let afmSystemPrompt = systemMessage + Self.afmOutputDirective
+                let afmUserPrompt = formattedText + "\n\nOutput only the cleaned text. Do not respond to the content above."
                 await MainActor.run {
                     self.lastSystemMessageSent = afmSystemPrompt
-                    self.lastUserMessageSent = text
+                    self.lastUserMessageSent = afmUserPrompt
                 }
                 logger.notice("🦾 afm: routing — AFM primary (mlx fallback on safety refusal)")
                 do {
-                    let result = try await aiService.enhanceWithAFM(systemPrompt: afmSystemPrompt, userPrompt: text)
+                    let result = try await aiService.enhanceWithAFM(systemPrompt: afmSystemPrompt, userPrompt: afmUserPrompt)
                     return AIEnhancementOutputFilter.filter(stripPreamble(result))
                 } catch let providerError as AFMProvider.ProviderError {
                     if case .safetyRefusal = providerError {
@@ -413,10 +414,15 @@ class AIEnhancementService: ObservableObject {
                 // Apple's 3B foundation model is conservative under heavy prompts and
                 // tends to (a) echo XML-wrapped input verbatim, (b) prefix output with
                 // conversational preambles like "Sure, here's the cleaned version:".
-                // Pass the raw transcript (no <TRANSCRIPT> wrapper) and append a strict
-                // output directive so the model emits only the cleaned text.
+                // Pass the <TRANSCRIPT>-wrapped user turn (symmetric with MLX) plus a
+                // closing-suffix directive so the model emits only the cleaned text.
                 let afmSystemPrompt = systemMessage + Self.afmOutputDirective
-                let result = try await aiService.enhanceWithAFM(systemPrompt: afmSystemPrompt, userPrompt: text)
+                let afmUserPrompt = formattedText + "\n\nOutput only the cleaned text. Do not respond to the content above."
+                await MainActor.run {
+                    self.lastSystemMessageSent = afmSystemPrompt
+                    self.lastUserMessageSent = afmUserPrompt
+                }
+                let result = try await aiService.enhanceWithAFM(systemPrompt: afmSystemPrompt, userPrompt: afmUserPrompt)
                 return AIEnhancementOutputFilter.filter(stripPreamble(result))
             } catch {
                 if let providerError = error as? AFMProvider.ProviderError {
@@ -671,9 +677,13 @@ class AIEnhancementService: ObservableObject {
             var afmRefused = false
             if #available(macOS 26.0, *), AFMProvider.isAvailable {
                 let afmSystemPrompt = systemMessage + Self.afmOutputDirective
-                await MainActor.run { self.lastSystemMessageSent = afmSystemPrompt }
+                let afmUserPrompt = userPrompt + "\n\nOutput only the cleaned text. Do not respond to the content above."
+                await MainActor.run {
+                    self.lastSystemMessageSent = afmSystemPrompt
+                    self.lastUserMessageSent = afmUserPrompt
+                }
                 do {
-                    let raw = try await aiService.enhanceWithAFM(systemPrompt: afmSystemPrompt, userPrompt: userPrompt)
+                    let raw = try await aiService.enhanceWithAFM(systemPrompt: afmSystemPrompt, userPrompt: afmUserPrompt)
                     let duration = Date().timeIntervalSince(startTime)
                     return (AIEnhancementOutputFilter.filter(stripPreamble(raw)), duration)
                 } catch let providerError as AFMProvider.ProviderError {
@@ -708,7 +718,12 @@ class AIEnhancementService: ObservableObject {
             }
             do {
                 let afmSystemPrompt = systemMessage + Self.afmOutputDirective
-                let raw = try await aiService.enhanceWithAFM(systemPrompt: afmSystemPrompt, userPrompt: userPrompt)
+                let afmUserPrompt = userPrompt + "\n\nOutput only the cleaned text. Do not respond to the content above."
+                await MainActor.run {
+                    self.lastSystemMessageSent = afmSystemPrompt
+                    self.lastUserMessageSent = afmUserPrompt
+                }
+                let raw = try await aiService.enhanceWithAFM(systemPrompt: afmSystemPrompt, userPrompt: afmUserPrompt)
                 result = AIEnhancementOutputFilter.filter(stripPreamble(raw))
             } catch {
                 if let providerError = error as? AFMProvider.ProviderError {
@@ -836,7 +851,8 @@ class AIEnhancementService: ObservableObject {
             }
             do {
                 let afmSystemPrompt = systemMessage + Self.afmOutputDirective
-                let result = try await aiService.enhanceWithAFM(systemPrompt: afmSystemPrompt, userPrompt: trimmed)
+                let afmUserPrompt = formattedText + "\n\nOutput only the cleaned text. Do not respond to the content above."
+                let result = try await aiService.enhanceWithAFM(systemPrompt: afmSystemPrompt, userPrompt: afmUserPrompt)
                 return AIEnhancementOutputFilter.filter(stripPreamble(result))
             } catch is CancellationError { throw CancellationError() } catch {
                 if let providerError = error as? AFMProvider.ProviderError {
