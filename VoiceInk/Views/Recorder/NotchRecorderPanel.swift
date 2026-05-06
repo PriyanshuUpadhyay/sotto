@@ -25,7 +25,12 @@ class NotchRecorderPanel: KeyablePanel {
         )
 
         self.isFloatingPanel = true
-        self.level = .statusBar + 3
+        // `.statusBar + 3` (28) sat below the window level used by some
+        // Metal-presented and stage-manager-style full-screen apps, so the
+        // panel disappeared in those Spaces. `.popUpMenu` (101) reliably
+        // composites above all observed full-screen modes while staying
+        // below screensaver / system-modal levels.
+        self.level = .popUpMenu
         self.backgroundColor = .clear
         self.isOpaque = false
         self.alphaValue = 1.0
@@ -52,6 +57,18 @@ class NotchRecorderPanel: KeyablePanel {
             self,
             selector: #selector(handleScreenParametersChange),
             name: NSApplication.didChangeScreenParametersNotification,
+            object: nil
+        )
+
+        // Active-Space changes (4-finger swipe between full-screen apps,
+        // Mission Control teleport, app entering full-screen while recording)
+        // don't fire `didChangeScreenParameters` even though the panel needs
+        // to re-anchor + re-orderFront into the new Space. NSWorkspace fires
+        // this notification on its own notificationCenter, NOT the default one.
+        NSWorkspace.shared.notificationCenter.addObserver(
+            self,
+            selector: #selector(handleActiveSpaceChange),
+            name: NSWorkspace.activeSpaceDidChangeNotification,
             object: nil
         )
     }
@@ -103,8 +120,21 @@ class NotchRecorderPanel: KeyablePanel {
         }
     }
 
+    @objc private func handleActiveSpaceChange() {
+        // Only re-show if currently visible. We don't want to surface the
+        // panel onto a new Space if the user explicitly hid it.
+        guard self.isVisible else { return }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { [weak self] in
+            guard let self, self.isVisible else { return }
+            let metrics = NotchRecorderPanel.calculateWindowMetrics()
+            self.setFrame(metrics.frame, display: true)
+            self.orderFrontRegardless()
+        }
+    }
+
     deinit {
         NotificationCenter.default.removeObserver(self)
+        NSWorkspace.shared.notificationCenter.removeObserver(self)
     }
 }
 
