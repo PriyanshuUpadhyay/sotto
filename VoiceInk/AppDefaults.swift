@@ -45,6 +45,7 @@ enum AppDefaults {
             "ShortEnhancementWordThreshold": 3,
             "EnhancementTimeoutSeconds": 7,
             "EnhancementRetryOnTimeout": true,
+            "EnableEnhancementFailureNotification": true,
             "MLXIdleEvictSeconds": 1800,
 
             // Model

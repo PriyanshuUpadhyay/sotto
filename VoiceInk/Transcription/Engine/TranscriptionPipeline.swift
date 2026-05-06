@@ -229,11 +229,13 @@ class TranscriptionPipeline {
                         // and the history list. Leaving it nil falls through to
                         // the raw transcript everywhere.
                         logger.error("AI enhancement failed: \(errorDescription, privacy: .public)")
-                        await MainActor.run {
-                            NotificationManager.shared.showNotification(
-                                title: "Enhancement failed: \(shortReason)",
-                                type: .warning
-                            )
+                        if UserDefaults.standard.bool(forKey: "EnableEnhancementFailureNotification") {
+                            await MainActor.run {
+                                NotificationManager.shared.showNotification(
+                                    title: "Enhancement failed: \(shortReason)",
+                                    type: .warning
+                                )
+                            }
                         }
                         // Surface to engine so the failure visual can render. Paste
                         // still proceeds with the un-enhanced transcript (silent fallback).
