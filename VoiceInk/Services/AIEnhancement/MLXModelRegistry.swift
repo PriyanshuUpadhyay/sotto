@@ -81,11 +81,11 @@ struct MLXModelEntry: Identifiable, Hashable {
 }
 
 enum MLXModelRegistry {
-    /// Curated lineup as of W14F (May 2026). 11 entries across three speed
+    /// Curated lineup as of W14F (May 2026). 10 entries across three speed
     /// tiers; ≤10s SLA on M-series base 32 GB for 50-200 token cleanup.
-    /// License posture: 8/11 Apache 2.0; remainder MIT (Phi), Llama
-    /// Community (Llama-3.2), and LFM Open v1.0 (LFM2.5). All `model_type`s
-    /// registered in bundled `mlx-swift-lm` 3.31.3.
+    /// License posture: 8/10 Apache 2.0; remainder MIT (Phi) and Llama
+    /// Community (Llama-3.2). All `model_type`s registered in bundled
+    /// `mlx-swift-lm` 3.31.3.
     ///
     /// W14F changes: swapped granite-3.3-2b → granite-4.1-3b (newer, same
     /// granite arch), Phi-3.5-mini → Phi-4-mini (newer, same phi3 arch);
@@ -93,10 +93,9 @@ enum MLXModelRegistry {
     /// model — emits `<think>` blocks auto-stripped by AIEnhancementOutputFilter,
     /// needs ≥512 max_tokens to finish reasoning + emit final answer),
     /// Granite-4.0-H-Tiny (Mamba2+attention hybrid, granitemoehybrid type,
-    /// ULTRA-FAST tier), LFM2.5-1.2B (best IFEval/byte at 86.23, LFM Open
-    /// license requires NOTICE attribution + free commercial under $10M
-    /// annual rev). Curated `Qwen3.5-4B-MLX-4bit` retained alongside OptiQ
-    /// for one release per challenger risk #3 (Swift-port end-to-end run).
+    /// ULTRA-FAST tier). Curated `Qwen3.5-4B-MLX-4bit` retained alongside
+    /// OptiQ for one release per challenger risk #3 (Swift-port end-to-end
+    /// run).
     ///
     /// Research/verification at `W14F_challenger_verdict.md` (hunter+
     /// challenger pass) + `W14F_smoke_test_results.md` (mlx-lm Python
@@ -171,11 +170,10 @@ enum MLXModelRegistry {
         // W14F additions — hunter/challenger research pass May 2026.
         // Two same-family swap-ins (granite-4.1-3b, Phi-4-mini), one
         // mixed-precision quant variant (Qwen3.5-4B-OptiQ — kept alongside
-        // plain Qwen3.5-4B-MLX-4bit for one release), one Mamba+attention
+        // plain Qwen3.5-4B-MLX-4bit for one release), and one Mamba+attention
         // hybrid (Granite-4.0-H-Tiny — granitemoehybrid type, first hybrid
-        // arch in the curated lineup), and one Liquid hybrid (LFM2.5-1.2B —
-        // LFM Open license, best IFEval/byte). Smoke-tested via mlx-lm
-        // Python; first Swift-port load happens on user device.
+        // arch in the curated lineup). Smoke-tested via mlx-lm Python;
+        // first Swift-port load happens on user device.
         .init(
             id: "mlx-community/granite-4.1-3b-4bit",
             displayName: "Granite 4.1 3B Instruct",
@@ -210,15 +208,6 @@ enum MLXModelRegistry {
             notes: "IBM. Apache 2.0. Mamba2 + sliding-window attention hybrid; `granitemoehybrid` type registered in mlx-swift-lm 3.31.3. Bandwidth-cheap → 100-150 tok/s on M4 base. No published IFEval; Python smoke (mlx-lm 0.31.3) load + coherent generate confirmed. First hybrid-arch entry — log first Swift-side load.",
             speedRating: 9,
             qualityRating: 6,
-            expectedLatencySeconds: 1.0...3.0
-        ),
-        .init(
-            id: "mlx-community/LFM2.5-1.2B-Instruct-4bit",
-            displayName: "LFM 2.5 1.2B Instruct",
-            approximateSizeGB: 0.61,
-            notes: "Liquid AI. LFM Open License v1.0 — free commercial under $10M annual rev; NOTICE attribution + 'Built with LFM' surface required. IFEval 86.23, IFBench 47.33 — best IFEval/byte in field. Hybrid SSM+attention; `lfm2` type registered.",
-            speedRating: 9,
-            qualityRating: 7,
             expectedLatencySeconds: 1.0...3.0
         ),
     ]
