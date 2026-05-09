@@ -45,6 +45,7 @@ struct ConfigurationView: View {
     @State private var websiteConfigs: [URLConfig] = []
     @State private var newWebsiteURL: String = ""
     @State private var useScreenCapture = false
+    @State private var useClipboardContext = false
     @State private var autoSendKey: AutoSendKey = .none
     @State private var isDefault = false
     @State private var isShowingDeleteConfirmation = false
@@ -564,6 +565,8 @@ struct ConfigurationView: View {
                     aiModelPicker
                     enhancementPromptPicker
                     Toggle("Context Awareness", isOn: $useScreenCapture)
+                        .toggleStyle(SwitchToggleStyle(tint: Palette.accent))
+                    Toggle("Use Clipboard Context", isOn: $useClipboardContext)
                         .toggleStyle(SwitchToggleStyle(tint: Palette.accent))
                 }
             }
