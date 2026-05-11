@@ -204,6 +204,10 @@ class PowerModeManager: ObservableObject {
     private init() {
         loadConfigurations()
 
+        if SeededAppPresets.seedIfNeeded(into: &configurations) {
+            saveConfigurations()
+        }
+
         if let activeConfigIdString = UserDefaults.standard.string(forKey: activeConfigIdKey),
            let activeConfigId = UUID(uuidString: activeConfigIdString) {
             activeConfiguration = configurations.first { $0.id == activeConfigId }
