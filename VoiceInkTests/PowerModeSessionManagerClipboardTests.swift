@@ -74,6 +74,44 @@ struct PowerModeSessionManagerClipboardTests {
         UserDefaults.standard.removeObject(forKey: Self.sessionKey)
     }
 
+    @Test("beginSession applies config.useClipboardContext=true to the service via applyConfiguration")
+    func appliesConfigUseClipboardContextTrueOnBeginSession() async throws {
+        UserDefaults.standard.removeObject(forKey: Self.sessionKey)
+
+        let service = makeEnhancementService()
+        let provider = StubPowerModeStateProvider()
+        let manager = PowerModeSessionManager.shared
+        manager.configure(engine: provider, enhancementService: service)
+
+        service.useClipboardContext = false
+
+        await manager.beginSession(with: freshConfig(useClipboardContext: true))
+
+        #expect(service.useClipboardContext == true)
+
+        await manager.endSession()
+        UserDefaults.standard.removeObject(forKey: Self.sessionKey)
+    }
+
+    @Test("beginSession applies config.useClipboardContext=false to the service via applyConfiguration")
+    func appliesConfigUseClipboardContextFalseOnBeginSession() async throws {
+        UserDefaults.standard.removeObject(forKey: Self.sessionKey)
+
+        let service = makeEnhancementService()
+        let provider = StubPowerModeStateProvider()
+        let manager = PowerModeSessionManager.shared
+        manager.configure(engine: provider, enhancementService: service)
+
+        service.useClipboardContext = true
+
+        await manager.beginSession(with: freshConfig(useClipboardContext: false))
+
+        #expect(service.useClipboardContext == false)
+
+        await manager.endSession()
+        UserDefaults.standard.removeObject(forKey: Self.sessionKey)
+    }
+
     @Test("PowerModeSessionManager captures useClipboardContext=false at session start and restores it on session end")
     func recordsAndRestoresWhenStartingFalse() async throws {
         UserDefaults.standard.removeObject(forKey: Self.sessionKey)

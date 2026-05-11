@@ -174,6 +174,7 @@ class PowerModeSessionManager {
         await MainActor.run {
             enhancementService.enhanceLevel = config.enhanceLevel
             enhancementService.useScreenCaptureContext = config.useScreenCapture
+            enhancementService.useClipboardContext = config.useClipboardContext
 
             if config.enhanceLevel != .none {
                 if let promptId = config.selectedPrompt, let uuid = UUID(uuidString: promptId) {
