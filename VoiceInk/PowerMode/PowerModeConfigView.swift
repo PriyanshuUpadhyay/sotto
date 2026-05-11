@@ -45,6 +45,7 @@ struct ConfigurationView: View {
     @State private var websiteConfigs: [URLConfig] = []
     @State private var newWebsiteURL: String = ""
     @State private var useScreenCapture = false
+    @State private var useClipboardContext = false
     @State private var autoSendKey: AutoSendKey = .none
     @State private var isDefault = false
     @State private var isShowingDeleteConfirmation = false
@@ -87,6 +88,7 @@ struct ConfigurationView: View {
             _configName = State(initialValue: "")
             _selectedEmoji = State(initialValue: "✏️")
             _useScreenCapture = State(initialValue: false)
+            _useClipboardContext = State(initialValue: false)
             _autoSendKey = State(initialValue: .none)
             _isDefault = State(initialValue: false)
             // Use UserDefaults directly since EnvironmentObjects aren't available in init
@@ -105,6 +107,7 @@ struct ConfigurationView: View {
             _selectedAppConfigs = State(initialValue: latestConfig.appConfigs ?? [])
             _websiteConfigs = State(initialValue: latestConfig.urlConfigs ?? [])
             _useScreenCapture = State(initialValue: latestConfig.useScreenCapture)
+            _useClipboardContext = State(initialValue: latestConfig.useClipboardContext)
             _autoSendKey = State(initialValue: latestConfig.autoSendKey)
             _isDefault = State(initialValue: latestConfig.isDefault)
             _selectedAIProvider = State(initialValue: latestConfig.selectedAIProvider)
@@ -565,6 +568,8 @@ struct ConfigurationView: View {
                     enhancementPromptPicker
                     Toggle("Context Awareness", isOn: $useScreenCapture)
                         .toggleStyle(SwitchToggleStyle(tint: Palette.accent))
+                    Toggle("Use Clipboard Context", isOn: $useClipboardContext)
+                        .toggleStyle(SwitchToggleStyle(tint: Palette.accent))
                 }
             }
         }
@@ -731,6 +736,7 @@ struct ConfigurationView: View {
                 selectedTranscriptionModelName: selectedTranscriptionModelName,
                 selectedLanguage: selectedLanguage,
                 useScreenCapture: useScreenCapture,
+                useClipboardContext: useClipboardContext,
                 selectedAIProvider: selectedAIProvider,
                 selectedAIModel: selectedAIModel,
                 autoSendKey: autoSendKey,
@@ -748,6 +754,7 @@ struct ConfigurationView: View {
             updatedConfig.appConfigs = selectedAppConfigs.isEmpty ? nil : selectedAppConfigs
             updatedConfig.urlConfigs = websiteConfigs.isEmpty ? nil : websiteConfigs
             updatedConfig.useScreenCapture = useScreenCapture
+            updatedConfig.useClipboardContext = useClipboardContext
             updatedConfig.autoSendKey = autoSendKey
             updatedConfig.selectedAIProvider = selectedAIProvider
             updatedConfig.selectedAIModel = selectedAIModel

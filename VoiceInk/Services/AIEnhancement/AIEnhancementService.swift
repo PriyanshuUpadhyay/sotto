@@ -94,6 +94,13 @@ class AIEnhancementService: ObservableObject {
     
     @Published var lastCapturedClipboard: String?
 
+    var frontmostAppProvider: () -> (name: String, bundleID: String)? = {
+        guard let app = NSWorkspace.shared.frontmostApplication,
+              let name = app.localizedName,
+              let bundleID = app.bundleIdentifier else { return nil }
+        return (name: name, bundleID: bundleID)
+    }
+
     init(aiService: AIService = AIService(), modelContext: ModelContext) {
         self.aiService = aiService
         self.modelContext = modelContext
@@ -167,7 +174,7 @@ class AIEnhancementService: ObservableObject {
         lastRequestTime = Date()
     }
 
-    private func getSystemMessage(for mode: EnhancementPrompt) async -> String {
+    func getSystemMessage(for mode: EnhancementPrompt) async -> String {
         let selectedTextContext: String
         if AXIsProcessTrusted() {
             if let selectedText = await SelectedTextService.fetchSelectedText(), !selectedText.isEmpty {
@@ -195,9 +202,18 @@ class AIEnhancementService: ObservableObject {
             ""
         }
 
+        let useActiveAppContext = UserDefaults.standard.object(forKey: "useActiveAppContext") as? Bool ?? true
+        let activeAppContext: String
+        if useActiveAppContext, let app = frontmostAppProvider() {
+            let body = "name=\(app.name)\nbundle=\(app.bundleID)"
+            activeAppContext = "\n\n<ACTIVE_APP>\n\(bound(body, maxBytes: 2048))\n</ACTIVE_APP>"
+        } else {
+            activeAppContext = ""
+        }
+
         let customVocabulary = customVocabularyService.getCustomVocabulary(from: modelContext)
 
-        let allContextSections = selectedTextContext + clipboardContext + screenCaptureContext
+        let allContextSections = selectedTextContext + clipboardContext + screenCaptureContext + activeAppContext
 
         let customVocabularySection = if !customVocabulary.isEmpty {
             """

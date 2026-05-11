@@ -36,6 +36,7 @@ struct PowerModeConfig: Codable, Identifiable, Equatable {
     var selectedTranscriptionModelName: String?
     var selectedLanguage: String?
     var useScreenCapture: Bool
+    var useClipboardContext: Bool
     var selectedAIProvider: String?
     var selectedAIModel: String?
     var autoSendKey: AutoSendKey = .none
@@ -54,7 +55,7 @@ struct PowerModeConfig: Codable, Identifiable, Equatable {
         case id, name, emoji, appConfigs, urlConfigs
         case enhanceLevel                    // W12.A canonical
         case isAIEnhancementEnabled          // W12.A legacy fallback
-        case selectedPrompt, selectedLanguage, useScreenCapture, selectedAIProvider, selectedAIModel, isAutoSendEnabled, autoSendKey, isEnabled, isDefault, hotkeyShortcut
+        case selectedPrompt, selectedLanguage, useScreenCapture, useClipboardContext, selectedAIProvider, selectedAIModel, isAutoSendEnabled, autoSendKey, isEnabled, isDefault, hotkeyShortcut
         case selectedWhisperModel
         case selectedTranscriptionModelName
     }
@@ -63,6 +64,7 @@ struct PowerModeConfig: Codable, Identifiable, Equatable {
          urlConfigs: [URLConfig]? = nil, enhanceLevel: EnhanceLevel = .default,
          selectedPrompt: String? = nil,
          selectedTranscriptionModelName: String? = nil, selectedLanguage: String? = nil, useScreenCapture: Bool = false,
+         useClipboardContext: Bool = false,
          selectedAIProvider: String? = nil, selectedAIModel: String? = nil, autoSendKey: AutoSendKey = .none, isEnabled: Bool = true, isDefault: Bool = false, hotkeyShortcut: String? = nil) {
         self.id = id
         self.name = name
@@ -72,6 +74,7 @@ struct PowerModeConfig: Codable, Identifiable, Equatable {
         self.enhanceLevel = enhanceLevel
         self.selectedPrompt = selectedPrompt
         self.useScreenCapture = useScreenCapture
+        self.useClipboardContext = useClipboardContext
         self.autoSendKey = autoSendKey
         self.selectedAIProvider = selectedAIProvider ?? UserDefaults.standard.string(forKey: "selectedAIProvider")
         self.selectedAIModel = selectedAIModel
@@ -102,6 +105,7 @@ struct PowerModeConfig: Codable, Identifiable, Equatable {
         selectedPrompt = try container.decodeIfPresent(String.self, forKey: .selectedPrompt)
         selectedLanguage = try container.decodeIfPresent(String.self, forKey: .selectedLanguage)
         useScreenCapture = try container.decode(Bool.self, forKey: .useScreenCapture)
+        useClipboardContext = try container.decodeIfPresent(Bool.self, forKey: .useClipboardContext) ?? false
         selectedAIProvider = try container.decodeIfPresent(String.self, forKey: .selectedAIProvider)
         selectedAIModel = try container.decodeIfPresent(String.self, forKey: .selectedAIModel)
         // Migrate from old isAutoSendEnabled bool to new autoSendKey enum
@@ -143,6 +147,7 @@ struct PowerModeConfig: Codable, Identifiable, Equatable {
         try container.encodeIfPresent(selectedPrompt, forKey: .selectedPrompt)
         try container.encodeIfPresent(selectedLanguage, forKey: .selectedLanguage)
         try container.encode(useScreenCapture, forKey: .useScreenCapture)
+        try container.encode(useClipboardContext, forKey: .useClipboardContext)
         try container.encodeIfPresent(selectedAIProvider, forKey: .selectedAIProvider)
         try container.encodeIfPresent(selectedAIModel, forKey: .selectedAIModel)
         try container.encode(autoSendKey, forKey: .autoSendKey)
@@ -198,6 +203,10 @@ class PowerModeManager: ObservableObject {
 
     private init() {
         loadConfigurations()
+
+        if SeededAppPresets.seedIfNeeded(into: &configurations) {
+            saveConfigurations()
+        }
 
         if let activeConfigIdString = UserDefaults.standard.string(forKey: activeConfigIdKey),
            let activeConfigId = UUID(uuidString: activeConfigIdString) {
