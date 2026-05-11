@@ -259,8 +259,23 @@ struct VoiceInkApp: App {
 
         AppShortcuts.updateAppShortcutParameters()
 
-        // Start cleanup service for the app's lifetime, not tied to window lifecycle
-        TranscriptionAutoCleanupService.shared.startMonitoring(modelContext: container.mainContext)
+        // Kick off the SessionMetric back-fill BEFORE the transcript cleanup
+        // service can prune historical recorder rows. The migration is
+        // idempotent (UserDefaults sentinel + ID-set skip) and runs off the
+        // main actor — launch is never blocked. Cleanup is chained onto the
+        // migration's `Task.value` so post-migration deletions don't race
+        // ahead of the back-fill. `mainContext` is captured locally to avoid
+        // the escaping-`self` warning when the Task reads `container` from
+        // the in-flight `init` (upstream e6236e3).
+        let migrationTask = SessionMetricMigrationService.shared.runIfNeeded(
+            transcriptContainer: container,
+            statsContainer: statsContainer
+        )
+        let mainContext = container.mainContext
+        Task {
+            await migrationTask?.value
+            TranscriptionAutoCleanupService.shared.startMonitoring(modelContext: mainContext)
+        }
     }
 
     // MARK: - Container Creation Helpers
