@@ -10,6 +10,7 @@ struct EnhancementSettingsPanel: View {
     @AppStorage("MLXIdleEvictSeconds") private var mlxIdleEvictSeconds = 1800
     @AppStorage("ForceMLXOverAFM") private var forceMLXOverAFM = false
     @AppStorage("PrewarmAFMEnhancement") private var prewarmAFMEnhancement = true
+    @AppStorage("useActiveAppContext") private var useActiveAppContext = true
 
     /// W14 — wraps `AFMProvider.isAvailable` behind the required `#available`
     /// guard so toggle visibility checks can stay inline in the ViewBuilder.
@@ -126,6 +127,11 @@ struct EnhancementSettingsPanel: View {
                         Text("Screen Context")
                         InfoTip("Capture on-screen text to understand context for better enhancement.")
                     }
+                }
+                .toggleStyle(.switch)
+
+                Toggle(isOn: $useActiveAppContext) {
+                    Text("Use Active App Context")
                 }
                 .toggleStyle(.switch)
             }
