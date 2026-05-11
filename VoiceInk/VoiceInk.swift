@@ -12,6 +12,11 @@ struct VoiceInkApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     let container: ModelContainer
     let containerInitializationFailed: Bool
+    // Stats are persisted in a SEPARATE local-only ModelContainer (stats.store)
+    // so SessionMetric records survive transcript cleanup and never round-trip
+    // through CloudKit (cloudKitDatabase: .none). Existing transcripts container
+    // is unchanged.
+    let statsContainer: ModelContainer
 
     @StateObject private var engine: VoiceInkEngine
     @StateObject private var whisperModelManager: WhisperModelManager
@@ -93,6 +98,28 @@ struct VoiceInkApp: App {
         }
 
         containerInitializationFailed = initializationFailed
+
+        // Open the separate stats.store ModelContainer. Local-only by design —
+        // CloudKit sync was producing duplicate/inconsistent SessionMetric
+        // records across devices (upstream 60bc7a0), so cloudKitDatabase is
+        // pinned to .none. Falls back to in-memory if persistent open fails;
+        // a hard preconditionFailure is reserved for SwiftData being entirely
+        // unavailable (mirrors the transcripts container fallback ladder).
+        let statsSchema = Schema([SessionMetric.self])
+        let resolvedStatsContainer: ModelContainer
+        if let persistentStats = Self.createPersistentStatsContainer(schema: statsSchema, logger: logger) {
+            resolvedStatsContainer = persistentStats
+        } else if let memoryStats = Self.createInMemoryStatsContainer(schema: statsSchema, logger: logger) {
+            logger.warning("Using in-memory stats storage as fallback. Session metrics will not persist between sessions.")
+            resolvedStatsContainer = memoryStats
+        } else {
+            logger.critical("Stats ModelContainer initialization failed")
+            let config = ModelConfiguration(schema: statsSchema, isStoredInMemoryOnly: true)
+            resolvedStatsContainer = (try? ModelContainer(for: statsSchema, configurations: [config])) ?? {
+                preconditionFailure("Unable to create stats ModelContainer. SwiftData is unavailable.")
+            }()
+        }
+        statsContainer = resolvedStatsContainer
 
         // W12.E — expose the container to static call sites that can't take
         // it via injection (CursorPaster's paste-fallback branch). Plan
@@ -320,6 +347,42 @@ struct VoiceInkApp: App {
             return try ModelContainer(for: schema, configurations: transcriptConfig, dictionaryConfig)
         } catch {
             logger.error("❌ Failed to create in-memory ModelContainer: \(error.localizedDescription, privacy: .public)")
+            return nil
+        }
+    }
+
+    // MARK: - Stats Container Creation Helpers
+
+    private static func createPersistentStatsContainer(schema: Schema, logger: Logger) -> ModelContainer? {
+        do {
+            let appSupportURL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+                .appendingPathComponent("com.prakashjoshipax.VoiceInk", isDirectory: true)
+            try? FileManager.default.createDirectory(at: appSupportURL, withIntermediateDirectories: true)
+
+            let statsStoreURL = appSupportURL.appendingPathComponent("stats.store")
+            let statsConfig = ModelConfiguration(
+                "stats",
+                schema: schema,
+                url: statsStoreURL,
+                cloudKitDatabase: .none
+            )
+            return try ModelContainer(for: schema, configurations: statsConfig)
+        } catch {
+            logger.error("❌ Failed to create persistent stats ModelContainer: \(error.localizedDescription, privacy: .public)")
+            return nil
+        }
+    }
+
+    private static func createInMemoryStatsContainer(schema: Schema, logger: Logger) -> ModelContainer? {
+        do {
+            let statsConfig = ModelConfiguration(
+                "stats",
+                schema: schema,
+                isStoredInMemoryOnly: true
+            )
+            return try ModelContainer(for: schema, configurations: statsConfig)
+        } catch {
+            logger.error("❌ Failed to create in-memory stats ModelContainer: \(error.localizedDescription, privacy: .public)")
             return nil
         }
     }
