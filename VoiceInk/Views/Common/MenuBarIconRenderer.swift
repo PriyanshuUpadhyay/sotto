@@ -21,17 +21,23 @@ enum MenuBarIconRenderer {
     /// changes don't bleed past the 18pt edge into the menu bar baseline.
     static let symbolSize: CGFloat = 14.0
 
-    /// Icon state — derived from `RecordingState`. Collapses transient app
-    /// states (.starting / .busy) to `.idle`. Failure overlay is rendered
-    /// separately via `image(for:unresolvedFailures:)` driven by
-    /// `FailureRegistry.unresolvedCount`.
+    /// Icon state — derived from engine `RecordingState` + view-side `HaloPhase`
+    /// (which holds `.done` for ~1.5s post-commit and `.failed` until dismissed).
+    /// Hands-free overrides both. Failure-registry overlay is composited at the
+    /// view layer via `CornerBadge`.
     enum IconState: Equatable {
         case idle
+        case arming         // HaloPhase.armed — pre-first-audio breathe
         case recording
         case transcribing
         case enhancing
-        case handsFree  // W12.D
+        case committed      // HaloPhase.done — green dot post-commit
+        case fail           // HaloPhase.failed — red `!` until dismissed
+        case handsFree      // W12.D
 
+        /// Engine-only init — legacy callers without HaloPhase. The view-only
+        /// cases (`.arming` / `.committed` / `.fail`) are unreachable from
+        /// engine state alone; they require a HaloPhase signal.
         init(_ state: RecordingState) {
             switch state {
             case .recording:    self = .recording
@@ -41,39 +47,90 @@ enum MenuBarIconRenderer {
             }
         }
 
-        /// W12.D: hands-free overrides the inner recording state — when
-        /// active, the user wants to see "I'm in hands-free" regardless of
-        /// whether the recorder is currently capturing or committing.
-        init(handsFree: HandsFreeSessionState, recordingState: RecordingState) {
+        /// HaloPhase-only init — view-side states. `.hidden` is the engine's
+        /// `.idle` mirror; `.liveText` collapses into `.recording`.
+        init(haloPhase: HaloPhase) {
+            switch haloPhase {
+            case .hidden:                self = .idle
+            case .armed:                 self = .arming
+            case .recording, .liveText:  self = .recording
+            case .transcribing:          self = .transcribing
+            case .enhancing:             self = .enhancing
+            case .done:                  self = .committed
+            case .failed:                self = .fail
+            }
+        }
+
+        /// Combined init. Precedence: hands-free > halo view-state > engine
+        /// state. View-state cases win over engine state because engine returns
+        /// to .idle immediately on commit/fail while the HUD holds the
+        /// post-action phase. `.hidden` defers to engine state so the menubar
+        /// keeps reflecting engine activity until the HUD takes over.
+        init(
+            handsFree: HandsFreeSessionState,
+            recordingState: RecordingState,
+            haloPhase: HaloPhase
+        ) {
             if handsFree != .inactive {
                 self = .handsFree
-            } else {
-                self.init(recordingState)
+                return
             }
+            switch haloPhase {
+            case .hidden:
+                self.init(recordingState)
+            default:
+                self.init(haloPhase: haloPhase)
+            }
+        }
+
+        /// W12.D: hands-free overrides the inner recording state. Legacy
+        /// 2-arg init preserved for callers that don't yet plumb HaloPhase;
+        /// delegates with `.hidden` (no view-state override).
+        init(handsFree: HandsFreeSessionState, recordingState: RecordingState) {
+            self.init(handsFree: handsFree, recordingState: recordingState, haloPhase: .hidden)
         }
     }
 
     static func image(for state: IconState) -> NSImage {
+        // Legacy NSImage builders. Path A (default) renders the menubar via the
+        // SwiftUI MenubarGlyphContainer in MenubarGlyph.swift; these builders
+        // remain as Path B fallback and as the bridge for `.handsFree`.
         switch state {
         case .idle:
-            return template("waveform", weight: .light, label: "VoiceInk idle")
+            return template("waveform", weight: .light, label: "Sotto idle")
+        case .arming:
+            return template("waveform", weight: .light, label: "Sotto listening")
         case .recording:
             return tinted(
                 "waveform",
                 weight: .semibold,
-                color: NSColor(Palette.accent),
-                label: "VoiceInk recording"
+                color: NSColor(Palette.brandAcid),
+                label: "Sotto recording"
             )
         case .transcribing:
-            return template("waveform", weight: .regular, label: "VoiceInk transcribing")
+            return template("waveform", weight: .regular, label: "Sotto transcribing")
         case .enhancing:
-            return template("sparkles", weight: .regular, label: "VoiceInk enhancing")
+            return template("sparkles", weight: .regular, label: "Sotto enhancing")
+        case .committed:
+            return tinted(
+                "checkmark",
+                weight: .semibold,
+                color: NSColor(Palette.commitGreen),
+                label: "Sotto committed"
+            )
+        case .fail:
+            return tinted(
+                "exclamationmark.triangle.fill",
+                weight: .semibold,
+                color: NSColor(Palette.recRed),
+                label: "Sotto failed"
+            )
         case .handsFree:  // W12.D
             return tinted(
                 "ear.fill",
                 weight: .semibold,
-                color: NSColor(Palette.accent),
-                label: "VoiceInk hands-free"
+                color: NSColor(Palette.brandAcid),
+                label: "Sotto hands-free"
             )
         }
     }
@@ -122,13 +179,7 @@ enum MenuBarIconRenderer {
 
     private static func failedAccessibilityLabel(for state: IconState, count: Int) -> String {
         let suffix = count == 1 ? "1 unresolved failure" : "\(count) unresolved failures"
-        switch state {
-        case .recording:    return "VoiceInk recording, \(suffix)"
-        case .transcribing: return "VoiceInk transcribing, \(suffix)"
-        case .enhancing:    return "VoiceInk enhancing, \(suffix)"
-        case .idle:         return "VoiceInk idle, \(suffix)"
-        case .handsFree:    return "VoiceInk hands-free, \(suffix)"
-        }
+        return "\(MenubarGlyph.accessibilityLabel(for: state)), \(suffix)"
     }
 
     // MARK: - Builders
@@ -177,23 +228,30 @@ final class RecordingStateObserver: ObservableObject {
     private var stateCancellable: AnyCancellable?
     private var registryCancellable: AnyCancellable?
 
+    // View-side phase published by HUD pair. Defaults to `.hidden` so engine
+    // state drives behavior until HUD wires its publisher via `bind(toHalo:)`.
+    private let haloPhaseSubject = CurrentValueSubject<HaloPhase, Never>(.hidden)
+    private var haloCancellable: AnyCancellable?
+
     @MainActor
     func bind(to engine: VoiceInkEngine) {
         stateCancellable?.cancel()
-        // W12.D: combine engine recording state with hands-free session state
-        // so the menubar reflects "I'm in hands-free" whenever the session is
-        // active, regardless of inner recorder phase. CombineLatest emits on
-        // every change to either side; `removeDuplicates` short-circuits idle
-        // re-publishes.
-        stateCancellable = Publishers.CombineLatest(
+        // CombineLatest3: engine recording state + hands-free session state +
+        // view-side HaloPhase. Precedence inside IconState's combined init:
+        // handsFree > halo view-state > engine state. Until HUD invokes
+        // `bind(toHalo:)`, haloPhaseSubject stays `.hidden` and engine state
+        // alone drives the icon — backward-compatible.
+        stateCancellable = Publishers.CombineLatest3(
             engine.$recordingState,
-            HandsFreeSessionService.shared.$state
+            HandsFreeSessionService.shared.$state,
+            haloPhaseSubject
         )
         .receive(on: DispatchQueue.main)
-        .map { recordingState, handsFreeState in
+        .map { recordingState, handsFreeState, haloPhase in
             MenuBarIconRenderer.IconState(
                 handsFree: handsFreeState,
-                recordingState: recordingState
+                recordingState: recordingState,
+                haloPhase: haloPhase
             )
         }
         .removeDuplicates()
@@ -213,43 +271,53 @@ final class RecordingStateObserver: ObservableObject {
             }
     }
 
+    /// HUD pair calls this with a publisher of `HaloPhase` so the menubar
+    /// reflects view-lifetime states (`.armed`, `.done`, `.failed`) that engine
+    /// state alone doesn't expose. Until called, haloPhaseSubject stays
+    /// `.hidden` — backward-compatible.
+    @MainActor
+    func bind<P: Publisher>(toHalo publisher: P) where P.Output == HaloPhase, P.Failure == Never {
+        haloCancellable?.cancel()
+        haloCancellable = publisher
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] phase in
+                self?.haloPhaseSubject.send(phase)
+            }
+    }
+
     deinit {
         stateCancellable?.cancel()
         registryCancellable?.cancel()
+        haloCancellable?.cancel()
     }
 }
 
 // MARK: - MenuBarIcon (SwiftUI label for MenuBarExtra)
 //
-// SwiftUI primitive — `Image(nsImage:)` so SwiftUI's `MenuBarExtra` snapshot
-// extraction picks up a real glyph. (`NSViewRepresentable` labels render as a
-// 0-size hot zone with no visible glyph in `.menuBarExtraStyle(.window)`.)
-// State swaps are immediate; per spec §3.11 the menu bar icon is a passive
-// indicator — the loud animation lives on the morphing recorder pill.
+// Hosts MenubarGlyphContainer — pure-SwiftUI Canvas/Path mark with state
+// overlays driven by TimelineView (Path A, spec §5.4 single-path commitment).
+// The struct signature is preserved so VoiceInk.swift's MenuBarExtra label
+// closure mounts it unchanged.
+//
+// Failure-registry overlay (red corner dot) composites at this layer so it
+// can stack with any non-fail state.
 
 struct MenuBarIcon: View {
     @ObservedObject var observer: RecordingStateObserver
 
     var body: some View {
-        Image(
-            nsImage: MenuBarIconRenderer.image(
-                for: observer.iconState,
-                unresolvedFailures: observer.unresolvedFailures
-            )
-        )
+        ZStack {
+            MenubarGlyphContainer(state: observer.iconState)
+            if observer.unresolvedFailures > 0 && observer.iconState != .fail {
+                CornerBadge(kind: .redStatic)
+            }
+        }
+        .frame(width: 18, height: 18)
         .accessibilityLabel(Text(accessibilityLabel))
     }
 
     private var accessibilityLabel: String {
-        let base: String = {
-            switch observer.iconState {
-            case .idle:         return "VoiceInk idle"
-            case .recording:    return "VoiceInk recording"
-            case .transcribing: return "VoiceInk transcribing"
-            case .enhancing:    return "VoiceInk enhancing"
-            case .handsFree:    return "VoiceInk hands-free"
-            }
-        }()
+        let base = MenubarGlyph.accessibilityLabel(for: observer.iconState)
         guard observer.unresolvedFailures > 0 else { return base }
         let suffix = observer.unresolvedFailures == 1
             ? "1 unresolved failure"
