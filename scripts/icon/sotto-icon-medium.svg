@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <defs>
+    <filter id="lime-halo" x="-10%" y="-80%" width="120%" height="260%">
+      <feGaussianBlur stdDeviation="8" in="SourceAlpha" result="blur"/>
+      <feFlood flood-color="#D4FF3A" flood-opacity="0.4" result="color"/>
+      <feComposite in="color" in2="blur" operator="in" result="glow"/>
+      <feMerge>
+        <feMergeNode in="glow"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <rect width="1024" height="1024" fill="#08080C"/>
+  <rect x="420" y="118" width="184" height="563" fill="#FFFFFF"/>
+  <rect x="41" y="763" width="942" height="143" fill="#D4FF3A" filter="url(#lime-halo)"/>
+</svg>
