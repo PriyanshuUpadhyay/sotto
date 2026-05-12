@@ -171,10 +171,7 @@ struct SottoBundleIdentityMigrationTests {
         // and new identifiers are present in VoiceInk.entitlements as a Set
         // (order-insensitive). A partial-failure rollback that drops one
         // group would lose access to in-flight keys on the next launch.
-        guard let entitlementsURL = entitlementsFileURL() else {
-            Issue.record("VoiceInk.entitlements not locatable from test bundle")
-            return
-        }
+        let entitlementsURL = Self.entitlementsFileURL()
         let data = try Data(contentsOf: entitlementsURL)
         let plist = try PropertyListSerialization.propertyList(from: data, options: [], format: nil) as? [String: Any]
         let groups = (plist?["keychain-access-groups"] as? [String]) ?? []
@@ -196,32 +193,16 @@ struct SottoBundleIdentityMigrationTests {
 
     // MARK: - Helpers
 
-    private func entitlementsFileURL() -> URL? {
-        // Walk up from the test bundle to find the source-tree entitlements.
-        // Tests run from DerivedData; source-tree path is derived from
-        // SRCROOT-style discovery via parent traversal of the test bundle.
-        let candidates: [URL] = {
-            var urls: [URL] = []
-            let env = ProcessInfo.processInfo.environment
-            if let src = env["SRCROOT"] {
-                urls.append(URL(fileURLWithPath: src).appendingPathComponent("VoiceInk/VoiceInk.entitlements"))
-            }
-            if let proj = env["PROJECT_DIR"] {
-                urls.append(URL(fileURLWithPath: proj).appendingPathComponent("VoiceInk/VoiceInk.entitlements"))
-            }
-            // Worktree-relative fallback: walk up from the test bundle until we
-            // find a sibling VoiceInk/VoiceInk.entitlements.
-            var probe = Bundle(for: KeychainEntitlementsLocator.self).bundleURL
-            for _ in 0..<8 {
-                probe.deleteLastPathComponent()
-                urls.append(probe.appendingPathComponent("VoiceInk/VoiceInk.entitlements"))
-            }
-            return urls
-        }()
-        return candidates.first { FileManager.default.fileExists(atPath: $0.path) }
+    /// Derives the entitlements file URL from `#filePath` so the test reads the
+    /// real source-tree file regardless of where DerivedData ends up.
+    /// VoiceInkTests/SottoBundleIdentityMigrationTests.swift sits one dir
+    /// below the worktree root, so the entitlements file resolves to
+    /// `<worktree>/VoiceInk/VoiceInk.entitlements`.
+    private static func entitlementsFileURL(callerFile: String = #filePath) -> URL {
+        let testFile = URL(fileURLWithPath: callerFile)
+        return testFile
+            .deletingLastPathComponent()  // VoiceInkTests/
+            .deletingLastPathComponent()  // worktree root
+            .appendingPathComponent("VoiceInk/VoiceInk.entitlements")
     }
 }
-
-// Marker class used purely for Bundle(for:) lookup — Swift Testing structs
-// can't be passed to Bundle(for:) (which requires an ObjC class).
-private final class KeychainEntitlementsLocator: NSObject {}
