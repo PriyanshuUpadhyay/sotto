@@ -54,7 +54,7 @@ struct VoiceInkApp: App {
             UserDefaults.standard.set(hasEnabledPowerModes, forKey: "powerModeUIFlag")
         }
 
-        let logger = Logger(subsystem: "com.prakashjoshipax.voiceink", category: "Initialization")
+        let logger = Logger(subsystem: OSLogSubsystems.app, category: "Initialization")
         let schema = Schema([
             Transcription.self,
             VocabularyWord.self,

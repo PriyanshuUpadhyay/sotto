@@ -6,7 +6,7 @@ import OSLog
 final class SessionMetricMigrationService {
     static let shared = SessionMetricMigrationService()
 
-    private let logger = Logger(subsystem: "com.prakashjoshipax.voiceink", category: "SessionMetricMigrationService")
+    private let logger = Logger(subsystem: OSLogSubsystems.app, category: "SessionMetricMigrationService")
     private let completionKey = "HasCompletedStatsMigration"
     private(set) var isRunning = false
 

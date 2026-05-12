@@ -3,7 +3,7 @@ import SwiftData
 import UniformTypeIdentifiers
 import os
 
-private let log = Logger(subsystem: "com.prakashjoshipax.voiceink", category: "Dictionary")
+private let log = Logger(subsystem: OSLogSubsystems.app, category: "Dictionary")
 
 // MARK: - Sort modes
 

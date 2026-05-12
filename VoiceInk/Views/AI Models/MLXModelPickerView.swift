@@ -1,7 +1,7 @@
 import SwiftUI
 import os
 
-private let mlxPickerLogger = Logger(subsystem: "com.prakashjoshipax.voiceink", category: "MLXModelPicker")
+private let mlxPickerLogger = Logger(subsystem: OSLogSubsystems.app, category: "MLXModelPicker")
 
 // MARK: - MLXModelPickerView
 //

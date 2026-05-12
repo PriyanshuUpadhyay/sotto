@@ -5,7 +5,7 @@ import os
 import HuggingFace
 #endif
 
-private let mlxRegistryLogger = Logger(subsystem: "com.prakashjoshipax.voiceink", category: "MLXModelDownloader")
+private let mlxRegistryLogger = Logger(subsystem: OSLogSubsystems.app, category: "MLXModelDownloader")
 
 /// W11.B detected-model row payload. A repo found in the HF cache that is
 /// either NOT in `MLXModelRegistry.curated` (side-loaded via the HF CLI /

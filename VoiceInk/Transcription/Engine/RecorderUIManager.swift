@@ -58,7 +58,7 @@ class RecorderUIManager: ObservableObject {
     /// Stored as a set so the sink is torn down with the manager.
     private var stateCueObservers = Set<AnyCancellable>()
 
-    private let logger = Logger(subsystem: "com.prakashjoshipax.voiceink", category: "RecorderUIManager")
+    private let logger = Logger(subsystem: OSLogSubsystems.app, category: "RecorderUIManager")
 
     init() {}
 

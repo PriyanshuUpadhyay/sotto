@@ -47,7 +47,7 @@ final class CommandModeService: ObservableObject {
     /// by `clear()` on success, abort, or cancel.
     private(set) var pendingCommand: PendingCommand?
 
-    private let logger = Logger(subsystem: "com.prakashjoshipax.voiceink", category: "CommandModeService")
+    private let logger = Logger(subsystem: OSLogSubsystems.app, category: "CommandModeService")
 
     /// Injected by the app root after services are wired. Held weakly so the
     /// service singleton doesn't capture a strong recorder UI reference.
