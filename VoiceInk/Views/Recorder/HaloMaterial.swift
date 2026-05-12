@@ -18,29 +18,36 @@ enum HaloPhase: Equatable {
     case done        // post-action green confirmation (brief)
 }
 
+// Conceptual 7-state mapping (Sotto spec §4):
+//   idle        ↔ .hidden          (orderOut + subtree unmount — see NotchWindowManager.hide)
+//   arming      ↔ .armed           (breathing lime, peak alpha 0.45)
+//   recording   ↔ .recording / .liveText
+//   transcribing↔ .transcribing
+//   enhancing   ↔ .enhancing
+//   committed   ↔ .done             (green confirm halo, 1.5s dwell at view layer)
+//   fail        ↔ .failed           (red error blink, persists until dismissed)
 extension HaloPhase {
     var glowColor: Color {
         switch self {
-        case .hidden, .armed:           return Palette.neutral
-        case .recording, .liveText:     return Palette.accent
-        case .transcribing:             return Palette.accent
-        case .enhancing:                return Palette.accent
-        // `.failed` is the initial accent flash; the amber dwell that follows is
-        // rendered at the view layer (P1.D) — `HaloPhase` only encodes the
-        // first beat of the failure state, not the two-part flash→dwell.
-        case .failed:                   return Palette.accent
-        case .done:                     return Palette.success
+        case .hidden:                   return .clear
+        case .armed:                    return Palette.brandAcid       // breathing lime (arming)
+        case .recording, .liveText:     return Palette.recRed           // red dot + halo
+        case .transcribing:             return Palette.transCyan        // cyan sweep
+        case .enhancing:                return Palette.enhViolet        // violet halo breath
+        case .failed:                   return Palette.recRed           // red error blink
+        case .done:                     return Palette.commitGreen      // green confirm halo
         }
     }
 
     var glowAlpha: Double {
         switch self {
         case .hidden:                   return 0.0
-        case .armed:                    return 0.10
+        // Peak alpha for the arming breathe (0.4–0.9 envelope at view layer);
+        // breathePulse modulates around this peak.
+        case .armed:                    return 0.45
         case .recording, .liveText:     return Palette.HaloIntensity.soft.alpha
         case .transcribing:             return Palette.HaloIntensity.medium.alpha
         case .enhancing:                return Palette.HaloIntensity.strong.alpha
-        // Strong during the 1.2s failure dwell; medium for the brief done flash.
         case .failed:                   return Palette.HaloIntensity.strong.alpha
         case .done:                     return Palette.HaloIntensity.medium.alpha
         }
@@ -327,14 +334,53 @@ private struct HaloMaterialPreview: View {
     }
 }
 
-#Preview("Onyx — recording") {
+// MARK: - 7-state previews (spec §4)
+//
+// One preview per conceptual state in the Sotto 7-state morphology:
+//   idle / arming / recording / transcribing / enhancing / committed / fail.
+// `idle` is intentionally rendered as `.hidden` against the onyx backdrop so
+// reviewers see "panel is unmounted / no glow" — the production idle behavior
+// is `orderOut` + SwiftUI subtree unmount at the window-manager layer
+// (`NotchWindowManager.hide`), not an ambient surface.
+
+#Preview("Onyx — idle (hidden / orderOut)") {
+    HaloMaterialPreview(appearance: .onyx, phase: .hidden)
+        .padding(40)
+        .background(Color(red: 0.06, green: 0.06, blue: 0.07))
+}
+
+#Preview("Onyx — arming (breathing lime)") {
+    HaloMaterialPreview(appearance: .onyx, phase: .armed)
+        .padding(40)
+        .background(Color(red: 0.06, green: 0.06, blue: 0.07))
+}
+
+#Preview("Onyx — recording (red dot)") {
     HaloMaterialPreview(appearance: .onyx, phase: .recording)
         .padding(40)
         .background(Color(red: 0.06, green: 0.06, blue: 0.07))
 }
 
-#Preview("Onyx — enhancing") {
+#Preview("Onyx — transcribing (cyan sweep)") {
+    HaloMaterialPreview(appearance: .onyx, phase: .transcribing)
+        .padding(40)
+        .background(Color(red: 0.06, green: 0.06, blue: 0.07))
+}
+
+#Preview("Onyx — enhancing (violet breath)") {
     HaloMaterialPreview(appearance: .onyx, phase: .enhancing)
+        .padding(40)
+        .background(Color(red: 0.06, green: 0.06, blue: 0.07))
+}
+
+#Preview("Onyx — committed (green confirm)") {
+    HaloMaterialPreview(appearance: .onyx, phase: .done)
+        .padding(40)
+        .background(Color(red: 0.06, green: 0.06, blue: 0.07))
+}
+
+#Preview("Onyx — fail (red blink)") {
+    HaloMaterialPreview(appearance: .onyx, phase: .failed)
         .padding(40)
         .background(Color(red: 0.06, green: 0.06, blue: 0.07))
 }
