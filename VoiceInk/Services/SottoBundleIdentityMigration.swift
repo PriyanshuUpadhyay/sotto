@@ -125,26 +125,21 @@ enum SottoBundleIdentityMigration {
     /// the transition window. Retrying after partial failure is safe because
     /// each add does a SecItemDelete on the new-service entry first; the
     /// sentinel is set only after the loop completes (codex 5.4).
-    static func runKeychainGroupCopy(defaults: UserDefaults = .standard) {
+    ///
+    /// `itemsProvider` and `addItem` are dependency-injected so tests can
+    /// exercise the `anyFailure` branch deterministically (parallel to the
+    /// `setter` injection on `runUserDefaultsCopy`). Defaults wrap SecItem*
+    /// — under LOCAL_BUILD they short-circuit to "no items + success-add" so
+    /// local builds (which lack a real keychain) still no-op the sentinel.
+    static func runKeychainGroupCopy(
+        defaults: UserDefaults = .standard,
+        itemsProvider: () -> (status: OSStatus, items: [[String: Any]]) = { defaultKeychainItemsProvider() },
+        addItem: ([String: Any]) -> OSStatus = { defaultKeychainAddItem($0) }
+    ) {
         guard !defaults.bool(forKey: keychainSentinel) else { return }
 
-        #if LOCAL_BUILD
-        // Local builds use UserDefaults-backed pseudo-keychain (see
-        // KeychainService LOCAL_BUILD path). Nothing to migrate; just mark.
-        defaults.set(true, forKey: keychainSentinel)
-        return
-        #else
-        let query: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: legacyKeychainService,
-            kSecMatchLimit as String: kSecMatchLimitAll,
-            kSecReturnAttributes as String: true,
-            kSecReturnData as String: true,
-        ]
-
-        var result: AnyObject?
-        let status = SecItemCopyMatching(query as CFDictionary, &result)
-        guard status == errSecSuccess, let items = result as? [[String: Any]] else {
+        let (status, items) = itemsProvider()
+        guard status == errSecSuccess, !items.isEmpty else {
             // No legacy items (or keychain unreachable) — mark migrated.
             logger.info("Keychain copy: no legacy items found (status=\(status, privacy: .public)).")
             defaults.set(true, forKey: keychainSentinel)
@@ -167,9 +162,7 @@ enum SottoBundleIdentityMigration {
             ]
             if synchronizable { addQuery[kSecAttrSynchronizable as String] = kCFBooleanTrue }
 
-            // Pre-delete to keep the per-item operation idempotent on retry.
-            SecItemDelete(addQuery as CFDictionary)
-            let addStatus = SecItemAdd(addQuery as CFDictionary, nil)
+            let addStatus = addItem(addQuery)
             if addStatus == errSecSuccess {
                 copied += 1
             } else {
@@ -180,12 +173,42 @@ enum SottoBundleIdentityMigration {
 
         if anyFailure {
             // Sentinel left unset — next launch retries. Pre-delete + re-add
-            // keeps the partial state safe for retry.
+            // (in defaultKeychainAddItem) keeps the partial state safe for retry.
             logger.error("Keychain copy partial: \(copied, privacy: .public)/\(items.count, privacy: .public) succeeded; sentinel left unset for retry.")
         } else {
             defaults.set(true, forKey: keychainSentinel)
             logger.info("Keychain copy: \(copied, privacy: .public) items copied to \(newKeychainService, privacy: .public).")
         }
+    }
+
+    private static func defaultKeychainItemsProvider() -> (status: OSStatus, items: [[String: Any]]) {
+        #if LOCAL_BUILD
+        // Local builds use UserDefaults-backed pseudo-keychain (see
+        // KeychainService LOCAL_BUILD path). Nothing real to enumerate; the
+        // empty-items path in the caller sets the sentinel.
+        return (errSecSuccess, [])
+        #else
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: legacyKeychainService,
+            kSecMatchLimit as String: kSecMatchLimitAll,
+            kSecReturnAttributes as String: true,
+            kSecReturnData as String: true,
+        ]
+        var result: AnyObject?
+        let status = SecItemCopyMatching(query as CFDictionary, &result)
+        let items = (result as? [[String: Any]]) ?? []
+        return (status, items)
+        #endif
+    }
+
+    private static func defaultKeychainAddItem(_ query: [String: Any]) -> OSStatus {
+        #if LOCAL_BUILD
+        return errSecSuccess
+        #else
+        // Pre-delete to keep the per-item operation idempotent on retry.
+        SecItemDelete(query as CFDictionary)
+        return SecItemAdd(query as CFDictionary, nil)
         #endif
     }
 }
