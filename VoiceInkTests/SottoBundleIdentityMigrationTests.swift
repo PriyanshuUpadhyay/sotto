@@ -165,7 +165,58 @@ struct SottoBundleIdentityMigrationTests {
         #expect(defaults.bool(forKey: SottoBundleIdentityMigration.keychainSentinel))
     }
 
-    @Test func test_keychain_dual_list_partial_failure_safe_to_retry() throws {
+    @Test func test_keychain_dual_list_partial_failure_safe_to_retry() {
+        // Codex 5.4 (special focus B): when one per-item SecItemAdd fails
+        // mid-loop, the sentinel must remain UNSET so the next launch retries.
+        // A follow-up run with all-success injection must then set the sentinel.
+        // Exercises the `anyFailure` branch in runKeychainGroupCopy (codex
+        // ref SottoBundleIdentityMigration.swift:181-185).
+        let (defaults, _, defaultsSuite, _) = freshDefaultsPair()
+        defer { tearDown(defaults, suite: defaultsSuite) }
+
+        let legacyAccounts = ["acct.alpha", "acct.beta", "acct.gamma"]
+        let providedItems: [[String: Any]] = legacyAccounts.map { account in
+            [
+                kSecAttrAccount as String: account,
+                kSecValueData as String: Data("secret-\(account)".utf8),
+            ]
+        }
+        let failingAccount = "acct.beta"
+
+        var addCallCount = 0
+        SottoBundleIdentityMigration.runKeychainGroupCopy(
+            defaults: defaults,
+            itemsProvider: { (status: errSecSuccess, items: providedItems) },
+            addItem: { query in
+                addCallCount += 1
+                let account = query[kSecAttrAccount as String] as? String
+                return account == failingAccount ? errSecDuplicateItem : errSecSuccess
+            }
+        )
+
+        #expect(addCallCount == legacyAccounts.count,
+                "all \(legacyAccounts.count) items should have been attempted; got \(addCallCount)")
+        #expect(!defaults.bool(forKey: SottoBundleIdentityMigration.keychainSentinel),
+                "sentinel must remain unset after partial-failure so next launch retries")
+
+        // Retry — same items, this time every add succeeds.
+        var retryCallCount = 0
+        SottoBundleIdentityMigration.runKeychainGroupCopy(
+            defaults: defaults,
+            itemsProvider: { (status: errSecSuccess, items: providedItems) },
+            addItem: { _ in
+                retryCallCount += 1
+                return errSecSuccess
+            }
+        )
+
+        #expect(retryCallCount == legacyAccounts.count,
+                "retry should re-attempt all items because sentinel was left unset")
+        #expect(defaults.bool(forKey: SottoBundleIdentityMigration.keychainSentinel),
+                "sentinel must be set after a fully-successful retry")
+    }
+
+    @Test func test_keychain_entitlements_dual_list_order_insensitive() throws {
         // Codex 5.4: signed-binary entitlement parsing must tolerate either
         // ordering of the keychain-access-groups array. Asserts both legacy
         // and new identifiers are present in VoiceInk.entitlements as a Set
@@ -179,16 +230,6 @@ struct SottoBundleIdentityMigrationTests {
         let suffixes = Set(groups.map { String($0.split(separator: ")").last ?? Substring($0)) })
         #expect(suffixes.contains("com.sotto.Sotto"), "new bundle ID missing from keychain-access-groups (have \(suffixes))")
         #expect(suffixes.contains("com.prakashjoshipax.VoiceInk"), "legacy bundle ID missing from keychain-access-groups (have \(suffixes))")
-
-        // Idempotency invariant: re-running the copy with an already-set sentinel
-        // is a no-op (no SecItem* side effects). Models the retry-after-partial-
-        // failure path where some items already migrated.
-        let (defaults, _, defaultsSuite, _) = freshDefaultsPair()
-        defer { tearDown(defaults, suite: defaultsSuite) }
-
-        defaults.set(true, forKey: SottoBundleIdentityMigration.keychainSentinel)
-        SottoBundleIdentityMigration.runKeychainGroupCopy(defaults: defaults)
-        #expect(defaults.bool(forKey: SottoBundleIdentityMigration.keychainSentinel))
     }
 
     // MARK: - Helpers
