@@ -68,7 +68,7 @@ private struct RecorderStyleCard<Preview: View>: View {
             .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
             .overlay(
                 RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .stroke(isSelected ? Palette.accent : Palette.hairlineSoft,
+                    .stroke(isSelected ? Palette.brandAcid : Palette.hairlineSoft,
                              lineWidth: isSelected ? 2 : 0.5)
             )
 
@@ -86,7 +86,7 @@ private struct RecorderStyleCard<Preview: View>: View {
         .contentShape(Rectangle())
         .background(
             RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .fill(isSelected ? Palette.accent.opacity(0.06) : Color.clear)
+                .fill(isSelected ? Palette.brandAcid.opacity(0.06) : Color.clear)
         )
         .animation(Animation.haloPhaseCrossfade, value: isSelected)
     }
@@ -109,7 +109,7 @@ private struct NotchPreview: View {
                     HStack(spacing: 1) {
                         ForEach(0..<5, id: \.self) { i in
                             Capsule()
-                                .fill(Palette.accent.opacity(0.85))
+                                .fill(Palette.brandAcid.opacity(0.85))
                                 .frame(width: 1.5, height: CGFloat(3 + i % 3 * 2))
                         }
                     }
@@ -137,7 +137,7 @@ private struct FloatingPreview: View {
                 Capsule()
                     .fill(Color.black)
                     .frame(width: 70, height: 16)
-                    .shadow(color: Palette.accent.opacity(0.45), radius: 8)
+                    .shadow(color: Palette.brandAcid.opacity(0.45), radius: 8)
                 HStack(spacing: 1.5) {
                     ForEach(0..<7, id: \.self) { i in
                         Capsule()

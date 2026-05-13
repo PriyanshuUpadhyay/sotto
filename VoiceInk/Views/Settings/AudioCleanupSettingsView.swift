@@ -208,6 +208,6 @@ struct AudioCleanupSettingsView: View {
                 }
             }
         }
-        .tint(Palette.accent)
+        .tint(Palette.brandAcid)
     }
 }

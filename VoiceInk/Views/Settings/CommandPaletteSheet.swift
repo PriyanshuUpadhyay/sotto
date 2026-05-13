@@ -174,7 +174,12 @@ struct CommandPaletteSheet: View {
             footerHint
         }
         .frame(width: 520, height: 420)
-        .background(.ultraThinMaterial)
+        .background(
+            TacticalGlass(
+                shape: Rectangle(),
+                phase: .hidden
+            )
+        )
         .onAppear {
             // Defer focus to next runloop tick — `.focused` set in `body`
             // before the field is on-screen is dropped by SwiftUI on macOS.
@@ -337,7 +342,7 @@ private struct CommandPaletteRow: View {
         HStack(spacing: 12) {
             Image(systemName: entry.icon)
                 .font(.system(size: 14, weight: .medium))
-                .foregroundColor(isSelected ? Palette.accent : .secondary)
+                .foregroundColor(isSelected ? Palette.brandAcid : .secondary)
                 .frame(width: 22, height: 22)
 
             VStack(alignment: .leading, spacing: 2) {
@@ -363,7 +368,7 @@ private struct CommandPaletteRow: View {
         .padding(.vertical, 8)
         .background(
             RoundedRectangle(cornerRadius: 8, style: .continuous)
-                .fill(isSelected ? Palette.accent.opacity(0.14) : Color.clear)
+                .fill(isSelected ? Palette.brandAcid.opacity(0.14) : Color.clear)
                 .padding(.horizontal, 6)
         )
     }

@@ -293,7 +293,7 @@ struct InputModeCard: View {
                 Image(systemName: icon)
                     .font(.system(size: 28))
                     .symbolRenderingMode(.hierarchical)
-                    .foregroundStyle(isSelected ? Palette.accent : .secondary)
+                    .foregroundStyle(isSelected ? Palette.brandAcid : .secondary)
                 
                 VStack(alignment: .leading, spacing: 4) {
                     Text(mode.rawValue)
@@ -310,7 +310,7 @@ struct InputModeCard: View {
             .modifier(GlassChip(cornerRadius: 16, paddingH: 0, paddingV: 0))
             .overlay(
                 RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .strokeBorder(Palette.accent.opacity(isSelected ? 0.5 : 0), lineWidth: 1.5)
+                    .strokeBorder(Palette.brandAcid.opacity(isSelected ? 0.5 : 0), lineWidth: 1.5)
             )
         }
         .buttonStyle(.plain)
@@ -328,7 +328,7 @@ struct DeviceSelectionCard: View {
             HStack {
                 Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
                     .symbolRenderingMode(.hierarchical)
-                    .foregroundStyle(isSelected ? Palette.accent : .secondary)
+                    .foregroundStyle(isSelected ? Palette.brandAcid : .secondary)
                     .font(.system(size: 18))
                 
                 Text(name)
@@ -357,7 +357,7 @@ struct DeviceSelectionCard: View {
             .modifier(GlassChip(cornerRadius: 16, paddingH: 0, paddingV: 0))
             .overlay(
                 RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .strokeBorder(Palette.accent.opacity(isSelected ? 0.5 : 0), lineWidth: 1.5)
+                    .strokeBorder(Palette.brandAcid.opacity(isSelected ? 0.5 : 0), lineWidth: 1.5)
             )
         }
         .buttonStyle(.plain)
@@ -436,13 +436,13 @@ struct DevicePriorityCard: View {
                     HStack(spacing: 2) {
                         Button(action: onMoveUp) {
                             Image(systemName: "chevron.up")
-                                .foregroundStyle(canMoveUp ? Palette.accent : .secondary.opacity(0.5))
+                                .foregroundStyle(canMoveUp ? Palette.brandAcid : .secondary.opacity(0.5))
                         }
                         .disabled(!canMoveUp)
 
                         Button(action: onMoveDown) {
                             Image(systemName: "chevron.down")
-                                .foregroundStyle(canMoveDown ? Palette.accent : .secondary.opacity(0.5))
+                                .foregroundStyle(canMoveDown ? Palette.brandAcid : .secondary.opacity(0.5))
                         }
                         .disabled(!canMoveDown)
                     }
@@ -452,7 +452,7 @@ struct DevicePriorityCard: View {
                 Button(action: onTogglePriority) {
                     Image(systemName: isPrioritized ? "minus.circle.fill" : "plus.circle.fill")
                         .symbolRenderingMode(.hierarchical)
-                        .foregroundStyle(isPrioritized ? Palette.warn : Palette.accent)
+                        .foregroundStyle(isPrioritized ? Palette.warn : Palette.brandAcid)
                 }
             }
             .buttonStyle(.plain)

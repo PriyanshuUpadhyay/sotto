@@ -80,7 +80,7 @@ struct SettingsView: View {
     private var shortcutsCard: some View {
         SettingsCard(
             iconSystemName: "command",
-            iconTint: Palette.accent,
+            iconTint: Palette.brandAcid,
             title: "Shortcuts",
             subtitle: "Trigger recording from anywhere.",
             statusText: hotkeyManager.selectedHotkey2 != .none ? "2 active" : "1 active",
@@ -89,7 +89,7 @@ struct SettingsView: View {
             SettingsRow(
                 iconSystemName: "1.circle",
                 label: "Shortcut 1",
-                iconTint: Palette.accent
+                iconTint: Palette.brandAcid
             ) {
                 HStack(spacing: 8) {
                     if hotkeyManager.selectedHotkey1 != .none {
@@ -116,7 +116,7 @@ struct SettingsView: View {
                 SettingsRow(
                     iconSystemName: "2.circle",
                     label: "Shortcut 2",
-                    iconTint: Palette.accent
+                    iconTint: Palette.brandAcid
                 ) {
                     HStack(spacing: 8) {
                         hotkeyModePicker(binding: $hotkeyManager.hotkeyMode2)
@@ -174,7 +174,7 @@ struct SettingsView: View {
     private var additionalShortcutsCard: some View {
         SettingsCard(
             iconSystemName: "keyboard",
-            iconTint: Palette.accent,
+            iconTint: Palette.brandAcid,
             title: "Additional Shortcuts",
             subtitle: "Paste, retry, cancel, middle-click.",
             statusText: additionalShortcutsBoundCount > 0 ? "\(additionalShortcutsBoundCount) bound" : nil,
@@ -183,7 +183,7 @@ struct SettingsView: View {
             SettingsRow(
                 iconSystemName: "doc.on.clipboard",
                 label: "Paste Last Transcription (Original)",
-                iconTint: Palette.accent
+                iconTint: Palette.brandAcid
             ) {
                 KeyboardShortcuts.Recorder(for: .pasteLastTranscription)
                     .controlSize(.small)
@@ -192,7 +192,7 @@ struct SettingsView: View {
             SettingsRow(
                 iconSystemName: "wand.and.rays",
                 label: "Paste Last Transcription (Enhanced)",
-                iconTint: Palette.accent
+                iconTint: Palette.brandAcid
             ) {
                 KeyboardShortcuts.Recorder(for: .pasteLastEnhancement)
                     .controlSize(.small)
@@ -201,7 +201,7 @@ struct SettingsView: View {
             SettingsRow(
                 iconSystemName: "arrow.clockwise",
                 label: "Retry Last Transcription",
-                iconTint: Palette.accent
+                iconTint: Palette.brandAcid
             ) {
                 KeyboardShortcuts.Recorder(for: .retryLastTranscription)
                     .controlSize(.small)
@@ -210,7 +210,7 @@ struct SettingsView: View {
             SettingsRow(
                 iconSystemName: "text.cursor",
                 label: "Command Mode",
-                iconTint: Palette.accent
+                iconTint: Palette.brandAcid
             ) {
                 KeyboardShortcuts.Recorder(for: .commandMode)
                     .controlSize(.small)
@@ -220,7 +220,7 @@ struct SettingsView: View {
             SettingsRow(
                 iconSystemName: "square.and.pencil",
                 label: "Toggle Scratchpad",
-                iconTint: Palette.accent
+                iconTint: Palette.brandAcid
             ) {
                 KeyboardShortcuts.Recorder(for: .scratchpadToggle)
                     .controlSize(.small)
@@ -235,7 +235,7 @@ struct SettingsView: View {
                 SettingsRow(
                     iconSystemName: "xmark.circle",
                     label: "Shortcut",
-                    iconTint: Palette.accent
+                    iconTint: Palette.brandAcid
                 ) {
                     KeyboardShortcuts.Recorder(for: .cancelRecorder)
                         .controlSize(.small)
@@ -257,7 +257,7 @@ struct SettingsView: View {
                 SettingsRow(
                     iconSystemName: "timer",
                     label: "Activation Delay",
-                    iconTint: Palette.accent
+                    iconTint: Palette.brandAcid
                 ) {
                     HStack {
                         TextField("", value: $hotkeyManager.middleClickActivationDelay, formatter: {
@@ -280,7 +280,7 @@ struct SettingsView: View {
     private var recordingFeedbackCard: some View {
         SettingsCard(
             iconSystemName: "waveform",
-            iconTint: Palette.accent,
+            iconTint: Palette.brandAcid,
             title: "Recording Feedback",
             subtitle: "Sound, mute, clipboard restore."
         ) {
@@ -327,7 +327,7 @@ struct SettingsView: View {
                 iconSystemName: "terminal.fill",
                 label: "Use AppleScript Paste",
                 subtitle: "Enable if pasting fails on alternative layouts (e.g. Neo2). Uses AppleScript instead of simulated key events.",
-                iconTint: Palette.accent
+                iconTint: Palette.brandAcid
             ) {
                 Toggle("", isOn: $useAppleScriptPaste)
                     .labelsHidden()
@@ -337,7 +337,7 @@ struct SettingsView: View {
                 iconSystemName: "exclamationmark.triangle",
                 label: "Failure Dwell",
                 subtitle: "How long the recorder shows a failure before retracting. Until-dismissed keeps the menubar dot until you open Settings or the next recording succeeds.",
-                iconTint: Palette.accent
+                iconTint: Palette.brandAcid
             ) {
                 Picker("", selection: $failedDwellSeconds) {
                     Text("3 seconds").tag(3.0)
@@ -366,7 +366,7 @@ struct SettingsView: View {
     private var interfaceCard: some View {
         SettingsCard(
             iconSystemName: "rectangle.on.rectangle",
-            iconTint: Palette.accent,
+            iconTint: Palette.brandAcid,
             title: "Interface",
             subtitle: "Where the Halo recorder appears.",
             statusText: recorderTypeDisplayName,

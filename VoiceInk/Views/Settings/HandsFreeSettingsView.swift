@@ -78,7 +78,7 @@ struct HandsFreeSettingsView: View {
         let isBound = KeyboardShortcuts.getShortcut(for: .handsFreeToggle) != nil
         return SettingsCard(
             iconSystemName: "ear.fill",
-            iconTint: Palette.accent,
+            iconTint: Palette.brandAcid,
             title: "Hands-free Mode",
             subtitle: "Continuous dictation; voice triggers fire Enter for you.",
             statusText: isBound ? "Bound" : "Not set",
@@ -88,7 +88,7 @@ struct HandsFreeSettingsView: View {
                 iconSystemName: "command",
                 label: "Toggle Hotkey",
                 subtitle: "Press once to start, again to stop. Sessions auto-end at 20 minutes.",
-                iconTint: Palette.accent
+                iconTint: Palette.brandAcid
             ) {
                 KeyboardShortcuts.Recorder(for: .handsFreeToggle)
                     .controlSize(.small)
@@ -101,7 +101,7 @@ struct HandsFreeSettingsView: View {
     private var thresholdCard: some View {
         SettingsCard(
             iconSystemName: "waveform.badge.mic",
-            iconTint: Palette.accent,
+            iconTint: Palette.brandAcid,
             title: "Voice Activity Threshold",
             subtitle: "How loud speech must be to count as voice.",
             statusText: ThresholdPreset.nearest(vadThresholdDb)?.displayName ?? "Custom",
@@ -167,7 +167,7 @@ struct HandsFreeSettingsView: View {
     private var silenceCard: some View {
         SettingsCard(
             iconSystemName: "timer",
-            iconTint: Palette.accent,
+            iconTint: Palette.brandAcid,
             title: "Silence Duration",
             subtitle: "How long a pause must last to commit an utterance.",
             statusText: SilencePreset(rawValue: silenceMs)?.displayName ?? "Custom",
@@ -213,7 +213,7 @@ struct HandsFreeSettingsView: View {
         let count = triggerPhrases.filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }.count
         return SettingsCard(
             iconSystemName: "text.bubble",
-            iconTint: Palette.accent,
+            iconTint: Palette.brandAcid,
             title: "Voice Triggers",
             subtitle: "Phrases that, at the END of an utterance, press Enter for you.",
             statusText: count > 0 ? "\(count)" : nil,
@@ -253,7 +253,7 @@ struct HandsFreeSettingsView: View {
                 }
             }
             .buttonStyle(.plain)
-            .foregroundColor(Palette.accent)
+            .foregroundColor(Palette.brandAcid)
 
             Text("Detected at the END of an utterance; mid-utterance occurrences are ignored. Each match strips the phrase from your text and presses Enter ~500ms after the paste.")
                 .font(.system(size: 11))

@@ -60,8 +60,10 @@ private struct KeyChip: View {
                 RoundedRectangle(cornerRadius: 6, style: .continuous)
                     .fill(Color(red: 0.078, green: 0.078, blue: 0.110).opacity(0.55))
                     .background(
-                        RoundedRectangle(cornerRadius: 6, style: .continuous)
-                            .fill(.ultraThinMaterial)
+                        TacticalGlass(
+                            shape: RoundedRectangle(cornerRadius: 6, style: .continuous),
+                            phase: .hidden
+                        )
                     )
             )
             .overlay(

@@ -137,13 +137,13 @@ struct CustomSoundSettingsView: View {
 
     // MARK: - Per-cue tint
 
-    /// Color-keys the waveform preview. Live cues share `Palette.accent`;
+    /// Color-keys the waveform preview. Live cues share `Palette.brandAcid`;
     /// `.cancel` stays neutral and `.fail` stays amber.
     private func tint(for type: CustomSoundManager.SoundType) -> Color {
         switch type {
-        case .start:              return Palette.accent
-        case .transcribeComplete: return Palette.accent
-        case .enhanceComplete:    return Palette.accent
+        case .start:              return Palette.brandAcid
+        case .transcribeComplete: return Palette.brandAcid
+        case .enhanceComplete:    return Palette.brandAcid
         case .cancel:             return Palette.neutral
         case .fail:               return Palette.warn
         }
