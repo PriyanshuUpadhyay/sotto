@@ -50,11 +50,11 @@ struct AddCustomModelCardView: View {
                     .foregroundColor(.white)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 12)
-                    .background(Palette.accent)
+                    .background(Palette.brandAcid)
                     .cornerRadius(12)
                 }
                 .buttonStyle(.plain)
-                .shadow(color: Palette.accent.opacity(0.3), radius: 8, y: 4)
+                .shadow(color: Palette.brandAcid.opacity(0.3), radius: 8, y: 4)
             }
             
             // Expandable Form Section
@@ -144,8 +144,8 @@ struct AddCustomModelCardView: View {
                             .padding(.vertical, 10)
                             .background(
                                 RoundedRectangle(cornerRadius: 8)
-                                    .fill(isFormValid ? Palette.accent : Color.secondary)
-                                    .shadow(color: (isFormValid ? Palette.accent : Color.secondary).opacity(0.2), radius: 2, x: 0, y: 1)
+                                    .fill(isFormValid ? Palette.brandAcid : Color.secondary)
+                                    .shadow(color: (isFormValid ? Palette.brandAcid : Color.secondary).opacity(0.2), radius: 2, x: 0, y: 1)
                             )
                         }
                         .buttonStyle(.plain)

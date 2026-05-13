@@ -63,7 +63,7 @@ struct ActiveEnhancementProviderCard: View {
             Text("ACTIVE PROVIDER")
                 .font(.system(size: 10.5, weight: .semibold, design: .monospaced))
                 .tracking(0.06 * 10.5)
-                .foregroundColor(Palette.accent)
+                .foregroundColor(Palette.brandAcid)
             Rectangle()
                 .fill(Palette.hairlineSoft)
                 .frame(height: 1)
@@ -131,7 +131,7 @@ struct OtherEnhancementProvidersAccordion: View {
             }
         }
         .background(
-            shape.fill(.ultraThinMaterial)
+            TacticalGlass(shape: shape, phase: .hidden)
         )
         .overlay(
             shape.stroke(Palette.hairline, lineWidth: 1)

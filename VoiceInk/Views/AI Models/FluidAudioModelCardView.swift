@@ -49,7 +49,7 @@ struct FluidAudioModelCardView: View {
         .overlay(
             RoundedRectangle(cornerRadius: 16, style: .continuous)
                 .stroke(
-                    isCurrent ? Palette.accent.opacity(0.55) : Palette.hairline,
+                    isCurrent ? Palette.brandAcid.opacity(0.55) : Palette.hairline,
                     lineWidth: isCurrent ? 1.5 : 1
                 )
         )
@@ -149,7 +149,7 @@ struct FluidAudioModelCardView: View {
                     .foregroundColor(.white)
                     .padding(.horizontal, 12)
                     .padding(.vertical, 6)
-                    .background(Capsule().fill(Palette.accent))
+                    .background(Capsule().fill(Palette.brandAcid))
                 }
                 .buttonStyle(.plain)
                 .disabled(isDownloading)

@@ -142,7 +142,7 @@ struct ProviderCard: View {
         )
         .overlay(
             shape.stroke(
-                isActive ? Palette.accent.opacity(0.55) : Palette.hairline,
+                isActive ? Palette.brandAcid.opacity(0.55) : Palette.hairline,
                 lineWidth: isActive ? 1.5 : 1
             )
         )
@@ -159,12 +159,12 @@ struct ProviderCard: View {
             // Provider tile — same language as ProviderChip but at 36pt scale.
             ZStack {
                 RoundedRectangle(cornerRadius: 9, style: .continuous)
-                    .fill(Palette.accent.opacity(0.18))
+                    .fill(Palette.brandAcid.opacity(0.18))
                 RoundedRectangle(cornerRadius: 9, style: .continuous)
-                    .stroke(Palette.accent.opacity(0.36), lineWidth: 0.5)
+                    .stroke(Palette.brandAcid.opacity(0.36), lineWidth: 0.5)
                 Image(systemName: symbol)
                     .font(.system(size: 16, weight: .semibold))
-                    .foregroundColor(Palette.accent)
+                    .foregroundColor(Palette.brandAcid)
             }
             .frame(width: 36, height: 36)
             .overlay(alignment: .topTrailing) {
@@ -188,11 +188,11 @@ struct ProviderCard: View {
                         Text("ACTIVE")
                             .font(.system(size: 9.5, weight: .semibold, design: .monospaced))
                             .tracking(0.06 * 9.5)
-                            .foregroundColor(Palette.accent)
+                            .foregroundColor(Palette.brandAcid)
                             .padding(.horizontal, 7)
                             .padding(.vertical, 2.5)
-                            .background(Capsule().fill(Palette.accent.opacity(0.16)))
-                            .overlay(Capsule().stroke(Palette.accent.opacity(0.42), lineWidth: 0.5))
+                            .background(Capsule().fill(Palette.brandAcid.opacity(0.16)))
+                            .overlay(Capsule().stroke(Palette.brandAcid.opacity(0.42), lineWidth: 0.5))
                     }
                 }
 
@@ -329,7 +329,7 @@ struct ProviderCard: View {
         if verifyState == .failure, let msg = verifyMessage {
             Text(msg)
                 .font(.caption)
-                .foregroundColor(Palette.accent)
+                .foregroundColor(Palette.brandAcid)
                 .fixedSize(horizontal: false, vertical: true)
         } else if verifyState == .success {
             Text("API key verified.")
@@ -429,7 +429,7 @@ struct ProviderCard: View {
         if let msg = verifyMessage, verifyState == .failure {
             Text(msg)
                 .font(.caption)
-                .foregroundColor(Palette.accent)
+                .foregroundColor(Palette.brandAcid)
                 .fixedSize(horizontal: false, vertical: true)
         }
     }
@@ -515,7 +515,7 @@ struct ProviderCard: View {
         } else {
             HStack(spacing: 8) {
                 Circle()
-                    .fill(Palette.accent)
+                    .fill(Palette.brandAcid)
                     .frame(width: 8, height: 8)
                 Text("Requires macOS 26 or later.")
                     .font(.system(size: 12))
