@@ -41,7 +41,7 @@ struct SnippetsSettingsView: View {
     private var snippetsCard: some View {
         SettingsCard(
             iconSystemName: "text.cursor",
-            iconTint: Palette.accent,
+            iconTint: Palette.brandAcid,
             title: "Snippets",
             subtitle: "Type a trigger; speak it; expand it.",
             statusText: snippets.isEmpty ? "Empty" : "\(snippets.count) defined",
@@ -66,10 +66,12 @@ struct SnippetsSettingsView: View {
                 Button {
                     showingAddSheet = true
                 } label: {
-                    Label("Add Snippet", systemImage: "plus")
+                    Text("▸ ADD SNIPPET")
+                        .font(.system(size: 11, design: .monospaced).weight(.bold))
+                        .tracking(0.16 * 11)
                 }
                 .buttonStyle(.borderedProminent)
-                .tint(Palette.accent)
+                .tint(Palette.brandAcid)
             }
         }
     }

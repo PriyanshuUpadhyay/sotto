@@ -31,13 +31,17 @@ struct ScratchpadView: View {
 
     @ViewBuilder
     private var emptyState: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: 10) {
             Image(systemName: "square.and.pencil")
                 .font(.system(size: 36, weight: .light))
-                .foregroundColor(.secondary)
-            Text("No tabs. Press ⌘T to create one.")
-                .font(.callout)
-                .foregroundColor(.secondary)
+                .foregroundStyle(Color.white.opacity(0.42))
+            Text("NO TABS")
+                .font(.system(size: 13, design: .monospaced).weight(.bold))
+                .tracking(0.16 * 13)
+                .foregroundStyle(Color.white.opacity(0.42))
+            Text("⌘T to create one")
+                .font(.system(size: 11, design: .monospaced))
+                .foregroundStyle(Color.white.opacity(0.42).opacity(0.6))
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
@@ -57,26 +61,29 @@ struct ScratchpadView: View {
 
     private func tabCell(_ doc: ScratchpadDocument) -> some View {
         let isActive = doc.id == store.activeTabId
-        return HStack(spacing: 6) {
-            Text(doc.title.isEmpty ? "Untitled" : doc.title)
-                .font(.system(size: 12, weight: isActive ? .semibold : .regular))
+        return HStack(spacing: 5) {
+            Text(doc.title.isEmpty ? "UNTITLED" : doc.title.uppercased())
+                .font(.system(size: 10, design: .monospaced).weight(isActive ? .bold : .regular))
+                .tracking(0.16 * 10)
+                .foregroundStyle(isActive ? Palette.brandAcid : Color.white.opacity(0.42))
                 .lineLimit(1)
             Button(action: { store.closeTab(doc) }) {
-                Image(systemName: "xmark")
-                    .font(.system(size: 9, weight: .bold))
+                Text("✕")
+                    .font(.system(size: 8, design: .monospaced).weight(.bold))
+                    .foregroundStyle(Color.white.opacity(0.42).opacity(0.7))
             }
             .buttonStyle(.plain)
-            .opacity(0.6)
+            .accessibilityLabel("Close tab \(doc.title.isEmpty ? "Untitled" : doc.title)")
         }
-        .padding(.horizontal, 10)
+        .padding(.horizontal, 8)
         .padding(.vertical, 4)
         .background(
-            RoundedRectangle(cornerRadius: 8, style: .continuous)
-                .fill(isActive ? Palette.accent.opacity(0.18) : Color.clear)
+            RoundedRectangle(cornerRadius: 4, style: .continuous)
+                .fill(isActive ? Palette.brandAcid.opacity(0.12) : Color.clear)
         )
         .overlay(
-            RoundedRectangle(cornerRadius: 8, style: .continuous)
-                .stroke(Palette.hairlineSoft, lineWidth: 0.5)
+            RoundedRectangle(cornerRadius: 4, style: .continuous)
+                .stroke(isActive ? Palette.brandAcid.opacity(0.35) : Palette.hairlineSoft, lineWidth: 0.5)
         )
         .contentShape(Rectangle())
         .onTapGesture {
@@ -86,17 +93,23 @@ struct ScratchpadView: View {
             }
             store.activeTabId = doc.id
         }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(doc.title.isEmpty ? "Untitled tab" : doc.title)
+        .accessibilityAddTraits(isActive ? .isSelected : [])
     }
 
     private var addTabButton: some View {
         Button(action: { _ = store.createTab() }) {
-            Image(systemName: "plus")
-                .font(.system(size: 11, weight: .medium))
-                .frame(width: 24, height: 22)
+            Text("+")
+                .font(.system(size: 12, design: .monospaced).weight(.bold))
+                .foregroundStyle(store.documents.count >= ScratchpadStore.maxTabs
+                                 ? Color.white.opacity(0.42).opacity(0.3)
+                                 : Palette.brandAcid)
+                .frame(width: 22, height: 20)
         }
         .buttonStyle(.plain)
         .disabled(store.documents.count >= ScratchpadStore.maxTabs)
-        .opacity(store.documents.count >= ScratchpadStore.maxTabs ? 0.4 : 1.0)
+        .accessibilityLabel("New tab")
     }
 }
 
