@@ -42,8 +42,15 @@ struct ModelPerformancePanel: View {
             header
                 .padding(.horizontal, 20)
                 .padding(.vertical, 12)
-                .background(Color(NSColor.windowBackgroundColor))
-                .overlay(Divider().opacity(0.5), alignment: .bottom)
+                .background(
+                    TacticalGlass(shape: Rectangle(), phase: .hidden)
+                )
+                .overlay(
+                    Rectangle()
+                        .fill(Palette.hairline)
+                        .frame(height: 0.5),
+                    alignment: .bottom
+                )
                 .zIndex(1)
 
             ModelPerformancePanelContent(filter: filter)
@@ -52,24 +59,30 @@ struct ModelPerformancePanel: View {
 
     private var header: some View {
         HStack(spacing: 10) {
-            Text("Model Performance")
-                .font(.headline.weight(.semibold))
+            Text("MODEL PERFORMANCE")
+                .font(.system(size: 11, design: .monospaced).weight(.bold))
+                .tracking(0.16 * 11)
+                .foregroundStyle(Color.white.opacity(0.42))
             Spacer()
             Picker("", selection: Binding(get: { filter }, set: { filterRaw = $0.rawValue })) {
                 ForEach(TimeFilter.allCases) { f in
-                    Text(f.rawValue).tag(f)
+                    Text(f.rawValue.uppercased())
+                        .font(.system(size: 11, design: .monospaced))
+                        .tag(f)
                 }
             }
             .pickerStyle(.menu)
             .labelsHidden()
             .fixedSize()
             Button(action: onClose) {
-                Image(systemName: "xmark")
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundColor(.secondary)
-                    .padding(6)
-                    .background(Color.secondary.opacity(0.1))
-                    .clipShape(Circle())
+                Text("✕")
+                    .font(.system(size: 12, design: .monospaced).weight(.bold))
+                    .foregroundStyle(Color.white.opacity(0.42))
+                    .frame(width: 22, height: 22)
+                    .background(
+                        RoundedRectangle(cornerRadius: 2)
+                            .fill(Color.white.opacity(0.06))
+                    )
             }
             .buttonStyle(.plain)
         }
@@ -143,10 +156,11 @@ private struct ModelPerformancePanelContent: View {
         VStack(spacing: 8) {
             Image(systemName: "chart.bar.xaxis")
                 .font(.system(size: 32, weight: .light))
-                .foregroundColor(.secondary)
-            Text("No data for this period")
-                .font(.subheadline)
-                .foregroundColor(.secondary)
+                .foregroundStyle(Color.white.opacity(0.42))
+            Text("NO DATA FOR THIS PERIOD")
+                .font(.system(size: 11, design: .monospaced).weight(.bold))
+                .tracking(0.16 * 11)
+                .foregroundStyle(Color.white.opacity(0.42))
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
@@ -165,58 +179,66 @@ private struct ModelPerformancePanelContent: View {
     }
 
     private func modelTile(_ stat: ModelPerformanceStat) -> some View {
-        VStack(spacing: 10) {
+        VStack(spacing: 8) {
             VStack(spacing: 2) {
-                Text(stat.name)
-                    .font(.system(size: 12, weight: .semibold))
+                Text(stat.name.uppercased())
+                    .font(.system(size: 10, design: .monospaced).weight(.bold))
+                    .tracking(0.16 * 10)
                     .lineLimit(1)
                     .minimumScaleFactor(0.7)
+                    .foregroundStyle(.primary)
                 Text("\(stat.sessionCount) sessions")
-                    .font(.system(size: 10))
-                    .foregroundColor(.secondary)
+                    .font(.system(size: 9, design: .monospaced))
+                    .foregroundStyle(Color.white.opacity(0.42))
             }
             .frame(maxWidth: .infinity)
 
-            VStack(spacing: 3) {
+            VStack(spacing: 2) {
                 Text(String(format: "%.1fx", stat.speedFactor))
-                    .font(.system(size: 24, weight: .bold, design: .rounded))
-                    .foregroundColor(.mint)
-                Text(stat.speedFactor >= 1.0 ? "Faster than Real-time" : "Slower than Real-time")
-                    .font(.system(size: 10))
-                    .foregroundColor(.secondary)
+                    .font(.system(size: 20, design: .monospaced).weight(.bold))
+                    .foregroundStyle(Palette.brandAcid)
+                Text(stat.speedFactor >= 1.0 ? "faster than real-time" : "slower than real-time")
+                    .font(.system(size: 9, design: .monospaced))
+                    .foregroundStyle(Color.white.opacity(0.42))
             }
 
-            Divider().padding(.horizontal, 8)
+            Rectangle()
+                .fill(Palette.hairline)
+                .frame(height: 0.5)
+                .padding(.horizontal, 4)
 
             HStack(spacing: 0) {
                 VStack(spacing: 2) {
                     Text(formatDuration(stat.avgAudioDuration))
-                        .font(.system(size: 11, weight: .semibold, design: .monospaced))
-                        .foregroundColor(.indigo)
-                    Text("Avg. Audio")
-                        .font(.system(size: 9))
-                        .foregroundColor(.secondary)
+                        .font(.system(size: 10, design: .monospaced).weight(.bold))
+                        .foregroundStyle(Color.white.opacity(0.42))
+                    Text("AVG AUDIO")
+                        .font(.system(size: 8, design: .monospaced))
+                        .tracking(0.16 * 8)
+                        .foregroundStyle(Color.white.opacity(0.42).opacity(0.6))
                 }
                 .frame(maxWidth: .infinity)
 
                 Rectangle()
-                    .fill(Color(NSColor.separatorColor))
-                    .frame(width: 1, height: 24)
+                    .fill(Palette.hairline)
+                    .frame(width: 0.5, height: 20)
 
                 VStack(spacing: 2) {
                     Text(String(format: "%.2fs", stat.avgProcessingTime))
-                        .font(.system(size: 11, weight: .semibold, design: .monospaced))
-                        .foregroundColor(.teal)
-                    Text("Avg. Processing")
-                        .font(.system(size: 9))
-                        .foregroundColor(.secondary)
+                        .font(.system(size: 10, design: .monospaced).weight(.bold))
+                        .foregroundStyle(Color.white.opacity(0.42))
+                    Text("AVG PROC")
+                        .font(.system(size: 8, design: .monospaced))
+                        .tracking(0.16 * 8)
+                        .foregroundStyle(Color.white.opacity(0.42).opacity(0.6))
                 }
                 .frame(maxWidth: .infinity)
             }
         }
-        .padding(14)
-        .background(MetricCardBackground(color: .mint))
-        .cornerRadius(12)
+        .padding(12)
+        .background(
+            TacticalGlass(shape: RoundedRectangle(cornerRadius: 2, style: .continuous), phase: .hidden)
+        )
     }
 
     // MARK: - Enhancement Models
@@ -233,40 +255,48 @@ private struct ModelPerformancePanelContent: View {
     }
 
     private func enhancementTile(_ stat: EnhancementStat) -> some View {
-        VStack(spacing: 10) {
+        VStack(spacing: 8) {
             VStack(spacing: 2) {
-                Text(stat.name)
-                    .font(.system(size: 12, weight: .semibold))
+                Text(stat.name.uppercased())
+                    .font(.system(size: 10, design: .monospaced).weight(.bold))
+                    .tracking(0.16 * 10)
                     .lineLimit(1)
                     .minimumScaleFactor(0.7)
+                    .foregroundStyle(.primary)
                 Text("\(stat.sessionCount) sessions")
-                    .font(.system(size: 10))
-                    .foregroundColor(.secondary)
+                    .font(.system(size: 9, design: .monospaced))
+                    .foregroundStyle(Color.white.opacity(0.42))
             }
             .frame(maxWidth: .infinity)
 
-            VStack(spacing: 3) {
+            VStack(spacing: 2) {
                 Text(String(format: "%.2fs", stat.avgDuration))
-                    .font(.system(size: 24, weight: .bold, design: .rounded))
-                    .foregroundColor(.indigo)
-                Text("Avg. Enhancement Time")
-                    .font(.system(size: 10))
-                    .foregroundColor(.secondary)
+                    .font(.system(size: 20, design: .monospaced).weight(.bold))
+                    .foregroundStyle(Palette.brandAcid)
+                Text("avg enhancement time")
+                    .font(.system(size: 9, design: .monospaced))
+                    .foregroundStyle(Color.white.opacity(0.42))
             }
         }
-        .padding(14)
-        .background(MetricCardBackground(color: .indigo))
-        .cornerRadius(12)
+        .padding(12)
+        .background(
+            TacticalGlass(shape: RoundedRectangle(cornerRadius: 2, style: .continuous), phase: .hidden)
+        )
     }
 
     // MARK: - Helpers
 
     private func sectionHeader(_ title: String) -> some View {
-        Text(title)
-            .font(.system(size: 12, weight: .semibold))
-            .foregroundColor(.secondary)
-            .textCase(.uppercase)
-            .tracking(0.5)
+        HStack(spacing: 4) {
+            Text("›")
+                .font(.system(size: 10, design: .monospaced).weight(.bold))
+                .foregroundStyle(Palette.brandAcid)
+                .accessibilityHidden(true)
+            Text(title.uppercased())
+                .font(.system(size: 10, design: .monospaced).weight(.bold))
+                .tracking(0.16 * 10)
+                .foregroundStyle(Color.white.opacity(0.42))
+        }
     }
 
     private func formatDuration(_ duration: TimeInterval) -> String {

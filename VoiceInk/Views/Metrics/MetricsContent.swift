@@ -145,64 +145,58 @@ struct MetricsContent: View {
     }
 
     private var emptyStateView: some View {
-        VStack(spacing: 20) {
+        VStack(spacing: 10) {
             Image(systemName: "waveform")
-                .font(.system(size: 56, weight: .semibold))
-                .foregroundColor(.secondary)
-            Text("No Recorder Sessions Yet")
-                .font(.title3.weight(.semibold))
-            Text("Start your first recording to unlock value insights.")
-                .foregroundColor(.secondary)
+                .font(.system(size: 40, weight: .light))
+                .foregroundStyle(Color.white.opacity(0.42))
+            Text("NO SESSIONS YET")
+                .font(.system(size: 13, design: .monospaced).weight(.bold))
+                .tracking(0.16 * 13)
+                .foregroundStyle(Color.white.opacity(0.42))
+            Text("start your first recording")
+                .font(.system(size: 11, design: .monospaced))
+                .foregroundStyle(Color.white.opacity(0.42).opacity(0.7))
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     // MARK: - Sections
-    
+
     private var heroSection: some View {
-        VStack(spacing: 10) {
+        VStack(spacing: 8) {
             HStack {
                 Spacer(minLength: 0)
-                
-                (Text("You have saved ")
-                    .fontWeight(.bold)
-                    .foregroundColor(.white.opacity(0.85))
-                 +
-                 Text(formattedTimeSaved)
-                    .fontWeight(.black)
-                    .font(.system(size: 36))
-                    .foregroundStyle(.white)
-                 +
-                 Text(" with VoiceInk")
-                    .fontWeight(.bold)
-                    .foregroundColor(.white.opacity(0.85))
+                (
+                    Text("You have saved ")
+                        .font(.system(size: 22, design: .monospaced).weight(.bold))
+                        .foregroundStyle(Color.white.opacity(0.85))
+                    + Text(formattedTimeSaved)
+                        .font(.system(size: 28, design: .monospaced).weight(.bold))
+                        .foregroundStyle(Palette.brandAcid)
+                    + Text(" with Sotto")
+                        .font(.system(size: 22, design: .monospaced).weight(.bold))
+                        .foregroundStyle(Color.white.opacity(0.85))
                 )
-                .font(.system(size: 30))
                 .multilineTextAlignment(.center)
-                
                 Spacer(minLength: 0)
             }
             .lineLimit(1)
             .minimumScaleFactor(0.5)
-            
+
             Text(heroSubtitle)
-                .font(.system(size: 15, weight: .medium))
-                .foregroundColor(.white.opacity(0.85))
+                .font(.system(size: 13, design: .monospaced))
+                .foregroundStyle(Color.white.opacity(0.42))
                 .multilineTextAlignment(.center)
                 .frame(maxWidth: .infinity)
-            
         }
-        .padding(28)
+        .padding(24)
         .frame(maxWidth: .infinity)
         .background(
-            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .fill(heroGradient)
+            TacticalGlass(
+                shape: RoundedRectangle(cornerRadius: 8, style: .continuous),
+                phase: .done
+            )
         )
-        .overlay(
-            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .strokeBorder(Palette.hairlineSoft, lineWidth: 1)
-        )
-        .shadow(color: Color.black.opacity(0.08), radius: 30, x: 0, y: 16)
     }
     
     private var metricsSection: some View {
@@ -211,7 +205,7 @@ struct MetricsContent: View {
                 icon: "mic.fill",
                 title: "Sessions Recorded",
                 value: "\(totalCount)",
-                detail: "VoiceInk sessions completed"
+                detail: "Sotto sessions completed"
             )
 
             MetricCard(
@@ -227,7 +221,7 @@ struct MetricsContent: View {
                 value: averageWordsPerMinute > 0
                     ? String(format: "%.1f", averageWordsPerMinute)
                     : "–",
-                detail: "VoiceInk vs. typing by hand"
+                detail: "Sotto vs. typing by hand"
             )
 
             MetricCard(
@@ -240,33 +234,43 @@ struct MetricsContent: View {
     }
 
     private var footerActionsView: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: 8) {
             Button(action: {
                 withAnimation(.smooth(duration: 0.3)) { isModelStatsPanelPresented = true }
             }) {
-                HStack(spacing: 8) {
+                HStack(spacing: 6) {
                     Image(systemName: "gauge")
-                    Text("Model Performance")
+                        .font(.system(size: 11))
+                    Text("▸ MODEL PERF")
+                        .font(.system(size: 11, design: .monospaced).weight(.bold))
+                        .tracking(0.16 * 11)
                 }
-                .font(.system(size: 13, weight: .medium))
-                .padding(.horizontal, 12)
-                .padding(.vertical, 8)
-                .background(Capsule().fill(.thinMaterial))
+                .padding(.horizontal, 10)
+                .padding(.vertical, 6)
+                .background(
+                    RoundedRectangle(cornerRadius: 4, style: .continuous)
+                        .fill(Palette.brandAcid.opacity(0.10))
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 4, style: .continuous)
+                        .stroke(Palette.hairline, lineWidth: 0.5)
+                )
             }
             .buttonStyle(.plain)
+            .foregroundStyle(Palette.brandAcid)
             .help("View transcription and enhancement model performance")
             CopySystemInfoButton()
         }
     }
-    
+
     private var formattedTimeSaved: String {
         let formatted = Formatters.formattedDuration(timeSaved, style: .full, fallback: "Time savings coming soon")
         return formatted
     }
-    
+
     private var heroSubtitle: String {
         guard totalCount > 0 else {
-            return "Your VoiceInk journey starts with your first recording."
+            return "Your Sotto journey starts with your first recording."
         }
 
         let wordsText = Formatters.formattedNumber(totalWords)
@@ -274,19 +278,7 @@ struct MetricsContent: View {
 
         return "Dictated \(wordsText) words across \(totalCount) \(sessionText)."
     }
-    
-    private var heroGradient: LinearGradient {
-        LinearGradient(
-            gradient: Gradient(colors: [
-                Palette.accent,
-                Palette.accent.opacity(0.85),
-                Palette.accent.opacity(0.7)
-            ]),
-            startPoint: .topLeading,
-            endPoint: .bottomTrailing
-        )
-    }
-    
+
     // MARK: - Computed Metrics
 
     private var estimatedTypingTime: TimeInterval {
