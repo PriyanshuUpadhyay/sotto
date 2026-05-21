@@ -155,8 +155,14 @@ class RecorderUIManager: ObservableObject {
             phase = .armed
             if recordingStartedAt == nil { recordingStartedAt = .now }
         case .recording:
-            phase = engine.firstAudioObserved ? .recording : .armed
             if recordingStartedAt == nil { recordingStartedAt = .now }
+            if let started = recordingStartedAt,
+               engine.firstAudioObserved,
+               Date().timeIntervalSince(started) >= 0.12 {
+                phase = .recording
+            } else {
+                phase = .armed
+            }
         case .transcribing:
             phase = .transcribing
         case .enhancing:
