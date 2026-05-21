@@ -145,6 +145,12 @@ class RecorderUIManager: ObservableObject {
     }
 
     private func mapEngineState(_ state: RecordingState, engine: VoiceInkEngine) {
+        if state == .starting && phase == .done {
+            doneHoldTask?.cancel()
+            phase = .hidden
+            lastPasteAppName = nil
+        }
+
         if phase == .done || phase == .failed { return }
 
         switch state {
