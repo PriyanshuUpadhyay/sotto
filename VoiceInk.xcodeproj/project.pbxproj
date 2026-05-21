@@ -86,6 +86,11 @@
 			path = VoiceInkUITests;
 			sourceTree = "<group>";
 		};
+		B224931919B743488AF331F2 /* Sotto */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = Sotto;
+			sourceTree = "<group>";
+		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -134,6 +139,7 @@
 			isa = PBXGroup;
 			children = (
 				E11473B22CBE0F0A00318EE4 /* VoiceInk */,
+				B224931919B743488AF331F2 /* Sotto */,
 				E11473C62CBE0F0B00318EE4 /* VoiceInkTests */,
 				E11473D02CBE0F0B00318EE4 /* VoiceInkUITests */,
 				E114741C2CBE1DE200318EE4 /* Frameworks */,
@@ -180,6 +186,7 @@
 			);
 			fileSystemSynchronizedGroups = (
 				E11473B22CBE0F0A00318EE4 /* VoiceInk */,
+				B224931919B743488AF331F2 /* Sotto */,
 			);
 			name = VoiceInk;
 			packageProductDependencies = (
