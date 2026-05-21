@@ -50,6 +50,10 @@ final class OnboardingWindowController {
         window?.orderOut(nil)
         window = nil
 
+        // Reveal the main window — configureWindow kept it hidden behind the
+        // onboarding panel on first run.
+        _ = WindowManager.shared.showMainWindow()
+
         guard OnboardingState.shared.shouldPresentHotkeyReminder else { return }
 
         Task { @MainActor in
