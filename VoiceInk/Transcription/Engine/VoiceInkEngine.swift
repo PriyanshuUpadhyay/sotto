@@ -22,6 +22,9 @@ class VoiceInkEngine: NSObject, ObservableObject {
     /// Mutated on the main actor inside `handleDidPaste`.
     @Published var lastPasteEvent: PasteEvent?
 
+    // temporary — f05 replaces this with the FirstAudioGate-backed value
+    var firstAudioObserved: Bool { true }
+
     /// One-shot failure events. `FailureRegistry` subscribes externally; the
     /// engine has no awareness of the registry. Each `send` carries a fresh
     /// `FailureEvent` (UUID + reason + timestamp).

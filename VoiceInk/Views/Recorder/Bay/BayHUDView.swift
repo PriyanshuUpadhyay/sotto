@@ -50,17 +50,18 @@ struct BayHUDView<S: RecorderStateProvider & ObservableObject>: View {
         .animation(reduceMotion ? MotionTokens.reducedFade : MotionTokens.stateEnter,
                    value: ui.phase)
         .onAppear { syncFromManager() }
+        .onChange(of: uiManager.phase) { _, _ in syncFromManager() }
         .onChange(of: stateProvider.recordingState) { _, _ in syncFromManager() }
         .onChange(of: recorder.audioMeter.averagePower) { _, lvl in
             ui.audioLevel = lvl
         }
     }
 
-    // m01 f02 stub: the real reads of `RecorderUIManager.phase`,
-    // `recordingStartedAt`, `formattedActivePromptLabel`, `currentErrorCode`
-    // and `lastPasteAppName` do not exist on the manager yet — they land in
-    // m02 f04, which reverts this body to the wiring described in plan B2.
     private func syncFromManager() {
-        ui.phase = .hidden
+        ui.phase = uiManager.phase
+        ui.recordingStartedAt = uiManager.recordingStartedAt
+        ui.activePromptLabel = uiManager.formattedActivePromptLabel
+        ui.errorCode = uiManager.currentErrorCode
+        ui.lastPasteAppName = uiManager.lastPasteAppName
     }
 }

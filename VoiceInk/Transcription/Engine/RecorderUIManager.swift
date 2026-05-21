@@ -7,6 +7,17 @@ import os
 class RecorderUIManager: ObservableObject {
     @Published var miniRecorderError: String?
 
+    // MARK: - Bay HUD phase observable
+
+    @Published var phase: HaloPhase = .hidden
+    @Published var recordingStartedAt: Date?
+    @Published var formattedActivePromptLabel: String?
+    @Published var currentErrorCode: String?
+    @Published var lastPasteAppName: String?
+
+    private var phaseObservers = Set<AnyCancellable>()
+    private var doneHoldTask: Task<Void, Never>?
+
     @Published var recorderType: String = {
         // Legacy "constellation" value (shipped briefly as a vaporware tile
         // that fell through to mini) → migrate to "mini" on read.
@@ -70,6 +81,7 @@ class RecorderUIManager: ObservableObject {
         self.failureRegistry = failureRegistry
         setupNotifications()
         setupFailureCueObserver(registry: failureRegistry)
+        setupPhaseObservers(engine: engine, registry: failureRegistry)
     }
 
     /// Fire `SoundManager.playFail` on every fresh `FailureEvent` published
@@ -89,6 +101,107 @@ class RecorderUIManager: ObservableObject {
                 }
             }
             .store(in: &stateCueObservers)
+    }
+
+    // MARK: - Bay HUD phase mapping
+
+    private func setupPhaseObservers(engine: VoiceInkEngine, registry: FailureRegistry) {
+        engine.$recordingState
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] state in
+                self?.mapEngineState(state, engine: engine)
+            }
+            .store(in: &phaseObservers)
+
+        registry.$current
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] event in
+                guard let self else { return }
+                if let event {
+                    self.currentErrorCode = Self.errorCode(from: event)
+                    self.phase = .failed
+                } else if self.phase == .failed {
+                    self.phase = .hidden
+                    self.currentErrorCode = nil
+                }
+            }
+            .store(in: &phaseObservers)
+
+        engine.$lastPasteEvent
+            .compactMap { $0 }
+            .removeDuplicates()
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] event in
+                self?.beginDoneHold(appName: event.appName)
+            }
+            .store(in: &phaseObservers)
+
+        $phase
+            .removeDuplicates()
+            .sink { [weak self] new in
+                self?.logger.notice("phase → \(String(describing: new), privacy: .public)")
+            }
+            .store(in: &phaseObservers)
+    }
+
+    private func mapEngineState(_ state: RecordingState, engine: VoiceInkEngine) {
+        if phase == .done || phase == .failed { return }
+
+        switch state {
+        case .idle, .busy:
+            phase = .hidden
+            recordingStartedAt = nil
+        case .starting:
+            phase = .armed
+            if recordingStartedAt == nil { recordingStartedAt = .now }
+        case .recording:
+            phase = engine.firstAudioObserved ? .recording : .armed
+            if recordingStartedAt == nil { recordingStartedAt = .now }
+        case .transcribing:
+            phase = .transcribing
+        case .enhancing:
+            phase = .enhancing
+        }
+
+        formattedActivePromptLabel = Self.formatPromptLabel(
+            engine.enhancementService?.activePrompt?.title
+        )
+    }
+
+    private func beginDoneHold(appName: String?) {
+        doneHoldTask?.cancel()
+        lastPasteAppName = appName
+        phase = .done
+        doneHoldTask = Task { @MainActor [weak self] in
+            try? await Task.sleep(for: .seconds(MotionTokens.committedHold))
+            guard !Task.isCancelled, let self else { return }
+            if self.phase == .done {
+                self.phase = .hidden
+                self.lastPasteAppName = nil
+            }
+        }
+    }
+
+    private static func formatPromptLabel(_ raw: String?) -> String? {
+        guard let raw, !raw.isEmpty else { return nil }
+        let upper = raw.uppercased()
+        if upper.count <= 9 { return upper }
+        let idx = upper.index(upper.startIndex, offsetBy: 9)
+        return String(upper[..<idx])
+    }
+
+    private static func errorCode(from event: FailureEvent) -> String {
+        let r = event.reason.uppercased()
+        if r.contains("MODEL")          { return "ERR · NO_MODEL" }
+        if r.contains("DEVICE") || r.contains("MIC") { return "ERR · NO_DEVICE" }
+        if r.contains("NETWORK")        { return "ERR · NETWORK" }
+        if r.contains("AUDIO")          { return "ERR · NO_AUDIO" }
+        return "ERR · UNKNOWN"
+    }
+
+    func dismissFailedPhase() {
+        guard phase == .failed else { return }
+        failureRegistry?.acknowledgeCurrent()
     }
 
     // MARK: - Recorder Panel Management
