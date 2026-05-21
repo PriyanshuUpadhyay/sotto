@@ -6,13 +6,14 @@ struct AudioBars: View {
     let tint: Color
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.colorSchemeContrast) private var contrast
     @State private var phase: Double = 0
 
     var body: some View {
         HStack(spacing: 2) {
             ForEach(0..<5, id: \.self) { i in
                 Capsule()
-                    .fill(tint.opacity(frozen ? 0.35 : 1))
+                    .fill(tint.opacity(barOpacity))
                     .frame(width: 2.5, height: heightFor(index: i))
             }
         }
@@ -20,6 +21,11 @@ struct AudioBars: View {
         .animation(reduceMotion ? nil : .easeInOut(duration: 0.9).repeatForever(autoreverses: true),
                    value: phase)
         .accessibilityHidden(true)
+    }
+
+    private var barOpacity: Double {
+        guard frozen else { return 1 }
+        return contrast == .increased ? 1 : 0.35
     }
 
     private func heightFor(index i: Int) -> CGFloat {

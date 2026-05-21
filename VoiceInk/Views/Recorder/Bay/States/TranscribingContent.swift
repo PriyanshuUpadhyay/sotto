@@ -11,6 +11,7 @@ struct TranscribingContent: View {
                 MonoLabel(text: "TRANSCRIBING…", size: 10.5, color: Palette.transCyan)
             }
         }
+        .accessibilityElement(children: .ignore)
         .accessibilityLabel("Transcribing")
     }
 }

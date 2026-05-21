@@ -15,6 +15,7 @@ struct CommittedContent: View {
                 color: Palette.commitGreen
             )
         }
+        .accessibilityElement(children: .ignore)
         .accessibilityLabel(ui.lastPasteAppName.map { "Committed, pasted to \($0)" } ?? "Committed")
     }
 }

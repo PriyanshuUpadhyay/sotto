@@ -14,6 +14,7 @@ struct EnhancingContent: View {
         .onAppear { if !reduceMotion { breath = 0.6 } }
         .animation(reduceMotion ? nil : MotionTokens.breathe.repeatForever(autoreverses: true),
                    value: breath)
+        .accessibilityElement(children: .ignore)
         .accessibilityLabel("Enhancing")
     }
 }

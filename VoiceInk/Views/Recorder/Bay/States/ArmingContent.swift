@@ -19,6 +19,7 @@ struct ArmingContent: View {
         }
         .animation(reduceMotion ? nil : MotionTokens.arming.repeatForever(autoreverses: true),
                    value: breath)
+        .accessibilityElement(children: .ignore)
         .accessibilityLabel("Listening")
         .accessibilityAddTraits(.isHeader)
     }
