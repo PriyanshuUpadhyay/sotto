@@ -82,7 +82,14 @@ class PermissionManager: ObservableObject {
     }
 }
 
-struct PermissionCard: View {
+// MARK: - PermissionRow
+//
+// Reusable per-permission row primitive — icon + title + description + status
+// pill + (optional) CTA button. Consumed by `PermissionsView` (Settings pane)
+// wrapped in a Tactical Glass card, and by the m04 ONBOARDING flow which
+// composes its own outer chrome. No outer card / material wrapping here —
+// the host owns the surface.
+struct PermissionRow: View {
     let icon: String
     let title: String
     let description: String
@@ -95,98 +102,132 @@ struct PermissionCard: View {
     @State private var isRefreshing = false
 
     var body: some View {
-        GlassCard(cornerRadius: 14, padding: 20) {
-            VStack(alignment: .leading, spacing: 16) {
-                HStack(spacing: 16) {
-                    // Icon with background
-                    ZStack {
-                        RoundedRectangle(cornerRadius: 10, style: .continuous)
-                            .fill((isGranted ? Palette.success : Palette.warn).opacity(0.18))
-                            .frame(width: 44, height: 44)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 10, style: .continuous)
-                                    .stroke((isGranted ? Palette.success : Palette.warn).opacity(0.36), lineWidth: 0.5)
-                            )
-
-                        Image(systemName: isGranted ? "\(icon).fill" : icon)
-                            .font(.system(size: 20, weight: .semibold))
-                            .foregroundColor(isGranted ? Palette.success : Palette.warn)
-                            .symbolRenderingMode(.hierarchical)
-                    }
-
-                    VStack(alignment: .leading, spacing: 4) {
-                        HStack {
-                            Text(title)
-                                .font(.headline)
-                            if let message = infoTipMessage {
-                                if let link = infoTipLink, !link.isEmpty {
-                                    InfoTip(message, learnMoreURL: link)
-                                } else {
-                                    InfoTip(message)
-                                }
-                            }
-                        }
-                        Text(description)
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                    }
-
-                    Spacer()
-
-                    // Status indicator with refresh
-                    HStack(spacing: 12) {
-                        Button(action: {
-                            withAnimation(Animation.haloExpand) {
-                                isRefreshing = true
-                            }
-                            checkPermission()
-
-                            // Reset the animation after a delay
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                                isRefreshing = false
-                            }
-                        }) {
-                            Image(systemName: "arrow.clockwise")
-                                .font(.system(size: 14, weight: .medium))
-                                .foregroundColor(.secondary)
-                                .rotationEffect(.degrees(isRefreshing ? 360 : 0))
-                        }
-                        .buttonStyle(.plain)
-                        .contentShape(Rectangle())
-
-                        StatusPill(
-                            text: isGranted ? "Granted" : "Needs Access",
-                            tone: isGranted ? .positive : .warning
-                        )
-                    }
-                }
-
-                if !isGranted {
-                    Button(action: buttonAction) {
-                        HStack {
-                            Text(buttonTitle)
-                                .font(.system(size: 14, weight: .semibold))
-                            Spacer()
-                            Image(systemName: "arrow.right")
-                                .font(.system(size: 13, weight: .semibold))
-                        }
-                        .foregroundColor(.white)
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 12)
-                        .frame(maxWidth: .infinity)
-                        .background(
-                            RoundedRectangle(cornerRadius: 10, style: .continuous)
-                                .fill(Palette.accent)
-                        )
+        VStack(alignment: .leading, spacing: 16) {
+            HStack(spacing: 16) {
+                // Icon with background
+                ZStack {
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .fill((isGranted ? Palette.success : Palette.warn).opacity(0.18))
+                        .frame(width: 44, height: 44)
                         .overlay(
                             RoundedRectangle(cornerRadius: 10, style: .continuous)
-                                .stroke(Palette.hairline, lineWidth: 1)
+                                .stroke((isGranted ? Palette.success : Palette.warn).opacity(0.36), lineWidth: 0.5)
                         )
+
+                    Image(systemName: isGranted ? "\(icon).fill" : icon)
+                        .font(.system(size: 20, weight: .semibold))
+                        .foregroundColor(isGranted ? Palette.success : Palette.warn)
+                        .symbolRenderingMode(.hierarchical)
+                }
+
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack {
+                        Text(title)
+                            .font(.headline)
+                        if let message = infoTipMessage {
+                            if let link = infoTipLink, !link.isEmpty {
+                                InfoTip(message, learnMoreURL: link)
+                            } else {
+                                InfoTip(message)
+                            }
+                        }
+                    }
+                    Text(description)
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                }
+
+                Spacer()
+
+                // Status indicator with refresh
+                HStack(spacing: 12) {
+                    Button(action: {
+                        withAnimation(Animation.haloExpand) {
+                            isRefreshing = true
+                        }
+                        checkPermission()
+
+                        // Reset the animation after a delay
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                            isRefreshing = false
+                        }
+                    }) {
+                        Image(systemName: "arrow.clockwise")
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundColor(.secondary)
+                            .rotationEffect(.degrees(isRefreshing ? 360 : 0))
                     }
                     .buttonStyle(.plain)
+                    .contentShape(Rectangle())
+
+                    StatusPill(
+                        text: isGranted ? "Granted" : "Needs Access",
+                        tone: isGranted ? .positive : .warning
+                    )
                 }
             }
+
+            if !isGranted {
+                Button(action: buttonAction) {
+                    HStack {
+                        Text(buttonTitle)
+                            .font(.system(size: 14, weight: .semibold))
+                        Spacer()
+                        Image(systemName: "arrow.right")
+                            .font(.system(size: 13, weight: .semibold))
+                    }
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 12)
+                    .frame(maxWidth: .infinity)
+                    .background(
+                        RoundedRectangle(cornerRadius: 10, style: .continuous)
+                            .fill(Palette.brandAcid)
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 10, style: .continuous)
+                            .stroke(Palette.hairline, lineWidth: 1)
+                    )
+                }
+                .buttonStyle(.plain)
+            }
         }
+    }
+}
+
+// MARK: - PermissionCard
+//
+// Settings-pane host for a `PermissionRow`. Wraps the row in a Tactical Glass
+// card so the Settings surface matches Sotto §1 vocabulary. ONBOARDING uses
+// `PermissionRow` directly without this wrapper.
+struct PermissionCard: View {
+    let icon: String
+    let title: String
+    let description: String
+    let isGranted: Bool
+    let buttonTitle: String
+    let buttonAction: () -> Void
+    let checkPermission: () -> Void
+    var infoTipMessage: String?
+    var infoTipLink: String?
+
+    var body: some View {
+        let shape = RoundedRectangle(cornerRadius: 14, style: .continuous)
+        return PermissionRow(
+            icon: icon,
+            title: title,
+            description: description,
+            isGranted: isGranted,
+            buttonTitle: buttonTitle,
+            buttonAction: buttonAction,
+            checkPermission: checkPermission,
+            infoTipMessage: infoTipMessage,
+            infoTipLink: infoTipLink
+        )
+        .padding(20)
+        .background(TacticalGlass(shape: shape, phase: .hidden))
+        .overlay(shape.stroke(Palette.hairline, lineWidth: 1))
+        .clipShape(shape)
     }
 }
 

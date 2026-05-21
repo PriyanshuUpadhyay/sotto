@@ -13,7 +13,7 @@ final class ModelPrewarmService: ObservableObject {
     /// nil-safe: if not wired, MLX prewarm degrades to no-op (recording-start
     /// hook still fires).
     private weak var enhancementService: AIEnhancementService?
-    private let logger = Logger(subsystem: "com.prakashjoshipax.voiceink", category: "ModelPrewarm")
+    private let logger = Logger(subsystem: OSLogSubsystems.app, category: "ModelPrewarm")
     private lazy var serviceRegistry = TranscriptionServiceRegistry(
         modelProvider: whisperModelManager,
         modelsDirectory: whisperModelManager.modelsDirectory,

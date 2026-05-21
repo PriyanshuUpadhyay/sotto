@@ -35,7 +35,7 @@ struct ConfigurationSummaryCard: View {
     var body: some View {
         SettingsCard(
             iconSystemName: "checkmark.seal",
-            iconTint: Palette.accent,
+            iconTint: Palette.brandAcid,
             title: "What's configured",
             subtitle: "At-a-glance view of the active setup."
         ) {
@@ -142,15 +142,15 @@ private struct SummaryRow: View {
     var body: some View {
         HStack(alignment: .center, spacing: 10) {
             RoundedRectangle(cornerRadius: 6, style: .continuous)
-                .fill(Palette.accent.opacity(0.14))
+                .fill(Palette.brandAcid.opacity(0.14))
                 .overlay(
                     RoundedRectangle(cornerRadius: 6, style: .continuous)
-                        .stroke(Palette.accent.opacity(0.28), lineWidth: 0.5)
+                        .stroke(Palette.brandAcid.opacity(0.28), lineWidth: 0.5)
                 )
                 .overlay(
                     Image(systemName: icon)
                         .font(.system(size: 11, weight: .semibold))
-                        .foregroundColor(Palette.accent)
+                        .foregroundColor(Palette.brandAcid)
                 )
                 .frame(width: 22, height: 22)
 

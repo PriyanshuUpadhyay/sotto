@@ -29,7 +29,7 @@ final class CueSynthesizer {
     private let sampleRate: Double = 44_100
     private let format: AVAudioFormat
     private var didWarmUp = false
-    private let logger = Logger(subsystem: "com.prakashjoshipax.voiceink", category: "CueSynthesizer")
+    private let logger = Logger(subsystem: OSLogSubsystems.app, category: "CueSynthesizer")
 
     /// Master gain applied to every generated buffer. Tuned so the loudest cue
     /// (start pluck — single voice peaking near 1.0) sits comfortably below

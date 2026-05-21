@@ -37,7 +37,7 @@ struct WhisperModelCardView: View {
         .overlay(
             RoundedRectangle(cornerRadius: 16, style: .continuous)
                 .stroke(
-                    isCurrent ? Palette.accent.opacity(0.55) : Palette.hairline,
+                    isCurrent ? Palette.brandAcid.opacity(0.55) : Palette.hairline,
                     lineWidth: isCurrent ? 1.5 : 1
                 )
         )
@@ -148,8 +148,8 @@ struct WhisperModelCardView: View {
                     .padding(.vertical, 6)
                     .background(
                         Capsule()
-                            .fill(Palette.accent)
-                            .shadow(color: Palette.accent.opacity(0.2), radius: 2, x: 0, y: 1)
+                            .fill(Palette.brandAcid)
+                            .shadow(color: Palette.brandAcid.opacity(0.2), radius: 2, x: 0, y: 1)
                     )
                 }
                 .buttonStyle(.plain)
@@ -251,7 +251,7 @@ struct ImportedWhisperModelCardView: View {
         .overlay(
             RoundedRectangle(cornerRadius: 16, style: .continuous)
                 .stroke(
-                    isCurrent ? Palette.accent.opacity(0.55) : Palette.hairline,
+                    isCurrent ? Palette.brandAcid.opacity(0.55) : Palette.hairline,
                     lineWidth: isCurrent ? 1.5 : 1
                 )
         )

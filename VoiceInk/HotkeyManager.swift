@@ -67,7 +67,7 @@ class HotkeyManager: ObservableObject {
         }
     }
     
-    private let logger = Logger(subsystem: "com.prakashjoshipax.voiceink", category: "HotkeyManager")
+    private let logger = Logger(subsystem: OSLogSubsystems.app, category: "HotkeyManager")
     private var engine: VoiceInkEngine
     private var recorderUIManager: RecorderUIManager
     private var miniRecorderShortcutManager: MiniRecorderShortcutManager
@@ -308,6 +308,7 @@ class HotkeyManager: ObservableObject {
                     
                     Task { @MainActor in
                         guard self.canProcessHotkeyAction else { return }
+                        self.markFirstHotkeyInvocation()
                         await self.recorderUIManager.toggleMiniRecorder()
                     }
                 } catch {
@@ -455,6 +456,7 @@ class HotkeyManager: ObservableObject {
 
         if isKeyPressed {
             keyPressEventTime = eventTime
+            markFirstHotkeyInvocation()
 
             switch mode {
             case .toggle, .hybrid:
@@ -527,6 +529,7 @@ class HotkeyManager: ObservableObject {
         shortcutCurrentKeyState = true
         lastShortcutTriggerTime = Date()
         shortcutKeyPressEventTime = eventTime
+        markFirstHotkeyInvocation()
 
         switch mode {
         case .toggle, .hybrid:
@@ -595,7 +598,13 @@ class HotkeyManager: ObservableObject {
             setupHotkeyMonitoring()
         }
     }
-    
+
+    private func markFirstHotkeyInvocation() {
+        guard !OnboardingState.shared.firstInvocationDidFire else { return }
+        OnboardingState.shared.markFirstInvocation()
+        NotificationCenter.default.post(name: .firstInvocationDidFire, object: nil)
+    }
+
     deinit {
         Task { @MainActor in
             removeAllMonitoring()

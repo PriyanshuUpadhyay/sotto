@@ -88,7 +88,7 @@ struct APIKeyManagementView: View {
     var body: some View {
         SettingsCard(
             iconSystemName: "sparkles.rectangle.stack",
-            iconTint: Palette.accent,
+            iconTint: Palette.brandAcid,
             title: "AI Provider Integration",
             subtitle: "Pick the model that shapes enhanced transcripts.",
             statusText: providerStatusText,
@@ -218,7 +218,7 @@ struct StatusPill: View {
         var color: Color {
             switch self {
             case .positive: return Palette.success
-            case .negative: return Palette.accent
+            case .negative: return Palette.brandAcid
             case .neutral:  return Palette.neutral
             case .warning:  return Palette.warn
             }

@@ -32,7 +32,7 @@ final class HandsFreeSessionService: ObservableObject {
     private var commitTask: Task<Void, Never>?
     private var sleepObserver: NSObjectProtocol?
 
-    private let logger = Logger(subsystem: "com.prakashjoshipax.voiceink",
+    private let logger = Logger(subsystem: OSLogSubsystems.app,
                                 category: "HandsFreeSessionService")
 
     enum EndReason: String {

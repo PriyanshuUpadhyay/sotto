@@ -218,7 +218,7 @@ class AIService: ObservableObject {
         }
     }
 
-    private static let validityLogger = Logger(subsystem: "com.prakashjoshipax.voiceink", category: "AIService.validity")
+    private static let validityLogger = Logger(subsystem: OSLogSubsystems.app, category: "AIService.validity")
 
     private static func computeAPIKeyValidity(for provider: AIProvider, localCLIService: LocalCLIService) -> Bool {
         switch provider {
@@ -595,7 +595,7 @@ class AIService: ObservableObject {
         do {
             try await provider.warm(source: source)
         } catch {
-            Logger(subsystem: "com.prakashjoshipax.voiceink", category: "AIService")
+            Logger(subsystem: OSLogSubsystems.app, category: "AIService")
                 .notice("🦾 warmMLX failed: \(error.localizedDescription, privacy: .public)")
         }
     }

@@ -17,7 +17,7 @@ final class ScratchpadStore: ObservableObject {
     private static let versionInterval: TimeInterval = 30  // seconds
 
     private let modelContext: ModelContext
-    private let logger = Logger(subsystem: "com.prakashjoshipax.voiceink",
+    private let logger = Logger(subsystem: OSLogSubsystems.app,
                                  category: "ScratchpadStore")
 
     @Published private(set) var documents: [ScratchpadDocument] = []

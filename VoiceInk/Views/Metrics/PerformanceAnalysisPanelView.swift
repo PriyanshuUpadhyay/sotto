@@ -65,9 +65,9 @@ struct PerformanceAnalysisPanelView: View {
             sectionHeader("Summary")
 
             HStack(spacing: 10) {
-                summaryPill(icon: "doc.text.fill", value: "\(analysis.totalTranscripts)", label: "Total", color: Palette.accent)
-                summaryPill(icon: "waveform.path.ecg", value: "\(analysis.totalWithTranscriptionData)", label: "Analyzable", color: Palette.accent)
-                summaryPill(icon: "sparkles", value: "\(analysis.totalEnhancedFiles)", label: "Enhanced", color: Palette.accent)
+                summaryPill(icon: "doc.text.fill", value: "\(analysis.totalTranscripts)", label: "Total", color: Palette.brandAcid)
+                summaryPill(icon: "waveform.path.ecg", value: "\(analysis.totalWithTranscriptionData)", label: "Analyzable", color: Palette.brandAcid)
+                summaryPill(icon: "sparkles", value: "\(analysis.totalEnhancedFiles)", label: "Enhanced", color: Palette.brandAcid)
             }
         }
     }
@@ -171,7 +171,7 @@ struct PerformanceAnalysisPanelView: View {
             VStack(spacing: 3) {
                 Text(String(format: "%.1fx", modelStat.speedFactor))
                     .font(.system(size: 24, weight: .bold, design: .rounded))
-                    .foregroundColor(Palette.accent)
+                    .foregroundColor(Palette.brandAcid)
                 Text("Faster than Real-time")
                     .font(.system(size: 10))
                     .foregroundColor(.secondary)
@@ -185,7 +185,7 @@ struct PerformanceAnalysisPanelView: View {
                 VStack(spacing: 2) {
                     Text(formatDuration(modelStat.avgAudioDuration))
                         .font(.system(size: 11, weight: .semibold, design: .monospaced))
-                        .foregroundColor(Palette.accent)
+                        .foregroundColor(Palette.brandAcid)
                     Text("Avg. Audio")
                         .font(.system(size: 9))
                         .foregroundColor(.secondary)
@@ -199,7 +199,7 @@ struct PerformanceAnalysisPanelView: View {
                 VStack(spacing: 2) {
                     Text(String(format: "%.2fs", modelStat.avgProcessingTime))
                         .font(.system(size: 11, weight: .semibold, design: .monospaced))
-                        .foregroundColor(Palette.accent)
+                        .foregroundColor(Palette.brandAcid)
                     Text("Avg. Processing")
                         .font(.system(size: 9))
                         .foregroundColor(.secondary)
@@ -208,7 +208,7 @@ struct PerformanceAnalysisPanelView: View {
             }
         }
         .padding(14)
-        .background(MetricCardBackground(color: Palette.accent))
+        .background(MetricCardBackground(color: Palette.brandAcid))
         .cornerRadius(12)
     }
 
@@ -244,14 +244,14 @@ struct PerformanceAnalysisPanelView: View {
             VStack(spacing: 3) {
                 Text(String(format: "%.2f s", modelStat.avgProcessingTime))
                     .font(.system(size: 24, weight: .bold, design: .rounded))
-                    .foregroundColor(Palette.accent)
+                    .foregroundColor(Palette.brandAcid)
                 Text("Avg. Enhancement Time")
                     .font(.system(size: 10))
                     .foregroundColor(.secondary)
             }
         }
         .padding(14)
-        .background(MetricCardBackground(color: Palette.accent))
+        .background(MetricCardBackground(color: Palette.brandAcid))
         .cornerRadius(12)
     }
 

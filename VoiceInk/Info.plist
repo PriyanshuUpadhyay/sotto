@@ -2,6 +2,10 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>CFBundleDisplayName</key>
+	<string>Sotto</string>
+	<key>CFBundleName</key>
+	<string>Sotto</string>
 	<key>SUEnableInstallerLauncherService</key>
 	<true/>
 	<key>SUFeedURL</key>
@@ -13,11 +17,11 @@
 	<key>SUEnableAutomaticChecks</key>
 	<true/>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>VoiceInk needs access to your microphone to record audio for transcription.</string>
+	<string>Sotto needs access to your microphone to record audio for transcription.</string>
 	<key>NSAppleEventsUsageDescription</key>
-	<string>VoiceInk needs to interact with your browser to detect the current website for applying website-specific configurations.</string>
+	<string>Sotto needs to interact with your browser to detect the current website for applying website-specific configurations.</string>
 	<key>NSScreenCaptureUsageDescription</key>
-	<string>VoiceInk needs screen recording access to understand context from your screen for improved transcription accuracy.</string>
+	<string>Sotto needs screen recording access to understand context from your screen for improved transcription accuracy.</string>
 	<key>CFBundleDocumentTypes</key>
 	<array>
 		<dict>

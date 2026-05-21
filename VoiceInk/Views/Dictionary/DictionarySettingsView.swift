@@ -69,9 +69,16 @@ struct DictionarySettingsView: View {
     private var sectionSelector: some View {
         VStack(alignment: .leading, spacing: 20) {
             HStack {
-                Text("Select Section")
-                    .font(.title2)
-                    .fontWeight(.semibold)
+                HStack(spacing: 4) {
+                    Text("›")
+                        .font(.system(size: 12, design: .monospaced).weight(.bold))
+                        .foregroundStyle(Palette.brandAcid)
+                        .accessibilityHidden(true)
+                    Text("SELECT SECTION")
+                        .font(.system(size: 12, design: .monospaced).weight(.bold))
+                        .tracking(0.16 * 12)
+                        .foregroundStyle(Color.white.opacity(0.42))
+                }
 
                 Spacer()
 
@@ -80,11 +87,12 @@ struct DictionarySettingsView: View {
                         isShowingSettings.toggle()
                     }
                 } label: {
-                    Image(systemName: "gear")
-                        .font(.system(size: 18, weight: .medium))
-                        .foregroundColor(isShowingSettings ? .accentColor : .secondary)
+                    Text("⚙")
+                        .font(.system(size: 14, design: .monospaced))
+                        .foregroundStyle(isShowingSettings ? Palette.brandAcid : Color.white.opacity(0.42))
                 }
                 .buttonStyle(.plain)
+                .accessibilityLabel("Dictionary settings")
                 .help("Dictionary settings")
             }
 
@@ -121,45 +129,45 @@ struct SectionCard: View {
     let isSelected: Bool
     let action: () -> Void
 
-    let accent: Color = Palette.accent
-
     var body: some View {
         Button(action: action) {
-            VStack(alignment: .leading, spacing: 14) {
-                // Rounded icon tile in the section's accent — mirrors
-                // SettingsSectionHeader's icon treatment.
-                RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .fill(accent.opacity(isSelected ? 0.20 : 0.12))
+            VStack(alignment: .leading, spacing: 12) {
+                RoundedRectangle(cornerRadius: 4, style: .continuous)
+                    .fill(Palette.brandAcid.opacity(isSelected ? 0.18 : 0.08))
                     .overlay(
-                        RoundedRectangle(cornerRadius: 10, style: .continuous)
-                            .stroke(accent.opacity(isSelected ? 0.40 : 0.22), lineWidth: 0.5)
+                        RoundedRectangle(cornerRadius: 4, style: .continuous)
+                            .stroke(Palette.brandAcid.opacity(isSelected ? 0.40 : 0.16), lineWidth: 0.5)
                     )
                     .overlay(
                         Image(systemName: section.icon)
-                            .font(.system(size: 18, weight: .semibold))
-                            .symbolRenderingMode(.hierarchical)
-                            .foregroundStyle(accent)
+                            .font(.system(size: 16, weight: .semibold))
+                            .symbolRenderingMode(.monochrome)
+                            .foregroundStyle(Palette.brandAcid)
                     )
-                    .frame(width: 40, height: 40)
+                    .frame(width: 36, height: 36)
 
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(section.rawValue)
-                        .font(.system(size: 15, weight: .semibold))
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(section.rawValue.uppercased())
+                        .font(.system(size: 12, design: .monospaced).weight(.bold))
+                        .tracking(0.16 * 12)
+                        .foregroundStyle(isSelected ? Palette.brandAcid : .primary)
 
                     Text(section.description)
-                        .font(.system(size: 12))
-                        .foregroundStyle(.secondary)
+                        .font(.system(size: 11, design: .monospaced))
+                        .foregroundStyle(Color.white.opacity(0.42))
                         .fixedSize(horizontal: false, vertical: true)
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(16)
-            .modifier(GlassChip(cornerRadius: 16, paddingH: 0, paddingV: 0))
+            .padding(14)
+            .modifier(GlassChip(cornerRadius: 4, paddingH: 0, paddingV: 0))
             .overlay(
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .strokeBorder(Palette.accent.opacity(isSelected ? 0.5 : 0), lineWidth: 1.5)
+                RoundedRectangle(cornerRadius: 4, style: .continuous)
+                    .strokeBorder(Palette.brandAcid.opacity(isSelected ? 0.5 : 0), lineWidth: 1)
             )
         }
         .buttonStyle(.plain)
+        .accessibilityLabel(section.rawValue)
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 }

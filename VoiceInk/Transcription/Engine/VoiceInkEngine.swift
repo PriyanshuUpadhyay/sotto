@@ -48,7 +48,7 @@ class VoiceInkEngine: NSObject, ObservableObject {
     private let pipeline: TranscriptionPipeline
     private let failureRegistry: FailureRegistry
 
-    let logger = Logger(subsystem: "com.prakashjoshipax.voiceink", category: "VoiceInkEngine")
+    let logger = Logger(subsystem: OSLogSubsystems.app, category: "VoiceInkEngine")
 
     init(
         modelContext: ModelContext,

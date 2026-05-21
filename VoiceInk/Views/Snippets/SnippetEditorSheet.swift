@@ -68,7 +68,7 @@ struct SnippetEditorSheet: View {
                 Button("Save", action: validateAndSave)
                     .keyboardShortcut(.defaultAction)
                     .buttonStyle(.borderedProminent)
-                    .tint(Palette.accent)
+                    .tint(Palette.brandAcid)
             }
         }
         .padding(20)

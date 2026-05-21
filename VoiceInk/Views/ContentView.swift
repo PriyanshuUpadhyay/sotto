@@ -59,7 +59,7 @@ struct VisualEffectView: NSViewRepresentable {
 }
 
 struct ContentView: View {
-    private let logger = Logger(subsystem: "com.prakashjoshipax.voiceink", category: "ContentView")
+    private let logger = Logger(subsystem: OSLogSubsystems.app, category: "ContentView")
     @Environment(\.modelContext) private var modelContext
     @Environment(\.colorScheme) private var colorScheme
     @EnvironmentObject private var engine: VoiceInkEngine
@@ -96,19 +96,15 @@ struct ContentView: View {
         NavigationSplitView {
             List(selection: $selectedView) {
                 Section {
-                    // App Header
-                    HStack(spacing: 6) {
-                        if let appIcon = NSImage(named: "AppIcon") {
-                            Image(nsImage: appIcon)
-                                .resizable()
-                                .aspectRatio(contentMode: .fit)
-                                .frame(width: 28, height: 28)
-                                .cornerRadius(8)
-                        }
-
-                        Text("VoiceInk")
-                            .font(.system(size: 14, weight: .semibold))
-
+                    // Sotto wordmark — spec §1.4. Mono wordmark with acid stop
+                    // on the trailing period.
+                    HStack(spacing: 0) {
+                        Text("Sotto")
+                            .font(.system(size: 15, design: .monospaced).weight(.bold))
+                            .foregroundStyle(.primary)
+                        Text(".")
+                            .font(.system(size: 15, design: .monospaced).weight(.black))
+                            .foregroundStyle(Palette.brandAcid)
                         Spacer()
                     }
                     .padding(.vertical, 4)
@@ -119,7 +115,8 @@ struct ContentView: View {
                         NavigationLink(value: viewType) {
                             SidebarItemView(
                                 viewType: viewType,
-                                isConfigured: isConfigured(viewType)
+                                isConfigured: isConfigured(viewType),
+                                isSelected: viewType == selectedView
                             )
                         }
                         .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
@@ -128,8 +125,8 @@ struct ContentView: View {
                 }
             }
             .listStyle(.sidebar)
-            .tint(Palette.accent)
-            .navigationTitle("VoiceInk")
+            .tint(Palette.brandAcid)
+            .navigationTitle("Sotto")
             .navigationSplitViewColumnWidth(210)
         } detail: {
             if let selectedView = selectedView {
@@ -273,29 +270,37 @@ private struct SidebarItemView: View {
     /// signal without restructuring the IA. Subtle, low-saturation; no new
     /// colors. Skipped panes pass `false` so the dot is hidden.
     let isConfigured: Bool
+    /// Sotto §1 — when this row is the currently-selected detail target,
+    /// the `›` prompt + label flip to acid + primary; otherwise ghost.
+    let isSelected: Bool
 
     var body: some View {
-        HStack(spacing: 12) {
-            Image(systemName: viewType.icon)
-                .font(.system(size: 18, weight: .medium))
-                .frame(width: 24, height: 24)
+        HStack(spacing: 6) {
+            Text("›")
+                .font(.system(size: 13, design: .monospaced).weight(.bold))
+                .foregroundStyle(isSelected ? Palette.brandAcid : Color.white.opacity(0.42))
+                .accessibilityHidden(true)
 
-            Text(viewType.rawValue)
-                .font(.system(size: 14, weight: .medium))
+            Text(viewType.rawValue.uppercased())
+                .font(.system(size: 12, design: .monospaced).weight(.bold))
+                .tracking(0.16 * 12)
+                .foregroundStyle(isSelected ? Color.primary : Color.white.opacity(0.42))
 
             Spacer()
 
             if isConfigured {
                 Circle()
-                    .fill(Palette.accent.opacity(0.85))
-                    .frame(width: 6, height: 6)
+                    .fill(Palette.brandAcid.opacity(0.75))
+                    .frame(width: 5, height: 5)
                     .accessibilityLabel("Configured")
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .contentShape(Rectangle())
-        .padding(.vertical, 8)
-        .padding(.horizontal, 2)
+        .padding(.vertical, 6)
+        .padding(.horizontal, 4)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(viewType.rawValue)
     }
 }
 

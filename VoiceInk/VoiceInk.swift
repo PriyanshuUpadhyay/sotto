@@ -49,12 +49,18 @@ struct VoiceInkApp: App {
 
         AppDefaults.registerDefaults()
 
+        // Rename migration MUST run before any persistent-storage access
+        // (createPersistentContainer below reads the app-support directory).
+        // Each sub-shim is sentinel-gated, so it's a no-op on fresh installs
+        // and on the second launch after a successful migration. Spec §7.1.
+        SottoBundleIdentityMigration.run()
+
         if UserDefaults.standard.object(forKey: "powerModeUIFlag") == nil {
             let hasEnabledPowerModes = PowerModeManager.shared.configurations.contains { $0.isEnabled }
             UserDefaults.standard.set(hasEnabledPowerModes, forKey: "powerModeUIFlag")
         }
 
-        let logger = Logger(subsystem: "com.prakashjoshipax.voiceink", category: "Initialization")
+        let logger = Logger(subsystem: OSLogSubsystems.app, category: "Initialization")
         let schema = Schema([
             Transcription.self,
             VocabularyWord.self,
@@ -138,7 +144,7 @@ struct VoiceInkApp: App {
 
         // 1. Create modelsDirectory URL
         let appSupportDirectory = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("com.prakashjoshipax.VoiceInk")
+            .appendingPathComponent(SottoBundleIdentityMigration.newAppSupportDirName)
         let modelsDirectory = appSupportDirectory.appendingPathComponent("WhisperModels")
 
         // 2. Create model managers
@@ -284,7 +290,7 @@ struct VoiceInkApp: App {
         do {
             // Create app-specific Application Support directory URL
             let appSupportURL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-                .appendingPathComponent("com.prakashjoshipax.VoiceInk", isDirectory: true)
+                .appendingPathComponent(SottoBundleIdentityMigration.newAppSupportDirName, isDirectory: true)
 
             // Create the directory if it doesn't exist
             try? FileManager.default.createDirectory(at: appSupportURL, withIntermediateDirectories: true)
@@ -371,7 +377,7 @@ struct VoiceInkApp: App {
     private static func createPersistentStatsContainer(schema: Schema, logger: Logger) -> ModelContainer? {
         do {
             let appSupportURL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-                .appendingPathComponent("com.prakashjoshipax.VoiceInk", isDirectory: true)
+                .appendingPathComponent(SottoBundleIdentityMigration.newAppSupportDirName, isDirectory: true)
             try? FileManager.default.createDirectory(at: appSupportURL, withIntermediateDirectories: true)
 
             let statsStoreURL = appSupportURL.appendingPathComponent("stats.store")
@@ -460,6 +466,11 @@ struct VoiceInkApp: App {
 
                         // Stop the automatic audio cleanup process
                         audioCleanupManager.stopAutomaticCleanup()
+                    }
+                    .onAppear {
+                        if !OnboardingState.shared.completed {
+                            OnboardingWindowController.shared.present()
+                        }
                     }
         }
         .windowStyle(.hiddenTitleBar)

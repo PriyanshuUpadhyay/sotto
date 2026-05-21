@@ -1,7 +1,7 @@
 import SwiftUI
 import os
 
-private let mlxPickerLogger = Logger(subsystem: "com.prakashjoshipax.voiceink", category: "MLXModelPicker")
+private let mlxPickerLogger = Logger(subsystem: OSLogSubsystems.app, category: "MLXModelPicker")
 
 // MARK: - MLXModelPickerView
 //
@@ -103,12 +103,12 @@ struct MLXModelPickerView: View {
         .glassPanel(cornerRadius: 14)
         .overlay(
             RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(isActive ? Palette.accent.opacity(0.10) : Color.clear)
+                .fill(isActive ? Palette.brandAcid.opacity(0.10) : Color.clear)
                 .allowsHitTesting(false)
         )
         .overlay(
             RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .stroke(isActive ? Palette.accent.opacity(0.55) : Palette.hairline,
+                .stroke(isActive ? Palette.brandAcid.opacity(0.55) : Palette.hairline,
                         lineWidth: isActive ? 1.5 : 1)
         )
     }
@@ -117,11 +117,11 @@ struct MLXModelPickerView: View {
         Text("ACTIVE")
             .font(.system(size: 9.5, weight: .semibold, design: .monospaced))
             .tracking(0.06 * 9.5)
-            .foregroundColor(Palette.accent)
+            .foregroundColor(Palette.brandAcid)
             .padding(.horizontal, 7)
             .padding(.vertical, 2.5)
-            .background(Capsule().fill(Palette.accent.opacity(0.16)))
-            .overlay(Capsule().stroke(Palette.accent.opacity(0.42), lineWidth: 0.5))
+            .background(Capsule().fill(Palette.brandAcid.opacity(0.16)))
+            .overlay(Capsule().stroke(Palette.brandAcid.opacity(0.42), lineWidth: 0.5))
     }
 
     private var experimentalChip: some View {
@@ -218,7 +218,7 @@ struct MLXModelPickerView: View {
                 Text("Failed")
                     .font(.system(size: 10.5, weight: .semibold, design: .monospaced))
                     .tracking(0.06 * 10.5)
-                    .foregroundColor(Palette.accent)
+                    .foregroundColor(Palette.brandAcid)
                 Text(msg)
                     .font(.caption2)
                     .foregroundStyle(.secondary)
@@ -231,7 +231,7 @@ struct MLXModelPickerView: View {
     }
 
     /// W6 chip-vocabulary download progress — replaces the bare ProgressView.
-    /// Width 110pt; `Palette.accent` fills the leading portion proportional
+    /// Width 110pt; `Palette.brandAcid` fills the leading portion proportional
     /// to `fraction`; the trailing remainder shows the hairline track. Motion
     /// matches `Animation.clusterFadeReduced` (0.18s linear) so the bar reads
     /// the same as the cluster's collapse vocabulary. Spec §5#6.
@@ -245,7 +245,7 @@ struct MLXModelPickerView: View {
                     .fill(Color.white.opacity(0.05))
                     .overlay(Capsule().stroke(Palette.hairline, lineWidth: 0.5))
                 Capsule()
-                    .fill(Palette.accent.opacity(0.55))
+                    .fill(Palette.brandAcid.opacity(0.55))
                     .frame(width: width * clamped)
                     .animation(.linear(duration: 0.18), value: clamped)
                 Text("\(pct)%")
@@ -323,12 +323,12 @@ struct MLXModelPickerView: View {
         .glassPanel(cornerRadius: 14)
         .overlay(
             RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(isActive ? Palette.accent.opacity(0.10) : Color.clear)
+                .fill(isActive ? Palette.brandAcid.opacity(0.10) : Color.clear)
                 .allowsHitTesting(false)
         )
         .overlay(
             RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .stroke(isActive ? Palette.accent.opacity(0.55) : Palette.hairline,
+                .stroke(isActive ? Palette.brandAcid.opacity(0.55) : Palette.hairline,
                         lineWidth: isActive ? 1.5 : 1)
         )
     }

@@ -51,7 +51,7 @@ actor AFMProvider {
         }
     }
 
-    nonisolated static let logger = Logger(subsystem: "com.prakashjoshipax.voiceink", category: "AFMProvider")
+    nonisolated static let logger = Logger(subsystem: OSLogSubsystems.app, category: "AFMProvider")
 
     init() {}
 

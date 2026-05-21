@@ -666,7 +666,7 @@ actor MLXProvider {
     }
     #endif
 
-    nonisolated static let logger = Logger(subsystem: "com.prakashjoshipax.voiceink", category: "MLXProvider")
+    nonisolated static let logger = Logger(subsystem: OSLogSubsystems.app, category: "MLXProvider")
 
     // MARK: - Idle eviction
 

@@ -154,7 +154,7 @@ struct ModelsView: View {
                 secondaryButton: .cancel()
             )
         }
-        .tint(Palette.accent)
+        .tint(Palette.brandAcid)
     }
 
     // MARK: Top-level tab header (W14F)
@@ -310,7 +310,7 @@ struct ModelsView: View {
                 Text("ACTIVE MODEL")
                     .font(.system(size: 10.5, weight: .semibold, design: .monospaced))
                     .tracking(0.06 * 10.5)
-                    .foregroundColor(Palette.accent)
+                    .foregroundColor(Palette.brandAcid)
                 Rectangle()
                     .fill(Palette.hairlineSoft)
                     .frame(height: 1)
@@ -320,12 +320,12 @@ struct ModelsView: View {
                 // Pictogram tile.
                 ZStack {
                     RoundedRectangle(cornerRadius: 9, style: .continuous)
-                        .fill(Palette.accent.opacity(0.18))
+                        .fill(Palette.brandAcid.opacity(0.18))
                     RoundedRectangle(cornerRadius: 9, style: .continuous)
-                        .stroke(Palette.accent.opacity(0.36), lineWidth: 0.5)
+                        .stroke(Palette.brandAcid.opacity(0.36), lineWidth: 0.5)
                     Image(systemName: "waveform")
                         .font(.system(size: 18, weight: .semibold))
-                        .foregroundColor(Palette.accent)
+                        .foregroundColor(Palette.brandAcid)
                 }
                 .frame(width: 44, height: 44)
 
@@ -340,11 +340,11 @@ struct ModelsView: View {
                             Text("ACTIVE")
                                 .font(.system(size: 9.5, weight: .semibold, design: .monospaced))
                                 .tracking(0.06 * 9.5)
-                                .foregroundColor(Palette.accent)
+                                .foregroundColor(Palette.brandAcid)
                                 .padding(.horizontal, 7)
                                 .padding(.vertical, 2.5)
-                                .background(Capsule().fill(Palette.accent.opacity(0.16)))
-                                .overlay(Capsule().stroke(Palette.accent.opacity(0.42), lineWidth: 0.5))
+                                .background(Capsule().fill(Palette.brandAcid.opacity(0.16)))
+                                .overlay(Capsule().stroke(Palette.brandAcid.opacity(0.42), lineWidth: 0.5))
                         }
                     }
                     Text(providerLabel)
@@ -359,8 +359,10 @@ struct ModelsView: View {
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(.ultraThinMaterial)
+            TacticalGlass(
+                shape: RoundedRectangle(cornerRadius: 14, style: .continuous),
+                phase: .hidden
+            )
         )
         .overlay(
             RoundedRectangle(cornerRadius: 14, style: .continuous)
@@ -398,7 +400,7 @@ struct ModelsView: View {
                                 .modifier(GlassChip(cornerRadius: 22, paddingH: 0, paddingV: 0))
                                 .overlay(
                                     RoundedRectangle(cornerRadius: 22, style: .continuous)
-                                        .strokeBorder(Palette.accent.opacity(selectedFilter == filter ? 0.5 : 0), lineWidth: 1.5)
+                                        .strokeBorder(Palette.brandAcid.opacity(selectedFilter == filter ? 0.5 : 0), lineWidth: 1.5)
                                 )
                         }
                         .buttonStyle(PlainButtonStyle())
@@ -425,7 +427,7 @@ struct ModelsView: View {
                         .modifier(GlassChip(cornerRadius: 22, paddingH: 0, paddingV: 0))
                         .overlay(
                             RoundedRectangle(cornerRadius: 22, style: .continuous)
-                                .strokeBorder(Palette.accent.opacity(activePanel == .transcriptionSettings ? 0.5 : 0), lineWidth: 1.5)
+                                .strokeBorder(Palette.brandAcid.opacity(activePanel == .transcriptionSettings ? 0.5 : 0), lineWidth: 1.5)
                         )
                 }
                 .buttonStyle(PlainButtonStyle())
@@ -573,7 +575,7 @@ struct ModelsView: View {
         ZStack(alignment: .topTrailing) {
             SettingsCard(
                 iconSystemName: "wand.and.stars",
-                iconTint: Palette.accent,
+                iconTint: Palette.brandAcid,
                 title: "Enhancement",
                 subtitle: "Pass transcripts through an LLM before pasting.",
                 statusText: enhancementService.enhanceLevel.displayName,
@@ -603,11 +605,13 @@ struct ModelsView: View {
             } label: {
                 Image(systemName: "gear")
                     .font(.system(size: 14, weight: .medium))
-                    .foregroundColor(activePanel == .enhancementSettings ? Palette.accent : .secondary)
+                    .foregroundColor(activePanel == .enhancementSettings ? Palette.brandAcid : .secondary)
                     .frame(width: 28, height: 28)
                     .background(
-                        RoundedRectangle(cornerRadius: 8, style: .continuous)
-                            .fill(.ultraThinMaterial)
+                        TacticalGlass(
+                            shape: RoundedRectangle(cornerRadius: 8, style: .continuous),
+                            phase: .hidden
+                        )
                     )
                     .overlay(
                         RoundedRectangle(cornerRadius: 8, style: .continuous)
@@ -625,7 +629,7 @@ struct ModelsView: View {
         ZStack(alignment: .topTrailing) {
             SettingsCard(
                 iconSystemName: "text.bubble",
-                iconTint: Palette.accent,
+                iconTint: Palette.brandAcid,
                 title: "Enhancement Prompts",
                 subtitle: "Pick the active style; reorder by drag.",
                 statusText: "\(enhancementService.customPrompts.count)",
@@ -651,19 +655,21 @@ struct ModelsView: View {
             } label: {
                 Image(systemName: "plus")
                     .font(.system(size: 13, weight: .semibold))
-                    .foregroundColor(Palette.accent)
+                    .foregroundColor(Palette.brandAcid)
                     .frame(width: 28, height: 28)
                     .background(
                         RoundedRectangle(cornerRadius: 8, style: .continuous)
-                            .fill(Palette.accent.opacity(0.14))
+                            .fill(Palette.brandAcid.opacity(0.14))
                             .background(
-                                RoundedRectangle(cornerRadius: 8, style: .continuous)
-                                    .fill(.ultraThinMaterial)
+                                TacticalGlass(
+                                    shape: RoundedRectangle(cornerRadius: 8, style: .continuous),
+                                    phase: .hidden
+                                )
                             )
                     )
                     .overlay(
                         RoundedRectangle(cornerRadius: 8, style: .continuous)
-                            .stroke(Palette.accent.opacity(0.42), lineWidth: 1)
+                            .stroke(Palette.brandAcid.opacity(0.42), lineWidth: 1)
                     )
             }
             .buttonStyle(.plain)
@@ -733,7 +739,7 @@ private struct ReorderablePromptGrid: View {
                             RoundedRectangle(cornerRadius: 14)
                                 .stroke(
                                     draggingItem != nil && draggingItem?.id != prompt.id
-                                    ? Palette.accent.opacity(0.25)
+                                    ? Palette.brandAcid.opacity(0.25)
                                     : Color.clear,
                                     lineWidth: 1
                                 )

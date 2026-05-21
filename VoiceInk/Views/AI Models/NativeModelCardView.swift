@@ -25,7 +25,7 @@ struct NativeAppleModelCardView: View {
         .overlay(
             RoundedRectangle(cornerRadius: 16, style: .continuous)
                 .stroke(
-                    isCurrent ? Palette.accent.opacity(0.55) : Palette.hairline,
+                    isCurrent ? Palette.brandAcid.opacity(0.55) : Palette.hairline,
                     lineWidth: isCurrent ? 1.5 : 1
                 )
         )

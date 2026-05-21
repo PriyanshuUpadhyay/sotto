@@ -4,7 +4,7 @@ import Carbon
 import ApplicationServices
 import os
 
-private let logger = Logger(subsystem: "com.VoiceInk", category: "CursorPaster")
+private let logger = Logger(subsystem: OSLogSubsystems.app, category: "CursorPaster")
 
 class CursorPaster {
 

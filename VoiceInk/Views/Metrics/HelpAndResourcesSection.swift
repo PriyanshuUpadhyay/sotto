@@ -50,7 +50,7 @@ struct HelpAndResourcesSection: View {
             HStack {
                 Image(systemName: icon)
                     .font(.system(size: 15, weight: .medium))
-                    .foregroundColor(Palette.accent)
+                    .foregroundColor(Palette.brandAcid)
                     .frame(width: 20)
 
                 Text(title)
