@@ -2,10 +2,17 @@ import SwiftUI
 
 struct BayCapsule: View {
     @ObservedObject var ui: RecorderUIState
+    @State private var breathePulse: Double = 0
 
     var body: some View {
-        TacticalGlass.bay(phase: ui.phase)
-            .overlay(content)
+        TacticalGlass(
+            shape: BottomRoundedRectangle(bottomRadius: SottoGeometry.cornerRadiusNotch),
+            phase: ui.phase,
+            breathePulse: breathePulse,
+            showInnerSheen: ui.phase == .enhancing
+        )
+        .overlay(content)
+        .onPreferenceChange(BreathePulseKey.self) { breathePulse = $0 }
     }
 
     @ViewBuilder
@@ -23,6 +30,5 @@ struct BayCapsule: View {
 }
 
 // Placeholder content views — implemented in milestone m03.
-struct EnhancingContent: View   { @ObservedObject var ui: RecorderUIState; var body: some View { Color.clear } }
 struct CommittedContent: View   { @ObservedObject var ui: RecorderUIState; var body: some View { Color.clear } }
 struct FailContent: View        { @ObservedObject var ui: RecorderUIState; var body: some View { Color.clear } }
