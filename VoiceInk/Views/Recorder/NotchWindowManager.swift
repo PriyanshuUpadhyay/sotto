@@ -94,4 +94,8 @@ class NotchWindowManager: ObservableObject {
     func toggle() {
         isVisible ? hide() : show()
     }
+
+    func setIgnoresMouseEvents(_ ignores: Bool) {
+        panel?.ignoresMouseEvents = ignores
+    }
 }

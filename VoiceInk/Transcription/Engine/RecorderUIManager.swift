@@ -142,6 +142,14 @@ class RecorderUIManager: ObservableObject {
                 self?.logger.notice("phase → \(String(describing: new), privacy: .public)")
             }
             .store(in: &phaseObservers)
+
+        $phase
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] new in
+                let interactive = (new == .recording || new == .liveText || new == .done || new == .failed)
+                self?.notchWindowManager?.setIgnoresMouseEvents(!interactive)
+            }
+            .store(in: &phaseObservers)
     }
 
     private func mapEngineState(_ state: RecordingState, engine: VoiceInkEngine) {
