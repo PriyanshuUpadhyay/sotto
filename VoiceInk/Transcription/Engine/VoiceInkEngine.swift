@@ -22,8 +22,11 @@ class VoiceInkEngine: NSObject, ObservableObject {
     /// Mutated on the main actor inside `handleDidPaste`.
     @Published var lastPasteEvent: PasteEvent?
 
-    // temporary — f05 replaces this with the FirstAudioGate-backed value
-    var firstAudioObserved: Bool { true }
+    /// Spec §4.2 first-audio gate. `RecorderUIManager.mapEngineState` reads
+    /// `firstAudioObserved` to decide whether to render `.armed` or `.recording`.
+    let firstAudioGate = FirstAudioGate()
+
+    var firstAudioObserved: Bool { firstAudioGate.observed }
 
     /// One-shot failure events. `FailureRegistry` subscribes externally; the
     /// engine has no awareness of the registry. Each `send` carries a fresh
@@ -89,6 +92,10 @@ class VoiceInkEngine: NSObject, ObservableObject {
 
         setupNotifications()
         createRecordingsDirectoryIfNeeded()
+
+        recorder.onRawAudioDb = { [weak self] db in
+            Task { @MainActor in self?.firstAudioGate.consume(rawDb: db) }
+        }
     }
 
     private func createRecordingsDirectoryIfNeeded() {
@@ -110,6 +117,7 @@ class VoiceInkEngine: NSObject, ObservableObject {
 
         if recordingState == .recording {
             partialTranscript = ""
+            firstAudioGate.reset()
             recordingState = .transcribing
             await recorder.stopRecording()
 
@@ -149,6 +157,7 @@ class VoiceInkEngine: NSObject, ObservableObject {
             }
             shouldCancelRecording = false
             partialTranscript = ""
+            firstAudioGate.start()
 
             requestRecordPermission { [self] granted in
                 if granted {
