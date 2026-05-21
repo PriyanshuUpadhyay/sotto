@@ -101,7 +101,7 @@ class RecorderUIManager: ObservableObject {
 
         if recorderType == "notch" {
             if notchWindowManager == nil {
-                notchWindowManager = NotchWindowManager(engine: engine, recorder: recorder, failureRegistry: failureRegistry)
+                notchWindowManager = NotchWindowManager(engine: engine, recorder: recorder, failureRegistry: failureRegistry, uiManager: self)
             }
             notchWindowManager?.show()
         } else {

@@ -10,7 +10,7 @@ class NotchWindowManager: ObservableObject {
     private let makeView: (NotchWindowManager) -> AnyView
     private let enhancementService: AIEnhancementService
 
-    init(engine: VoiceInkEngine, recorder: Recorder, failureRegistry: FailureRegistry) {
+    init(engine: VoiceInkEngine, recorder: Recorder, failureRegistry: FailureRegistry, uiManager: RecorderUIManager) {
         guard let enhancementService = engine.enhancementService,
               let aiService = enhancementService.getAIService() else {
             preconditionFailure("VoiceInkEngine.enhancementService and AIService must be non-nil when creating NotchWindowManager")
@@ -32,6 +32,7 @@ class NotchWindowManager: ObservableObject {
                 .environmentObject(enhancementService)
                 .environmentObject(failureRegistry)
                 .environmentObject(CommandModeService.shared)
+                .environmentObject(uiManager)
                 .overlay(alignment: .top) {
                     CommandModeBanner()
                 }
