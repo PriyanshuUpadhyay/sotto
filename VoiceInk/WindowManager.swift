@@ -44,7 +44,15 @@ class WindowManager: NSObject {
         window.setFrameAutosaveName(Self.mainWindowAutosaveName)
         applyInitialPlacementIfNeeded(to: window)
         registerMainWindowIfNeeded(window)
-        window.orderFrontRegardless()
+        // First run: keep the main window hidden while the onboarding panel is
+        // shown, so both windows don't appear at once. OnboardingWindowController
+        // reveals it via showMainWindow() when onboarding finishes.
+        // Key mirrors OnboardingState.Key.completed.
+        if UserDefaults.standard.bool(forKey: "onboardingCompleted_v1") {
+            window.orderFrontRegardless()
+        } else {
+            window.orderOut(nil)
+        }
     }
     
     func registerMainWindow(_ window: NSWindow) {
