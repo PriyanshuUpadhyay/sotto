@@ -308,6 +308,7 @@ class HotkeyManager: ObservableObject {
                     
                     Task { @MainActor in
                         guard self.canProcessHotkeyAction else { return }
+                        self.markFirstHotkeyInvocation()
                         await self.recorderUIManager.toggleMiniRecorder()
                     }
                 } catch {
