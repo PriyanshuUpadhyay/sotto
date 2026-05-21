@@ -455,6 +455,7 @@ class HotkeyManager: ObservableObject {
 
         if isKeyPressed {
             keyPressEventTime = eventTime
+            markFirstHotkeyInvocation()
 
             switch mode {
             case .toggle, .hybrid:
@@ -527,6 +528,7 @@ class HotkeyManager: ObservableObject {
         shortcutCurrentKeyState = true
         lastShortcutTriggerTime = Date()
         shortcutKeyPressEventTime = eventTime
+        markFirstHotkeyInvocation()
 
         switch mode {
         case .toggle, .hybrid:
@@ -595,7 +597,13 @@ class HotkeyManager: ObservableObject {
             setupHotkeyMonitoring()
         }
     }
-    
+
+    private func markFirstHotkeyInvocation() {
+        guard !OnboardingState.shared.firstInvocationDidFire else { return }
+        OnboardingState.shared.markFirstInvocation()
+        NotificationCenter.default.post(name: .firstInvocationDidFire, object: nil)
+    }
+
     deinit {
         Task { @MainActor in
             removeAllMonitoring()

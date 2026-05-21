@@ -467,6 +467,11 @@ struct VoiceInkApp: App {
                         // Stop the automatic audio cleanup process
                         audioCleanupManager.stopAutomaticCleanup()
                     }
+                    .onAppear {
+                        if !OnboardingState.shared.completed {
+                            OnboardingWindowController.shared.present()
+                        }
+                    }
         }
         .windowStyle(.hiddenTitleBar)
         .defaultSize(width: 950, height: 730)
