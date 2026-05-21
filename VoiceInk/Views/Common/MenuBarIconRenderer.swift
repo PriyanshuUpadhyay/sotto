@@ -306,12 +306,16 @@ struct MenuBarIcon: View {
     @ObservedObject var observer: RecordingStateObserver
 
     var body: some View {
-        ZStack {
-            MenubarGlyphContainer(state: observer.iconState)
-            if observer.unresolvedFailures > 0 && observer.iconState != .fail {
-                CornerBadge(kind: .redStatic)
-            }
-        }
+        // MenuBarExtra rasterises its label into the status-item button image
+        // on every SwiftUI update. A TimelineView-driven label (the animated
+        // MenubarGlyphContainer) re-rasterises every animation frame, pinning
+        // the main thread in an infinite updateButton -> setImage -> _adjustLength
+        // loop (100% CPU, app hang). Render a static per-state NSImage instead:
+        // it re-evaluates only when iconState or unresolvedFailures changes.
+        Image(nsImage: MenuBarIconRenderer.image(
+            for: observer.iconState,
+            unresolvedFailures: observer.unresolvedFailures
+        ))
         .frame(width: 18, height: 18)
         .accessibilityLabel(Text(accessibilityLabel))
     }
