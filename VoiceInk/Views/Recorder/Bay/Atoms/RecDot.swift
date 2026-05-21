@@ -12,7 +12,7 @@ struct RecDot: View {
             .opacity(reduceMotion ? 1 : (pulse ? 1 : 0.7))
             .animation(reduceMotion ? nil : MotionTokens.pulse.repeatForever(autoreverses: true),
                        value: pulse)
-            .onAppear { pulse = true }
+            .onAppear { if !reduceMotion { pulse = true } }
             .accessibilityHidden(true)
     }
 }
