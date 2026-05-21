@@ -23,7 +23,6 @@ struct BayCapsule: View {
 }
 
 // Placeholder content views — implemented in milestone m03.
-struct ArmingContent: View      { @ObservedObject var ui: RecorderUIState; var body: some View { Color.clear } }
 struct RecordingContent: View   { @ObservedObject var ui: RecorderUIState; var body: some View { Color.clear } }
 struct TranscribingContent: View{ @ObservedObject var ui: RecorderUIState; var body: some View { Color.clear } }
 struct EnhancingContent: View   { @ObservedObject var ui: RecorderUIState; var body: some View { Color.clear } }
