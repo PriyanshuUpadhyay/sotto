@@ -17,6 +17,7 @@ class RecorderUIManager: ObservableObject {
 
     private var phaseObservers = Set<AnyCancellable>()
     private var doneHoldTask: Task<Void, Never>?
+    private var armingHoldTask: Task<Void, Never>?
 
     @Published var recorderType: String = {
         // Legacy "constellation" value (shipped briefly as a vaporware tile
@@ -113,6 +114,18 @@ class RecorderUIManager: ObservableObject {
             }
             .store(in: &phaseObservers)
 
+        // The `.armed → .recording` gate (first audio + arming hold) only
+        // becomes satisfiable *after* the engine's single `.recording` state
+        // publish, so re-evaluate it each time the first-audio gate latches.
+        engine.firstAudioGate.$observed
+            .filter { $0 }
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self, weak engine] _ in
+                guard let self, let engine else { return }
+                self.evaluateRecordingPhase(engine: engine)
+            }
+            .store(in: &phaseObservers)
+
         registry.$current
             .receive(on: DispatchQueue.main)
             .sink { [weak self] event in
@@ -163,6 +176,7 @@ class RecorderUIManager: ObservableObject {
 
         switch state {
         case .idle, .busy:
+            armingHoldTask?.cancel()
             phase = .hidden
             recordingStartedAt = nil
         case .starting:
@@ -170,13 +184,8 @@ class RecorderUIManager: ObservableObject {
             if recordingStartedAt == nil { recordingStartedAt = .now }
         case .recording:
             if recordingStartedAt == nil { recordingStartedAt = .now }
-            if let started = recordingStartedAt,
-               engine.firstAudioObserved,
-               Date().timeIntervalSince(started) >= 0.12 {
-                phase = .recording
-            } else {
-                phase = .armed
-            }
+            phase = .armed
+            evaluateRecordingPhase(engine: engine)
         case .transcribing:
             phase = .transcribing
         case .enhancing:
@@ -186,6 +195,31 @@ class RecorderUIManager: ObservableObject {
         formattedActivePromptLabel = Self.formatPromptLabel(
             engine.enhancementService?.activePrompt?.title
         )
+    }
+
+    /// Re-evaluates the `.armed → .recording` promotion. Both gate conditions
+    /// — first audio observed (`FirstAudioGate`, spec §4.2) and the
+    /// `MotionTokens.armingHold` dwell — typically become true *after* the
+    /// engine's lone `.recording` state publish, so this runs from the
+    /// `firstAudioGate.$observed` observer and a follow-up timer, not only
+    /// from `mapEngineState`. Idempotent — safe to call spuriously.
+    private func evaluateRecordingPhase(engine: VoiceInkEngine) {
+        guard engine.recordingState == .recording, phase == .armed,
+              engine.firstAudioObserved,
+              let started = recordingStartedAt else { return }
+
+        armingHoldTask?.cancel()
+        let elapsed = Date().timeIntervalSince(started)
+        if elapsed >= MotionTokens.armingHold {
+            phase = .recording
+        } else {
+            // First audio beat the arming hold — wait out the remainder.
+            armingHoldTask = Task { @MainActor [weak self, weak engine] in
+                try? await Task.sleep(for: .seconds(MotionTokens.armingHold - elapsed))
+                guard !Task.isCancelled, let self, let engine else { return }
+                self.evaluateRecordingPhase(engine: engine)
+            }
+        }
     }
 
     private func beginDoneHold(appName: String?) {
