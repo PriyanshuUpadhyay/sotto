@@ -21,7 +21,7 @@ struct HaloRecorderView<S: RecorderStateProvider & ObservableObject, WM: Observa
     var isVisible: () -> Bool
     var mode: HaloShape.Mode
 
-    @AppStorage("SottoBayHUDEnabled") private var bayEnabled: Bool = false
+    @AppStorage("SottoBayHUDEnabled") private var bayEnabled: Bool = true
 
     var body: some View {
         if isVisible() {
