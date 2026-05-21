@@ -28,6 +28,3 @@ struct BayCapsule: View {
         }
     }
 }
-
-// Placeholder content views — implemented in milestone m03.
-struct FailContent: View        { @ObservedObject var ui: RecorderUIState; var body: some View { Color.clear } }
