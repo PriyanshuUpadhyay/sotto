@@ -30,6 +30,10 @@ final class OnboardingState: ObservableObject {
         self.firstInvocationDidFire = defaults.bool(forKey: Key.firstInvocationDidFire)
     }
 
+    var shouldPresentHotkeyReminder: Bool {
+        !skipped && !hotkeyReminderShown && !firstInvocationDidFire
+    }
+
     func markCompleted() {
         defaults.set(true, forKey: Key.completed)
         completed = true
