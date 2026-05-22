@@ -16,9 +16,9 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "E11473AF2CBE0F0A00318EE4"
-               BuildableName = "VoiceInk.app"
-               BlueprintName = "VoiceInk"
-               ReferencedContainer = "container:VoiceInk.xcodeproj">
+               BuildableName = "Sotto.app"
+               BlueprintName = "Sotto"
+               ReferencedContainer = "container:Sotto.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
       </BuildActionEntries>
@@ -36,9 +36,9 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "E11473C22CBE0F0B00318EE4"
-               BuildableName = "VoiceInkTests.xctest"
-               BlueprintName = "VoiceInkTests"
-               ReferencedContainer = "container:VoiceInk.xcodeproj">
+               BuildableName = "SottoTests.xctest"
+               BlueprintName = "SottoTests"
+               ReferencedContainer = "container:Sotto.xcodeproj">
             </BuildableReference>
          </TestableReference>
          <TestableReference
@@ -47,9 +47,9 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "E11473CC2CBE0F0B00318EE4"
-               BuildableName = "VoiceInkUITests.xctest"
-               BlueprintName = "VoiceInkUITests"
-               ReferencedContainer = "container:VoiceInk.xcodeproj">
+               BuildableName = "SottoUITests.xctest"
+               BlueprintName = "SottoUITests"
+               ReferencedContainer = "container:Sotto.xcodeproj">
             </BuildableReference>
          </TestableReference>
       </Testables>
@@ -69,9 +69,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "E11473AF2CBE0F0A00318EE4"
-            BuildableName = "VoiceInk.app"
-            BlueprintName = "VoiceInk"
-            ReferencedContainer = "container:VoiceInk.xcodeproj">
+            BuildableName = "Sotto.app"
+            BlueprintName = "Sotto"
+            ReferencedContainer = "container:Sotto.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </LaunchAction>
@@ -86,9 +86,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "E11473AF2CBE0F0A00318EE4"
-            BuildableName = "VoiceInk.app"
-            BlueprintName = "VoiceInk"
-            ReferencedContainer = "container:VoiceInk.xcodeproj">
+            BuildableName = "Sotto.app"
+            BlueprintName = "Sotto"
+            ReferencedContainer = "container:Sotto.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </ProfileAction>
