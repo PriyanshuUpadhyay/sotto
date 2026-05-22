@@ -1,6 +1,6 @@
 import XCTest
 import SwiftUI
-@testable import VoiceInk
+@testable import Sotto
 
 final class MenubarGlyphTests: XCTestCase {
     // MARK: - IconState ← HaloPhase (7-state HUD bridge)

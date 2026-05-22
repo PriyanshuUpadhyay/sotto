@@ -1,7 +1,7 @@
 import Testing
 import Foundation
 import Combine
-@testable import VoiceInk
+@testable import Sotto
 
 @MainActor
 struct FailureRegistryTests {

@@ -1,6 +1,6 @@
 import Testing
 import Foundation
-@testable import VoiceInk
+@testable import Sotto
 
 struct ContextSanitizerTests {
 

@@ -1,7 +1,7 @@
 import Testing
 import Foundation
 import SwiftData
-@testable import VoiceInk
+@testable import Sotto
 
 @MainActor
 final class StubPowerModeStateProvider: PowerModeStateProvider {

@@ -1,5 +1,5 @@
 import XCTest
-@testable import VoiceInk
+@testable import Sotto
 
 @MainActor
 final class OnboardingStateTests: XCTestCase {

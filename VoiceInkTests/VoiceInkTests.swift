@@ -1,6 +1,6 @@
 import Testing
 import SwiftUI
-@testable import VoiceInk
+@testable import Sotto
 
 struct PaletteTests {
 

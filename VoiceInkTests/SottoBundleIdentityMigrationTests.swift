@@ -1,6 +1,6 @@
 import Testing
 import Foundation
-@testable import VoiceInk
+@testable import Sotto
 
 // Migration must be sentinel-gated AND interrupted-safe. Tests cover:
 // - Happy-path: legacy → new copy + sentinel set.
