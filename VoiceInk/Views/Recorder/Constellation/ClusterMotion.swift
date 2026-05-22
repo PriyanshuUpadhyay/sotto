@@ -60,7 +60,7 @@ struct RingPulseDot: View {
     var body: some View {
         ZStack {
             Circle()
-                .stroke(Palette.accentGlow, lineWidth: 1)
+                .stroke(color.opacity(0.55), lineWidth: 1)
                 .frame(width: ringDiameter, height: ringDiameter)
                 .scaleEffect(pulse ? 1.0 : 0.6)
                 .opacity(ringOpacity)
@@ -124,56 +124,8 @@ struct ChipShimmer: ViewModifier {
     }
 }
 
-// MARK: - ChipBreath
-//
-// Enhancing chip outer halo cycle. Renders an extra accent shadow whose
-// radius+alpha cycles. Reduce-Motion → static mid-amplitude (no animation).
-
-struct ChipBreath: ViewModifier {
-    var active: Bool
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var raised: Bool = false
-
-    func body(content: Content) -> some View {
-        content
-            .shadow(
-                color: Palette.accent.opacity(haloAlpha),
-                radius: haloRadius,
-                x: 0,
-                y: 0
-            )
-            .onAppear { applyAnimation() }
-            .onChange(of: active) { _, _ in applyAnimation() }
-            .onChange(of: reduceMotion) { _, _ in applyAnimation() }
-    }
-
-    private var haloAlpha: Double {
-        guard active else { return 0 }
-        if reduceMotion { return 0.32 }
-        return raised ? 0.45 : 0.20
-    }
-
-    private var haloRadius: CGFloat {
-        guard active else { return 0 }
-        if reduceMotion { return 10 }
-        return raised ? 14 : 8
-    }
-
-    private func applyAnimation() {
-        if reduceMotion || !active {
-            raised = false
-            return
-        }
-        withAnimation(.chipBreath) { raised.toggle() }
-    }
-}
-
 extension View {
     func chipShimmer(active: Bool) -> some View {
         modifier(ChipShimmer(active: active))
-    }
-
-    func chipBreath(active: Bool) -> some View {
-        modifier(ChipBreath(active: active))
     }
 }
