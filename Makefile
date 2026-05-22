@@ -56,18 +56,18 @@ setup: whisper
 	@echo "Please ensure your Xcode project references the framework from this new location."
 
 build: setup
-	xcodebuild -project VoiceInk.xcodeproj -scheme VoiceInk -configuration Debug CODE_SIGN_IDENTITY="" build
+	xcodebuild -project Sotto.xcodeproj -scheme Sotto -configuration Debug CODE_SIGN_IDENTITY="" build
 
 # Build for local use without Apple Developer certificate
 local: check setup
-	@echo "Building VoiceInk for local use..."
+	@echo "Building Sotto for local use..."
 	@if [ "$(LOCAL_SIGN_IDENTITY)" = "-" ]; then \
 		echo "  Signing: ad-hoc (Accessibility/Input Monitoring permissions reset on each rebuild)"; \
 	else \
 		echo "  Signing: $(LOCAL_SIGN_IDENTITY) (stable cdhash; permissions persist across rebuilds)"; \
 	fi
 	@rm -rf "$(LOCAL_DERIVED_DATA)"
-	xcodebuild -project VoiceInk.xcodeproj -scheme VoiceInk -configuration Debug \
+	xcodebuild -project Sotto.xcodeproj -scheme Sotto -configuration Debug \
 		-derivedDataPath "$(LOCAL_DERIVED_DATA)" \
 		-xcconfig LocalBuild.xcconfig \
 		-skipMacroValidation \
@@ -76,49 +76,49 @@ local: check setup
 		CODE_SIGNING_ALLOWED=YES \
 		DEVELOPMENT_TEAM="" \
 		ENABLE_HARDENED_RUNTIME=NO \
-		CODE_SIGN_ENTITLEMENTS=$(CURDIR)/VoiceInk/VoiceInk.local.entitlements \
+		CODE_SIGN_ENTITLEMENTS=$(CURDIR)/VoiceInk/Sotto.local.entitlements \
 		SWIFT_ACTIVE_COMPILATION_CONDITIONS='$$(inherited) LOCAL_BUILD' \
 		build
-	@APP_PATH="$(LOCAL_DERIVED_DATA)/Build/Products/Debug/VoiceInk.app" && \
+	@APP_PATH="$(LOCAL_DERIVED_DATA)/Build/Products/Debug/Sotto.app" && \
 	if [ -d "$$APP_PATH" ]; then \
-		echo "Copying VoiceInk.app to /Applications..."; \
-		rm -rf "/Applications/VoiceInk.app"; \
-		ditto "$$APP_PATH" "/Applications/VoiceInk.app"; \
-		xattr -cr "/Applications/VoiceInk.app"; \
+		echo "Copying Sotto.app to /Applications..."; \
+		rm -rf "/Applications/Sotto.app"; \
+		ditto "$$APP_PATH" "/Applications/Sotto.app"; \
+		xattr -cr "/Applications/Sotto.app"; \
 		echo ""; \
-		echo "Build complete! App saved to: /Applications/VoiceInk.app"; \
-		echo "Run with: open -a VoiceInk  (or Spotlight / Launchpad)"; \
+		echo "Build complete! App saved to: /Applications/Sotto.app"; \
+		echo "Run with: open -a Sotto  (or Spotlight / Launchpad)"; \
 		echo ""; \
 		echo "Limitations of local builds:"; \
 		echo "  - No iCloud dictionary sync"; \
 		echo "  - No automatic updates (pull new code and rebuild to update)"; \
 	else \
-		echo "Error: Could not find built VoiceInk.app at $$APP_PATH"; \
+		echo "Error: Could not find built Sotto.app at $$APP_PATH"; \
 		exit 1; \
 	fi
 
 # Reload: build, kill the running instance, relaunch. Use this during dev so you
 # don't have to manually quit + reopen. Incremental build is ~5-15s after first.
 reload: local
-	@echo "Killing running VoiceInk instance (if any)..."
-	@/usr/bin/killall VoiceInk 2>/dev/null || true
+	@echo "Killing running Sotto instance (if any)..."
+	@/usr/bin/killall Sotto 2>/dev/null || true
 	@sleep 0.3
-	@echo "Launching /Applications/VoiceInk.app..."
-	@open "/Applications/VoiceInk.app"
+	@echo "Launching /Applications/Sotto.app..."
+	@open "/Applications/Sotto.app"
 
 # Run application
 run:
-	@if [ -d "/Applications/VoiceInk.app" ]; then \
-		echo "Opening /Applications/VoiceInk.app..."; \
-		open "/Applications/VoiceInk.app"; \
+	@if [ -d "/Applications/Sotto.app" ]; then \
+		echo "Opening /Applications/Sotto.app..."; \
+		open "/Applications/Sotto.app"; \
 	else \
-		echo "Looking for VoiceInk.app in DerivedData..."; \
-		APP_PATH=$$(find "$$HOME/Library/Developer/Xcode/DerivedData" -name "VoiceInk.app" -type d | head -1) && \
+		echo "Looking for Sotto.app in DerivedData..."; \
+		APP_PATH=$$(find "$$HOME/Library/Developer/Xcode/DerivedData" -name "Sotto.app" -type d | head -1) && \
 		if [ -n "$$APP_PATH" ]; then \
 			echo "Found app at: $$APP_PATH"; \
 			open "$$APP_PATH"; \
 		else \
-			echo "VoiceInk.app not found. Please run 'make build' or 'make local' first."; \
+			echo "Sotto.app not found. Please run 'make build' or 'make local' first."; \
 			exit 1; \
 		fi; \
 	fi
@@ -134,10 +134,10 @@ help:
 	@echo "Available targets:"
 	@echo "  check/healthcheck  Check if required CLI tools are installed"
 	@echo "  whisper            Clone and build whisper.cpp XCFramework"
-	@echo "  setup              Copy whisper XCFramework to VoiceInk project"
-	@echo "  build              Build the VoiceInk Xcode project"
+	@echo "  setup              Copy whisper XCFramework to Sotto project"
+	@echo "  build              Build the Sotto Xcode project"
 	@echo "  local              Build for local use (no Apple Developer certificate needed)"
-	@echo "  run                Launch the built VoiceInk app"
+	@echo "  run                Launch the built Sotto app"
 	@echo "  dev                Build and run the app (for development)"
 	@echo "  all                Run full build process (default)"
 	@echo "  clean              Remove build artifacts"
