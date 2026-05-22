@@ -83,12 +83,13 @@ The **label-colored mark** (idle / arming / transcribing / enhancing / committed
 |------|--------|
 | `VoiceInk/Views/Common/MenuBarIconRenderer.swift` | Rewrite `image(for:)` to draw the brand glyph; add a private `brandGlyph(...)` `NSBezierPath` builder; add `accessibilityLabel(for:)`; add the appearance observer + image regeneration; drop the stale `Palette.accent` usage |
 | `VoiceInk/Views/Common/MenubarGlyph.swift` | **Deleted** |
-| `VoiceInkTests/MenubarGlyphTests.swift` | Renamed `MenuBarIconTests.swift`; accessibility-label tests reference `MenuBarIconRenderer.accessibilityLabel`; `IconState` mapping tests unchanged |
+| `VoiceInkTests/MenubarGlyphTests.swift` | Renamed `MenuBarIconTests.swift`; accessibility-label tests reference `MenuBarIconRenderer.accessibilityLabel`; `IconState` mapping tests unchanged; `NSImage`-contract smoke tests added |
 
 ## Testing
 
 - The 11 `IconState`-mapping / combined-init tests — unchanged, stay green.
 - The 8 accessibility-label tests — reference updated to `MenuBarIconRenderer.accessibilityLabel`.
+- A few `NSImage`-contract smoke tests (`isTemplate == false`, 18×18 size, non-nil accessibility description) are added to `MenuBarIconTests` — they compile-verify the glyph contract and catch the most likely regression (a forgotten `isTemplate = false`).
 - The repo's `xcodebuild test` launcher is documented-broken ("Test crashed with signal trap before establishing connection"). Gate on the headless build (`xcodebuild build … -quiet` → exit 0, no `error:` lines) plus a manual menu-bar state-cycle visual check via `make local`. If the test launcher cannot run, fall back to `build-for-testing` to confirm the test target compiles — do not silently skip.
 
 ## Success criteria
