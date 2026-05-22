@@ -485,7 +485,7 @@ struct ProviderCard: View {
             aiService.updateLocalCLITimeoutSeconds(newValue)
         }
 
-        Text("Available env: VOICEINK_SYSTEM_PROMPT, VOICEINK_USER_PROMPT, VOICEINK_FULL_PROMPT. VoiceInk also writes VOICEINK_FULL_PROMPT to stdin.")
+        Text("Available env: VOICEINK_SYSTEM_PROMPT, VOICEINK_USER_PROMPT, VOICEINK_FULL_PROMPT. Sotto also writes VOICEINK_FULL_PROMPT to stdin.")
             .font(.caption)
             .foregroundColor(.secondary)
             .fixedSize(horizontal: false, vertical: true)

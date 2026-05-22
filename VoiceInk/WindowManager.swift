@@ -35,7 +35,7 @@ class WindowManager: NSObject {
         // docs/superpowers/plans/W8-adaptive-glass-app-wide.md.
         window.backgroundColor = .clear
         window.isReleasedWhenClosed = false
-        window.title = "VoiceInk"
+        window.title = "Sotto"
         window.collectionBehavior = [.fullScreenPrimary]
         window.level = .normal
         window.isOpaque = false

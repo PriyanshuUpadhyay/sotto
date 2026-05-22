@@ -456,7 +456,7 @@ struct SettingsView: View {
         ) {
             AudioCleanupSettingsView()
 
-            Text("Control how VoiceInk handles your transcription data and audio recordings.")
+            Text("Control how Sotto handles your transcription data and audio recordings.")
                 .font(.system(size: 11))
                 .foregroundColor(.secondary)
                 .fixedSize(horizontal: false, vertical: true)

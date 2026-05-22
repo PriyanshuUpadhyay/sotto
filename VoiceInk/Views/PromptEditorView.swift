@@ -224,7 +224,7 @@ struct PromptEditorView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
                 sectionBlock(label: "EDITING: \(title.uppercased())") {
-                    Text("System prompts ship with VoiceInk. You can view their instructions here and customize trigger words below. To author your own prompt, tap + on the Enhancement Prompts panel.")
+                    Text("System prompts ship with Sotto. You can view their instructions here and customize trigger words below. To author your own prompt, tap + on the Enhancement Prompts panel.")
                         .font(.subheadline)
                         .foregroundColor(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
@@ -232,7 +232,7 @@ struct PromptEditorView: View {
 
                 sectionBlock(
                     label: "SYSTEM PROMPT (READ-ONLY)",
-                    info: "This is the instruction set sent to the LLM for this prompt. It updates automatically with each VoiceInk release."
+                    info: "This is the instruction set sent to the LLM for this prompt. It updates automatically with each Sotto release."
                 ) {
                     VStack(alignment: .leading, spacing: 10) {
                         ZStack(alignment: .topLeading) {

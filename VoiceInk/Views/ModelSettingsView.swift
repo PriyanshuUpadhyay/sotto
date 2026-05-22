@@ -61,7 +61,7 @@ struct ModelSettingsView: View {
                 )) {
                     HStack(spacing: 4) {
                         Text("Keep dictated text on clipboard")
-                        InfoTip("On (default): the dictated text stays on your clipboard after VoiceInk pastes it, so you can paste again or recover it. Off: VoiceInk restores your previous clipboard contents after paste.")
+                        InfoTip("On (default): the dictated text stays on your clipboard after Sotto pastes it, so you can paste again or recover it. Off: Sotto restores your previous clipboard contents after paste.")
                     }
                 }
                 .toggleStyle(.switch)

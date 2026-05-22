@@ -89,7 +89,7 @@ final class ScratchpadWindowController: NSObject, NSWindowDelegate {
             defer: false
         )
         win.contentViewController = host
-        win.title = "VoiceInk — Scratchpad"
+        win.title = "Sotto — Scratchpad"
         win.identifier = identifier
         win.delegate = self
         // Mirror `WindowManager.configureWindow` glass flags so the SwiftUI
