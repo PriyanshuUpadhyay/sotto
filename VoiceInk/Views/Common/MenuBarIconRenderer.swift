@@ -91,6 +91,22 @@ enum MenuBarIconRenderer {
         }
     }
 
+    /// VoiceOver label per state. Pure logic, exhaustive over `IconState` —
+    /// adding a case is a compile error here. `MenuBarIcon` composes this with
+    /// the unresolved-failure suffix at the view layer.
+    static func accessibilityLabel(for state: IconState) -> String {
+        switch state {
+        case .idle:         return "Sotto idle"
+        case .arming:       return "Sotto listening"
+        case .recording:    return "Sotto recording"
+        case .transcribing: return "Sotto transcribing"
+        case .enhancing:    return "Sotto enhancing"
+        case .committed:    return "Sotto committed"
+        case .fail:         return "Sotto failed"
+        case .handsFree:    return "Sotto hands-free"
+        }
+    }
+
     static func image(for state: IconState) -> NSImage {
         // Legacy NSImage builders. Path A (default) renders the menubar via the
         // SwiftUI MenubarGlyphContainer in MenubarGlyph.swift; these builders
@@ -179,7 +195,7 @@ enum MenuBarIconRenderer {
 
     private static func failedAccessibilityLabel(for state: IconState, count: Int) -> String {
         let suffix = count == 1 ? "1 unresolved failure" : "\(count) unresolved failures"
-        return "\(MenubarGlyph.accessibilityLabel(for: state)), \(suffix)"
+        return "\(accessibilityLabel(for: state)), \(suffix)"
     }
 
     // MARK: - Builders
@@ -321,7 +337,7 @@ struct MenuBarIcon: View {
     }
 
     private var accessibilityLabel: String {
-        let base = MenubarGlyph.accessibilityLabel(for: observer.iconState)
+        let base = MenuBarIconRenderer.accessibilityLabel(for: observer.iconState)
         guard observer.unresolvedFailures > 0 else { return base }
         let suffix = observer.unresolvedFailures == 1
             ? "1 unresolved failure"

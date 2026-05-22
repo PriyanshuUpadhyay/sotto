@@ -2,7 +2,7 @@ import XCTest
 import SwiftUI
 @testable import Sotto
 
-final class MenubarGlyphTests: XCTestCase {
+final class MenuBarIconTests: XCTestCase {
     // MARK: - IconState ← HaloPhase (7-state HUD bridge)
     //
     // Spec §4.2: HaloPhase is the view-side state owned by HUD; menubar IconState
@@ -78,34 +78,34 @@ final class MenubarGlyphTests: XCTestCase {
     // MenuBarIcon composes this with the unresolved-failure suffix at view layer.
 
     func test_accessibilityLabel_idle() {
-        XCTAssertEqual(MenubarGlyph.accessibilityLabel(for: .idle), "Sotto idle")
+        XCTAssertEqual(MenuBarIconRenderer.accessibilityLabel(for: .idle), "Sotto idle")
     }
 
     func test_accessibilityLabel_arming() {
-        XCTAssertEqual(MenubarGlyph.accessibilityLabel(for: .arming), "Sotto listening")
+        XCTAssertEqual(MenuBarIconRenderer.accessibilityLabel(for: .arming), "Sotto listening")
     }
 
     func test_accessibilityLabel_recording() {
-        XCTAssertEqual(MenubarGlyph.accessibilityLabel(for: .recording), "Sotto recording")
+        XCTAssertEqual(MenuBarIconRenderer.accessibilityLabel(for: .recording), "Sotto recording")
     }
 
     func test_accessibilityLabel_transcribing() {
-        XCTAssertEqual(MenubarGlyph.accessibilityLabel(for: .transcribing), "Sotto transcribing")
+        XCTAssertEqual(MenuBarIconRenderer.accessibilityLabel(for: .transcribing), "Sotto transcribing")
     }
 
     func test_accessibilityLabel_enhancing() {
-        XCTAssertEqual(MenubarGlyph.accessibilityLabel(for: .enhancing), "Sotto enhancing")
+        XCTAssertEqual(MenuBarIconRenderer.accessibilityLabel(for: .enhancing), "Sotto enhancing")
     }
 
     func test_accessibilityLabel_committed() {
-        XCTAssertEqual(MenubarGlyph.accessibilityLabel(for: .committed), "Sotto committed")
+        XCTAssertEqual(MenuBarIconRenderer.accessibilityLabel(for: .committed), "Sotto committed")
     }
 
     func test_accessibilityLabel_fail() {
-        XCTAssertEqual(MenubarGlyph.accessibilityLabel(for: .fail), "Sotto failed")
+        XCTAssertEqual(MenuBarIconRenderer.accessibilityLabel(for: .fail), "Sotto failed")
     }
 
     func test_accessibilityLabel_handsFree() {
-        XCTAssertEqual(MenubarGlyph.accessibilityLabel(for: .handsFree), "Sotto hands-free")
+        XCTAssertEqual(MenuBarIconRenderer.accessibilityLabel(for: .handsFree), "Sotto hands-free")
     }
 }
