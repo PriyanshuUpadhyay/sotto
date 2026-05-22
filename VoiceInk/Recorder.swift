@@ -27,7 +27,11 @@ class Recorder: NSObject, ObservableObject {
     var onAudioChunk: ((_ data: Data) -> Void)? {
         didSet { recorder?.onAudioChunk = onAudioChunk }
     }
-    
+
+    /// Raw average power (dBFS) forwarded on every audio-meter tick.
+    /// `VoiceInkEngine` sets this to feed `FirstAudioGate` (spec §4.2).
+    var onRawAudioDb: ((Float) -> Void)?
+
     enum RecorderError: Error {
         case couldNotStartRecording
     }
@@ -203,6 +207,8 @@ class Recorder: NSObject, ObservableObject {
         // Sample audio levels (thread-safe read)
         let averagePower = recorder.averagePower
         let peakPower = recorder.peakPower
+
+        onRawAudioDb?(averagePower)
 
         // Normalize values
         let minVisibleDb: Float = -60.0

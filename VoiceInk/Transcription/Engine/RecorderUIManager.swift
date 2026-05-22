@@ -7,6 +7,18 @@ import os
 class RecorderUIManager: ObservableObject {
     @Published var miniRecorderError: String?
 
+    // MARK: - Bay HUD phase observable
+
+    @Published var phase: HaloPhase = .hidden
+    @Published var recordingStartedAt: Date?
+    @Published var formattedActivePromptLabel: String?
+    @Published var currentErrorCode: String?
+    @Published var lastPasteAppName: String?
+
+    private var phaseObservers = Set<AnyCancellable>()
+    private var doneHoldTask: Task<Void, Never>?
+    private var armingHoldTask: Task<Void, Never>?
+
     @Published var recorderType: String = {
         // Legacy "constellation" value (shipped briefly as a vaporware tile
         // that fell through to mini) → migrate to "mini" on read.
@@ -70,6 +82,7 @@ class RecorderUIManager: ObservableObject {
         self.failureRegistry = failureRegistry
         setupNotifications()
         setupFailureCueObserver(registry: failureRegistry)
+        setupPhaseObservers(engine: engine, registry: failureRegistry)
     }
 
     /// Fire `SoundManager.playFail` on every fresh `FailureEvent` published
@@ -91,6 +104,160 @@ class RecorderUIManager: ObservableObject {
             .store(in: &stateCueObservers)
     }
 
+    // MARK: - Bay HUD phase mapping
+
+    private func setupPhaseObservers(engine: VoiceInkEngine, registry: FailureRegistry) {
+        engine.$recordingState
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] state in
+                self?.mapEngineState(state, engine: engine)
+            }
+            .store(in: &phaseObservers)
+
+        // The `.armed → .recording` gate (first audio + arming hold) only
+        // becomes satisfiable *after* the engine's single `.recording` state
+        // publish, so re-evaluate it each time the first-audio gate latches.
+        engine.firstAudioGate.$observed
+            .filter { $0 }
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self, weak engine] _ in
+                guard let self, let engine else { return }
+                self.evaluateRecordingPhase(engine: engine)
+            }
+            .store(in: &phaseObservers)
+
+        registry.$current
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] event in
+                guard let self else { return }
+                if let event {
+                    self.currentErrorCode = Self.errorCode(from: event)
+                    self.phase = .failed
+                } else if self.phase == .failed {
+                    self.phase = .hidden
+                    self.currentErrorCode = nil
+                }
+            }
+            .store(in: &phaseObservers)
+
+        engine.$lastPasteEvent
+            .compactMap { $0 }
+            .removeDuplicates()
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] event in
+                self?.beginDoneHold(appName: event.appName)
+            }
+            .store(in: &phaseObservers)
+
+        $phase
+            .removeDuplicates()
+            .sink { [weak self] new in
+                self?.logger.notice("phase → \(String(describing: new), privacy: .public)")
+            }
+            .store(in: &phaseObservers)
+
+        $phase
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] new in
+                let interactive = (new == .recording || new == .liveText || new == .done || new == .failed)
+                self?.notchWindowManager?.setIgnoresMouseEvents(!interactive)
+            }
+            .store(in: &phaseObservers)
+    }
+
+    private func mapEngineState(_ state: RecordingState, engine: VoiceInkEngine) {
+        if state == .starting && phase == .done {
+            doneHoldTask?.cancel()
+            phase = .hidden
+            lastPasteAppName = nil
+        }
+
+        if phase == .done || phase == .failed { return }
+
+        switch state {
+        case .idle, .busy:
+            armingHoldTask?.cancel()
+            phase = .hidden
+            recordingStartedAt = nil
+        case .starting:
+            phase = .armed
+            if recordingStartedAt == nil { recordingStartedAt = .now }
+        case .recording:
+            if recordingStartedAt == nil { recordingStartedAt = .now }
+            phase = .armed
+            evaluateRecordingPhase(engine: engine)
+        case .transcribing:
+            phase = .transcribing
+        case .enhancing:
+            phase = .enhancing
+        }
+
+        formattedActivePromptLabel = Self.formatPromptLabel(
+            engine.enhancementService?.activePrompt?.title
+        )
+    }
+
+    /// Re-evaluates the `.armed → .recording` promotion. Both gate conditions
+    /// — first audio observed (`FirstAudioGate`, spec §4.2) and the
+    /// `MotionTokens.armingHold` dwell — typically become true *after* the
+    /// engine's lone `.recording` state publish, so this runs from the
+    /// `firstAudioGate.$observed` observer and a follow-up timer, not only
+    /// from `mapEngineState`. Idempotent — safe to call spuriously.
+    private func evaluateRecordingPhase(engine: VoiceInkEngine) {
+        guard engine.recordingState == .recording, phase == .armed,
+              engine.firstAudioObserved,
+              let started = recordingStartedAt else { return }
+
+        armingHoldTask?.cancel()
+        let elapsed = Date().timeIntervalSince(started)
+        if elapsed >= MotionTokens.armingHold {
+            phase = .recording
+        } else {
+            // First audio beat the arming hold — wait out the remainder.
+            armingHoldTask = Task { @MainActor [weak self, weak engine] in
+                try? await Task.sleep(for: .seconds(MotionTokens.armingHold - elapsed))
+                guard !Task.isCancelled, let self, let engine else { return }
+                self.evaluateRecordingPhase(engine: engine)
+            }
+        }
+    }
+
+    private func beginDoneHold(appName: String?) {
+        doneHoldTask?.cancel()
+        lastPasteAppName = appName
+        phase = .done
+        doneHoldTask = Task { @MainActor [weak self] in
+            try? await Task.sleep(for: .seconds(MotionTokens.committedHold))
+            guard !Task.isCancelled, let self else { return }
+            if self.phase == .done {
+                self.phase = .hidden
+                self.lastPasteAppName = nil
+            }
+        }
+    }
+
+    private static func formatPromptLabel(_ raw: String?) -> String? {
+        guard let raw, !raw.isEmpty else { return nil }
+        let upper = raw.uppercased()
+        if upper.count <= 9 { return upper }
+        let idx = upper.index(upper.startIndex, offsetBy: 9)
+        return String(upper[..<idx])
+    }
+
+    private static func errorCode(from event: FailureEvent) -> String {
+        let r = event.reason.uppercased()
+        if r.contains("MODEL")          { return "ERR · NO_MODEL" }
+        if r.contains("DEVICE") || r.contains("MIC") { return "ERR · NO_DEVICE" }
+        if r.contains("NETWORK")        { return "ERR · NETWORK" }
+        if r.contains("AUDIO")          { return "ERR · NO_AUDIO" }
+        return "ERR · UNKNOWN"
+    }
+
+    func dismissFailedPhase() {
+        guard phase == .failed else { return }
+        failureRegistry?.acknowledgeCurrent()
+    }
+
     // MARK: - Recorder Panel Management
 
     func showRecorderPanel() {
@@ -101,7 +268,7 @@ class RecorderUIManager: ObservableObject {
 
         if recorderType == "notch" {
             if notchWindowManager == nil {
-                notchWindowManager = NotchWindowManager(engine: engine, recorder: recorder, failureRegistry: failureRegistry)
+                notchWindowManager = NotchWindowManager(engine: engine, recorder: recorder, failureRegistry: failureRegistry, uiManager: self)
             }
             notchWindowManager?.show()
         } else {

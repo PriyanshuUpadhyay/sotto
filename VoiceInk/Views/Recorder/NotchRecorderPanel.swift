@@ -86,7 +86,7 @@ class NotchRecorderPanel: KeyablePanel {
                let right = screen.auxiliaryTopRightArea?.width {
                 return screen.frame.width - left - right
             }
-            return 180
+            return 240
         }()
 
         // Spec §3.1 panel-infrastructure decision — full-strip panel

@@ -69,4 +69,9 @@ protocol RecorderStateProvider: AnyObject {
     /// `ClusterChips.transcribingChips` during the `.transcribing` phase.
     /// Nil → orchestrator falls back to a default chip label.
     var transcriptionModelLabel: String? { get }
+
+    /// Spec §4.2: first-audio gate. View layer reads this to decide whether
+    /// to render `.armed` or `.recording` during the early-`.recording`
+    /// engine window before the first non-silent frame arrives.
+    var firstAudioObserved: Bool { get }
 }

@@ -54,6 +54,10 @@ enum MotionTokens {
     /// Committed-state hold before fade-out (1.5s).
     static let committedHold: TimeInterval = 1.5
 
+    /// Minimum `.armed` ("LISTENING") dwell before promoting to `.recording`
+    /// once first audio is observed (spec §4.2 — 120ms arming hold).
+    static let armingHold: TimeInterval = 0.12
+
     /// Committed fade-out (400ms).
     static let committedFade: Animation = .easeOut(duration: 0.4)
 

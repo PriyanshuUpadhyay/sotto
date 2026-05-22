@@ -4,6 +4,45 @@ Tracker for app bugs not currently scheduled. Tackled after the aesthetic-redesi
 
 ---
 
+## 2026-05-21
+
+_Deferred WARNs from the PR #6 ("Sotto HUD — Bay recorder HUD") code review. The PR's critical bug — `armed→recording` never fired — was fixed in commit `34d5c27`; the items below are the lower-severity findings left for a follow-up packet._
+
+### KI-07 · `RecordingState.starting` is never emitted — dead branches + broken new-recording-during-committed-hold
+
+**Symptom:** `RecordingState.starting` is a defined enum case but the engine never assigns it — `VoiceInkEngine.toggleRecord` goes straight to `.recording`. Two consequences in `RecorderUIManager`:
+- The `case .starting` branch in `mapEngineState` (sets `.armed`, seeds `recordingStartedAt`) is unreachable dead code.
+- The intended escape hatch `if state == .starting && phase == .done { … phase = .hidden }` never fires. So when a hotkey is pressed during the 1.5s "PASTED" committed-hold, `mapEngineState` early-returns on `phase == .done` and the HUD stays stuck on "PASTED" instead of starting a fresh recording cycle.
+
+**Hypothesis:** The Bay HUD phase machine was designed assuming the engine emits `.starting` before `.recording`; the engine was never updated to do so.
+
+**Next steps when picked up:**
+- Either make `VoiceInkEngine` emit `.starting` at the top of the start branch of `toggleRecord` (before the permission callback), or drop `.starting` from the phase machine and re-anchor the committed-hold cancel on the `.recording` transition directly (`mapEngineState` should cancel `doneHoldTask` + clear `.done` when a new `.recording` arrives).
+- Verify the new-recording-during-committed-hold path renders a fresh arming→recording cycle.
+
+---
+
+### KI-08 · Bay HUD mis-centers on multi-monitor setups
+
+**Symptom:** `BayHUDView.body` computes the HUD's horizontal center from `NSScreen.main` (the focus-follows screen), but `NotchRecorderPanel` is anchored to a specific screen. If focus moves to another monitor while the HUD is visible, `centerX` is recomputed against the wrong screen and all three Bay subviews shift off-center relative to the panel.
+
+**Hypothesis:** The view should derive its width/center from the panel's own screen, not the app-global `NSScreen.main`.
+
+**Next steps when picked up:**
+- Pass the panel's screen width into `BayHUDView` via an environment value, or wrap the panel content in a `GeometryReader` and center off the actual panel frame.
+- Verify on notched-only / notched + external / clamshell layouts with focus on each screen.
+
+---
+
+### KI-09 · Sotto Bay HUD — dead-code cleanup (3 minor items)
+
+Three low-severity dead/unused additions from the Bay HUD PR. No user-facing impact; clean up in a follow-up pass:
+- **`RecorderStateProvider.firstAudioObserved`** — added to the protocol but nothing reads it *through* the protocol; `mapEngineState` reads `engine.firstAudioObserved` on the concrete `VoiceInkEngine`. Remove from the protocol, keep the concrete property.
+- **`HaloPhase.liveText`** — branched in `BayCapsule` / `BayLeftStalactite` / `BayRightStalactite` (identically to `.recording`) but `mapEngineState` never produces it. Either wire up live-text streaming or mark it explicitly reserved.
+- **Strong `engine` capture** — the `engine.$recordingState` sink in `RecorderUIManager.setupPhaseObservers` captures `engine` strongly while `self` is `[weak]`. Not a leak today (the back-reference `engine.recorderUIManager` is `weak` and both objects are app-lifetime), but `[weak engine]` would match the `firstAudioGate.$observed` sink added in commit `34d5c27`.
+
+---
+
 ## 2026-04-28
 
 ### KI-01 · Stale paste-target state shown at start of next transcription

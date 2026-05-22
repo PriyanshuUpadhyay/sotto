@@ -23,13 +23,37 @@ struct HaloRecorderView<S: RecorderStateProvider & ObservableObject, WM: Observa
 
     var body: some View {
         if isVisible() {
-            ConstellationContainer(
-                stateProvider: stateProvider,
-                recorder: recorder,
-                aiService: aiService,
-                mode: mode
-            )
+            if mode == .notch {
+                BayHUDViewHost(
+                    stateProvider: stateProvider,
+                    recorder: recorder,
+                    aiService: aiService
+                )
+            } else {
+                ConstellationContainer(
+                    stateProvider: stateProvider,
+                    recorder: recorder,
+                    aiService: aiService,
+                    mode: mode
+                )
+            }
         }
+    }
+}
+
+private struct BayHUDViewHost<S: RecorderStateProvider & ObservableObject>: View {
+    @ObservedObject var stateProvider: S
+    @ObservedObject var recorder: Recorder
+    @ObservedObject var aiService: AIService
+    @EnvironmentObject var uiManager: RecorderUIManager
+
+    var body: some View {
+        BayHUDView(
+            stateProvider: stateProvider,
+            recorder: recorder,
+            aiService: aiService,
+            uiManager: uiManager
+        )
     }
 }
 

@@ -70,6 +70,10 @@ final class FailureRegistry: ObservableObject {
         }
     }
 
+    func acknowledgeCurrent() {
+        if let id = current?.id { acknowledge(id) }
+    }
+
     /// Drop everything. Used by the success path (engine clears after a
     /// clean `runPipeline`) and by the Settings-open auto-ack hook.
     func clearAll() {
