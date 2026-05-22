@@ -25,6 +25,7 @@ enum ClusterChips {
         onRetry: @escaping () -> Void,
         onOpenSettings: @escaping () -> Void
     ) -> [ChipDescriptor] {
+        let haloPhase = HaloPhase(clusterPhase: phase)
         switch phase {
         case .idle:
             return []
@@ -33,15 +34,17 @@ enum ClusterChips {
                 startedAt: recordingStartedAt,
                 audioLevel: audioLevel,
                 promptIcon: promptIcon,
-                promptName: promptName
+                promptName: promptName,
+                haloPhase: haloPhase
             )
         case .transcribing:
-            return transcribingChips(modelLabel: transcriptionModelLabel)
+            return transcribingChips(modelLabel: transcriptionModelLabel, haloPhase: haloPhase)
         case .enhancing:
             return enhancingChips(
                 promptIcon: promptIcon,
                 promptName: promptName,
-                providerLabel: enhancementProviderLabel
+                providerLabel: enhancementProviderLabel,
+                haloPhase: haloPhase
             )
         case .done(let appName, _):
             return doneChips(appName: appName)
@@ -49,7 +52,8 @@ enum ClusterChips {
             return failedChips(
                 reason: reason,
                 onRetry: onRetry,
-                onOpenSettings: onOpenSettings
+                onOpenSettings: onOpenSettings,
+                haloPhase: haloPhase
             )
         }
     }
@@ -60,7 +64,8 @@ enum ClusterChips {
         startedAt: Date?,
         audioLevel: Float,
         promptIcon: String?,
-        promptName: String?
+        promptName: String?,
+        haloPhase: HaloPhase
     ) -> [ChipDescriptor] {
         var chips: [ChipDescriptor] = [
             ChipDescriptor(
@@ -71,8 +76,9 @@ enum ClusterChips {
             ) {
                 AnchorChip(
                     label: "REC",
-                    dotColor: Palette.accent,
+                    dotColor: haloPhase.glowColor,
                     rate: .fast,
+                    haloPhase: haloPhase,
                     trailing: AnyView(MeterBars(level: audioLevel))
                 )
             }
@@ -111,7 +117,7 @@ enum ClusterChips {
 
     // MARK: - Transcribing
 
-    private static func transcribingChips(modelLabel: String?) -> [ChipDescriptor] {
+    private static func transcribingChips(modelLabel: String?, haloPhase: HaloPhase) -> [ChipDescriptor] {
         var chips: [ChipDescriptor] = [
             ChipDescriptor(
                 id: "trans-anchor",
@@ -122,7 +128,8 @@ enum ClusterChips {
                 AnchorChip(
                     label: "TRANSCRIBING",
                     dotColor: Palette.onyxFg.opacity(0.85),
-                    rate: .none
+                    rate: .none,
+                    haloPhase: haloPhase
                 )
                 .chipShimmer(active: true)
             }
@@ -147,7 +154,8 @@ enum ClusterChips {
     private static func enhancingChips(
         promptIcon: String?,
         promptName: String?,
-        providerLabel: String?
+        providerLabel: String?,
+        haloPhase: HaloPhase
     ) -> [ChipDescriptor] {
         var chips: [ChipDescriptor] = [
             ChipDescriptor(
@@ -158,10 +166,10 @@ enum ClusterChips {
             ) {
                 AnchorChip(
                     label: "ENHANCING",
-                    dotColor: Palette.accent,
-                    rate: .slow
+                    dotColor: haloPhase.glowColor,
+                    rate: .slow,
+                    haloPhase: haloPhase
                 )
-                .chipBreath(active: true)
             }
         ]
 
@@ -215,7 +223,8 @@ enum ClusterChips {
     private static func failedChips(
         reason: String?,
         onRetry: @escaping () -> Void,
-        onOpenSettings: @escaping () -> Void
+        onOpenSettings: @escaping () -> Void,
+        haloPhase: HaloPhase
     ) -> [ChipDescriptor] {
         var chips: [ChipDescriptor] = [
             ChipDescriptor(
@@ -226,8 +235,9 @@ enum ClusterChips {
             ) {
                 AnchorChip(
                     label: "FAIL",
-                    dotColor: Palette.accent,
-                    rate: .fast
+                    dotColor: haloPhase.glowColor,
+                    rate: .fast,
+                    haloPhase: haloPhase
                 )
             }
         ]
@@ -281,6 +291,7 @@ private struct AnchorChip: View {
     let label: String
     let dotColor: Color
     let rate: RingPulseRate
+    let haloPhase: HaloPhase
     var trailing: AnyView? = nil
 
     var body: some View {
@@ -294,7 +305,7 @@ private struct AnchorChip: View {
                 trailing
             }
         }
-        .glassChip()
+        .recorderChip(phase: haloPhase)
     }
 }
 
@@ -321,7 +332,7 @@ private struct KeyValueChip: View {
                 .lineLimit(1)
                 .truncationMode(.middle)
         }
-        .glassChip()
+        .recorderChip(phase: .hidden)
     }
 }
 
@@ -335,7 +346,7 @@ private struct TimeChip: View {
                 .font(.system(size: 10.5, weight: .medium, design: .monospaced))
                 .tracking(0.06 * 10.5)
                 .foregroundStyle(Palette.onyxFg)
-                .glassChip()
+                .recorderChip(phase: .hidden)
         }
     }
 
@@ -355,7 +366,7 @@ private struct MeterBars: View {
             ForEach(0..<4, id: \.self) { i in
                 let threshold = Float(i + 1) / 4.0
                 Capsule()
-                    .fill(level >= threshold ? Palette.accent : Palette.accent.opacity(0.30))
+                    .fill(level >= threshold ? Palette.brandAcid : Palette.brandAcid.opacity(0.30))
                     .frame(width: 1.5, height: CGFloat(3 + i))
             }
         }
@@ -370,7 +381,7 @@ private struct DoneAnchorChip: View {
         HStack(spacing: 6) {
             Image(systemName: "checkmark.circle.fill")
                 .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(Palette.accent)
+                .foregroundStyle(HaloPhase.done.glowColor)
             Text("PASTED")
                 .font(.system(size: 10.5, weight: .medium, design: .monospaced))
                 .tracking(0.06 * 10.5)
@@ -384,7 +395,7 @@ private struct DoneAnchorChip: View {
                 .lineLimit(1)
                 .truncationMode(.tail)
         }
-        .glassChip()
+        .recorderChip(phase: .done)
     }
 }
 
@@ -398,7 +409,7 @@ private struct ReasonChip: View {
             .lineLimit(2)
             .fixedSize(horizontal: false, vertical: true)
             .frame(maxWidth: 280, alignment: .leading)
-            .glassChip()
+            .recorderChip(phase: .hidden)
     }
 }
 
@@ -414,6 +425,6 @@ private struct ActionChip: View {
                 .foregroundStyle(Palette.onyxFg)
         }
         .buttonStyle(.plain)
-        .glassChip()
+        .recorderChip(phase: .hidden)
     }
 }
