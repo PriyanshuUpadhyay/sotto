@@ -1,5 +1,6 @@
 import XCTest
 import SwiftUI
+import AppKit
 @testable import Sotto
 
 final class MenuBarIconTests: XCTestCase {
@@ -107,5 +108,28 @@ final class MenuBarIconTests: XCTestCase {
 
     func test_accessibilityLabel_handsFree() {
         XCTAssertEqual(MenuBarIconRenderer.accessibilityLabel(for: .handsFree), "Sotto hands-free")
+    }
+}
+
+// MARK: - Brand-glyph image contract
+
+extension MenuBarIconTests {
+    func test_image_isNonTemplate_andSized_forAllStates() {
+        let states: [MenuBarIconRenderer.IconState] = [
+            .idle, .arming, .recording, .transcribing,
+            .enhancing, .committed, .fail, .handsFree,
+        ]
+        for state in states {
+            let img = MenuBarIconRenderer.image(for: state, unresolvedFailures: 0)
+            XCTAssertFalse(img.isTemplate, "\(state): brand glyph must be non-template")
+            XCTAssertEqual(img.size, NSSize(width: 18, height: 18), "\(state): icon must be 18×18pt")
+            XCTAssertNotNil(img.accessibilityDescription, "\(state): icon needs an a11y description")
+        }
+    }
+
+    func test_image_withUnresolvedFailures_isNonTemplate_andSized() {
+        let img = MenuBarIconRenderer.image(for: .idle, unresolvedFailures: 2)
+        XCTAssertFalse(img.isTemplate)
+        XCTAssertEqual(img.size, NSSize(width: 18, height: 18))
     }
 }

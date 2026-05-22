@@ -4,14 +4,12 @@ import SwiftUI
 
 // MARK: - MenuBarIconRenderer
 //
-// Programmatic NSImage builders for the four engine-driven menu bar icon
-// states (idle / recording / transcribing / enhancing). Spec §3.11.
-//
-// All glyphs render at 18×18pt — the canvas the spec mandates so the menu bar
-// row never jitters on state change. Idle / transcribing / enhancing stay
-// template (auto-tinted by macOS in light + dark menu bars). Recording bakes
-// `Palette.accent` directly so the loudest signal in the system reads as
-// tangerine regardless of menu bar appearance.
+// Programmatic NSImage builders for the menu bar status icon. Every state
+// renders the Sotto brand glyph (vertical mark + full-width lime underscore)
+// at 18×18pt as a static, non-template NSImage — static because a SwiftUI /
+// TimelineView label re-rasterises every frame inside MenuBarExtra and pins
+// the main thread (see commit history). State is carried by mark color and a
+// 4pt corner dot; see `image(for:unresolvedFailures:)`.
 
 enum MenuBarIconRenderer {
     /// Canvas size — 18×18pt, the spec-pinned non-jitter footprint.
@@ -23,8 +21,8 @@ enum MenuBarIconRenderer {
 
     /// Icon state — derived from engine `RecordingState` + view-side `HaloPhase`
     /// (which holds `.done` for ~1.5s post-commit and `.failed` until dismissed).
-    /// Hands-free overrides both. Failure-registry overlay is composited at the
-    /// view layer via `CornerBadge`.
+    /// Hands-free overrides both. Failure-registry overlay is composited as a
+    /// red corner dot by `image(for:unresolvedFailures:)`.
     enum IconState: Equatable {
         case idle
         case arming         // HaloPhase.armed — pre-first-audio breathe
@@ -107,90 +105,47 @@ enum MenuBarIconRenderer {
         }
     }
 
-    static func image(for state: IconState) -> NSImage {
-        // Legacy NSImage builders. Path A (default) renders the menubar via the
-        // SwiftUI MenubarGlyphContainer in MenubarGlyph.swift; these builders
-        // remain as Path B fallback and as the bridge for `.handsFree`.
+    // MARK: - Public icon
+
+    /// The menu bar icon for `state`. The brand glyph is non-template, so macOS
+    /// will not auto-tint the label-colored mark — its color is resolved here
+    /// against `NSApp.effectiveAppearance` (covers light / dark / high-contrast).
+    /// `unresolvedFailures > 0` stamps a red corner dot on top.
+    static func image(for state: IconState, unresolvedFailures: Int) -> NSImage {
+        var markColor = NSColor.labelColor
+        NSApp.effectiveAppearance.performAsCurrentDrawingAppearance {
+            markColor = NSColor.labelColor.usingColorSpace(.sRGB) ?? .labelColor
+        }
+        let base = glyphImage(for: state, markColor: markColor)
+        guard unresolvedFailures > 0 else { return base }
+        return stampingFailureDot(
+            on: base,
+            label: failedAccessibilityLabel(for: state, count: unresolvedFailures)
+        )
+    }
+
+    /// Per-state brand glyph, no failure overlay. `markColor` is the already-
+    /// resolved color for the label-colored states.
+    private static func glyphImage(for state: IconState, markColor: NSColor) -> NSImage {
+        let label = accessibilityLabel(for: state)
         switch state {
         case .idle:
-            return template("waveform", weight: .light, label: "Sotto idle")
-        case .arming:
-            return template("waveform", weight: .light, label: "Sotto listening")
+            return brandGlyph(center: .mark(markColor), cornerDot: nil, label: label)
+        case .arming, .transcribing, .enhancing:
+            return brandGlyph(center: .mark(markColor),
+                              cornerDot: NSColor(Palette.brandAcid), label: label)
         case .recording:
-            return tinted(
-                "waveform",
-                weight: .semibold,
-                color: NSColor(Palette.brandAcid),
-                label: "Sotto recording"
-            )
-        case .transcribing:
-            return template("waveform", weight: .regular, label: "Sotto transcribing")
-        case .enhancing:
-            return template("sparkles", weight: .regular, label: "Sotto enhancing")
+            return brandGlyph(center: .mark(NSColor(Palette.recRed)),
+                              cornerDot: nil, label: label)
         case .committed:
-            return tinted(
-                "checkmark",
-                weight: .semibold,
-                color: NSColor(Palette.commitGreen),
-                label: "Sotto committed"
-            )
+            return brandGlyph(center: .mark(markColor),
+                              cornerDot: NSColor(Palette.commitGreen), label: label)
         case .fail:
-            return tinted(
-                "exclamationmark.triangle.fill",
-                weight: .semibold,
-                color: NSColor(Palette.recRed),
-                label: "Sotto failed"
-            )
-        case .handsFree:  // W12.D
-            return tinted(
-                "ear.fill",
-                weight: .semibold,
-                color: NSColor(Palette.brandAcid),
-                label: "Sotto hands-free"
-            )
+            return brandGlyph(center: .failBang, cornerDot: nil, label: label)
+        case .handsFree:
+            return tinted("ear.fill", weight: .semibold,
+                          color: NSColor(Palette.brandAcid), label: label)
         }
-    }
-
-    /// Failure-aware variant. When `unresolvedFailures > 0`, renders the
-    /// recording-tinted waveform plus a 4pt tangerine dot in the upper-right
-    /// of the 18pt canvas. Drawn by hand via `NSImage.lockFocus` — no asset
-    /// dependency.
-    static func image(for state: IconState, unresolvedFailures: Int) -> NSImage {
-        guard unresolvedFailures > 0 else {
-            return image(for: state)
-        }
-        return failed(label: failedAccessibilityLabel(for: state, count: unresolvedFailures))
-    }
-
-    private static func failed(label: String) -> NSImage {
-        let cfg = NSImage.SymbolConfiguration(pointSize: symbolSize, weight: .semibold)
-            .applying(NSImage.SymbolConfiguration(paletteColors: [NSColor(Palette.accent)]))
-        let glyph = (NSImage(systemSymbolName: "waveform", accessibilityDescription: label)?
-            .withSymbolConfiguration(cfg)) ?? NSImage()
-
-        let canvas = NSImage(size: NSSize(width: pointSize, height: pointSize))
-        canvas.lockFocus()
-        defer { canvas.unlockFocus() }
-
-        let glyphSize = glyph.size
-        let originX = (pointSize - glyphSize.width) / 2.0
-        let originY = (pointSize - glyphSize.height) / 2.0
-        glyph.draw(in: NSRect(x: originX, y: originY, width: glyphSize.width, height: glyphSize.height))
-
-        let dotDiameter: CGFloat = 4.0
-        let dotInset: CGFloat = 1.0
-        let dotRect = NSRect(
-            x: pointSize - dotDiameter - dotInset,
-            y: pointSize - dotDiameter - dotInset,
-            width: dotDiameter,
-            height: dotDiameter
-        )
-        NSColor(Palette.accent).setFill()
-        NSBezierPath(ovalIn: dotRect).fill()
-
-        canvas.isTemplate = false
-        canvas.accessibilityDescription = label
-        return canvas
     }
 
     private static func failedAccessibilityLabel(for state: IconState, count: Int) -> String {
@@ -198,16 +153,93 @@ enum MenuBarIconRenderer {
         return "\(accessibilityLabel(for: state)), \(suffix)"
     }
 
-    // MARK: - Builders
+    // MARK: - Brand-glyph builder
 
-    private static func template(_ symbol: String, weight: NSFont.Weight, label: String) -> NSImage {
-        let cfg = NSImage.SymbolConfiguration(pointSize: symbolSize, weight: weight)
-        let img = (NSImage(systemSymbolName: symbol, accessibilityDescription: label)?
-            .withSymbolConfiguration(cfg)) ?? NSImage()
-        img.size = NSSize(width: pointSize, height: pointSize)
-        img.isTemplate = true
-        return img
+    /// What occupies the center band of the glyph.
+    private enum GlyphCenter {
+        case mark(NSColor)   // vertical brand bar in the given color
+        case failBang        // red "!" drawn in place of the mark
     }
+
+    /// Draws the Sotto brand glyph — vertical mark + full-width lime underscore
+    /// — as an 18×18pt non-template NSImage. Non-template because the lime
+    /// underscore is a brand color macOS must not tint away. Spec §5.2
+    /// proportions, rounded to whole points so every edge is pixel-aligned.
+    private static func brandGlyph(center: GlyphCenter, cornerDot: NSColor?, label: String) -> NSImage {
+        let s = pointSize
+
+        // Spec §5.2 proportions, rounded to whole points at the 18pt render
+        // size so every edge is pixel-aligned (crisp at 1x and 2x).
+        let markW = (0.18 * s).rounded()
+        let markH = (0.55 * s).rounded()
+        let underscoreH = (0.14 * s).rounded()
+        let gap = (0.08 * s).rounded()
+        let totalH = markH + gap + underscoreH
+        let bottomInset = ((s - totalH) / 2.0).rounded()
+
+        let canvas = NSImage(size: NSSize(width: s, height: s))
+        canvas.lockFocus()
+
+        // NSImage is bottom-origin: y is measured up from the bottom edge.
+        // Underscore — full width, base of the stack.
+        let underscoreRect = NSRect(x: 0, y: bottomInset, width: s, height: underscoreH)
+        NSColor(Palette.brandAcid).setFill()
+        NSBezierPath(roundedRect: underscoreRect,
+                     xRadius: underscoreH * 0.3, yRadius: underscoreH * 0.3).fill()
+
+        // Center band — mark or fail "!".
+        let bandBottom = bottomInset + underscoreH + gap
+        switch center {
+        case .mark(let color):
+            let markRect = NSRect(x: ((s - markW) / 2.0).rounded(), y: bandBottom,
+                                  width: markW, height: markH)
+            color.setFill()
+            NSBezierPath(roundedRect: markRect,
+                         xRadius: markW * 0.15, yRadius: markW * 0.15).fill()
+        case .failBang:
+            let attrs: [NSAttributedString.Key: Any] = [
+                .font: NSFont.monospacedSystemFont(ofSize: 11, weight: .heavy),
+                .foregroundColor: NSColor(Palette.recRed),
+            ]
+            let bang = NSAttributedString(string: "!", attributes: attrs)
+            let bangSize = bang.size()
+            bang.draw(at: NSPoint(x: (s - bangSize.width) / 2.0,
+                                  y: bandBottom + (markH - bangSize.height) / 2.0))
+        }
+
+        // Corner dot — upper-right, 1pt inset.
+        if let cornerDot {
+            let d: CGFloat = 4.0, inset: CGFloat = 1.0
+            cornerDot.setFill()
+            NSBezierPath(ovalIn: NSRect(x: s - d - inset, y: s - d - inset,
+                                        width: d, height: d)).fill()
+        }
+
+        canvas.unlockFocus()
+        canvas.isTemplate = false
+        canvas.accessibilityDescription = label
+        return canvas
+    }
+
+    /// Re-renders `base` with a red corner dot stamped upper-right — the
+    /// unresolved-failure overlay. Works for any 18pt icon and visually
+    /// replaces any state dot already at that corner.
+    private static func stampingFailureDot(on base: NSImage, label: String) -> NSImage {
+        let s = pointSize
+        let canvas = NSImage(size: NSSize(width: s, height: s))
+        canvas.lockFocus()
+        base.draw(in: NSRect(x: 0, y: 0, width: s, height: s))
+        let d: CGFloat = 4.0, inset: CGFloat = 1.0
+        NSColor(Palette.recRed).setFill()
+        NSBezierPath(ovalIn: NSRect(x: s - d - inset, y: s - d - inset,
+                                    width: d, height: d)).fill()
+        canvas.unlockFocus()
+        canvas.isTemplate = false
+        canvas.accessibilityDescription = label
+        return canvas
+    }
+
+    // MARK: - SF Symbol builder (hands-free only)
 
     private static func tinted(_ symbol: String, weight: NSFont.Weight, color: NSColor, label: String) -> NSImage {
         let cfg = NSImage.SymbolConfiguration(pointSize: symbolSize, weight: weight)
@@ -308,31 +340,23 @@ final class RecordingStateObserver: ObservableObject {
     }
 }
 
-// MARK: - MenuBarIcon (SwiftUI label for MenuBarExtra)
-//
-// Hosts MenubarGlyphContainer — pure-SwiftUI Canvas/Path mark with state
-// overlays driven by TimelineView (Path A, spec §5.4 single-path commitment).
-// The struct signature is preserved so VoiceInk.swift's MenuBarExtra label
-// closure mounts it unchanged.
-//
-// Failure-registry overlay (red corner dot) composites at this layer so it
-// can stack with any non-fail state.
-
 struct MenuBarIcon: View {
     @ObservedObject var observer: RecordingStateObserver
+    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
-        // MenuBarExtra rasterises its label into the status-item button image
-        // on every SwiftUI update. A TimelineView-driven label (the animated
-        // MenubarGlyphContainer) re-rasterises every animation frame, pinning
-        // the main thread in an infinite updateButton -> setImage -> _adjustLength
-        // loop (100% CPU, app hang). Render a static per-state NSImage instead:
-        // it re-evaluates only when iconState or unresolvedFailures changes.
+        // Static per-state NSImage. A SwiftUI/TimelineView label re-rasterises
+        // every frame inside MenuBarExtra and pins the main thread (see commit
+        // history) — so the icon is a discrete image, re-rendered only when
+        // iconState/unresolvedFailures change. `.id(colorScheme)` rebuilds it
+        // on a light/dark flip; the brand glyph is non-template and image(for:)
+        // re-resolves the mark against NSApp.effectiveAppearance each rebuild.
         Image(nsImage: MenuBarIconRenderer.image(
             for: observer.iconState,
             unresolvedFailures: observer.unresolvedFailures
         ))
         .frame(width: 18, height: 18)
+        .id(colorScheme)
         .accessibilityLabel(Text(accessibilityLabel))
     }
 
@@ -353,19 +377,22 @@ private struct MenuBarIconPreviewHarness: View {
     @State private var state: MenuBarIconRenderer.IconState = .idle
     @State private var unresolved: Int = 0
 
+    private let allStates: [(String, MenuBarIconRenderer.IconState)] = [
+        ("Idle", .idle), ("Arming", .arming), ("Recording", .recording),
+        ("Transcribing", .transcribing), ("Enhancing", .enhancing),
+        ("Committed", .committed), ("Fail", .fail), ("Hands-free", .handsFree),
+    ]
+
     var body: some View {
         VStack(spacing: 18) {
-            Image(nsImage: MenuBarIconRenderer.image(for: state, unresolvedFailures: unresolved))
+            Image(nsImage: MenuBarIconRenderer.image(
+                for: state, unresolvedFailures: unresolved))
                 .frame(width: 64, height: 64)
 
-            Picker("", selection: $state) {
-                Text("Idle").tag(MenuBarIconRenderer.IconState.idle)
-                Text("Recording").tag(MenuBarIconRenderer.IconState.recording)
-                Text("Transcribing").tag(MenuBarIconRenderer.IconState.transcribing)
-                Text("Enhancing").tag(MenuBarIconRenderer.IconState.enhancing)
-                Text("Hands-free").tag(MenuBarIconRenderer.IconState.handsFree)  // W12.D
+            Picker("State", selection: $state) {
+                ForEach(allStates, id: \.1) { Text($0.0).tag($0.1) }
             }
-            .pickerStyle(.segmented)
+            .pickerStyle(.menu)
 
             Stepper("Unresolved: \(unresolved)", value: $unresolved, in: 0...5)
         }
