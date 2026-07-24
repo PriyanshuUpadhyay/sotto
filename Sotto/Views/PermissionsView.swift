@@ -54,8 +54,14 @@ class PermissionManager: ObservableObject {
         }
     }
     
-    func requestScreenRecordingPermission() {
+    @discardableResult
+    func requestScreenRecordingPermission() -> Bool {
         CGRequestScreenCaptureAccess()
+    }
+
+    func requestAccessibilityPermission() {
+        let options: NSDictionary = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true]
+        _ = AXIsProcessTrustedWithOptions(options)
     }
     
     func checkAudioPermissionStatus() {

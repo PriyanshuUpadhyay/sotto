@@ -1,6 +1,7 @@
 import Cocoa
 import SwiftUI
 import OSLog
+import AVFoundation
 
 /// Single source of truth for "running under a headless test harness".
 /// When true, the app must NOT steal focus, show windows, present onboarding,
@@ -39,6 +40,27 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         warnIfDuplicateInstanceRunning()
         menuBarManager?.applyActivationPolicy()
         surfaceWindowOnUserLaunch(notification)
+        requestMissingPermissionsOnLaunch()
+    }
+
+    /// Re-prompt for any permission Sotto still lacks, once per launch. Onboarding
+    /// owns first-run prompting, so this only runs after it completes. Microphone
+    /// is prompted only while `.notDetermined` — a `.denied` mic can't be re-shown
+    /// by macOS, and re-asking is what the user's explicit denial rules out.
+    /// Accessibility and Screen Recording re-prompt every launch until granted.
+    /// Deferred one runloop turn so dialogs don't fire before the run loop settles.
+    private func requestMissingPermissionsOnLaunch() {
+        guard UserDefaults.standard.bool(forKey: OnboardingState.Key.completed) else { return }
+        DispatchQueue.main.async {
+            if AVCaptureDevice.authorizationStatus(for: .audio) == .notDetermined {
+                AVCaptureDevice.requestAccess(for: .audio) { _ in }
+            }
+            let axOptions: NSDictionary = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true]
+            _ = AXIsProcessTrustedWithOptions(axOptions)
+            if !CGPreflightScreenCaptureAccess() {
+                CGRequestScreenCaptureAccess()
+            }
+        }
     }
 
     /// Cold-launch window surfacing. Sotto is menu-bar-primary and its

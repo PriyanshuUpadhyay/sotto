@@ -1,30 +1,37 @@
 import XCTest
+import AVFoundation
 @testable import Sotto
 
-/// Records every interaction so a request call would be provable. The strip's
-/// model is typed to the read-only `PermissionStatusReading` seam, so it can
-/// only reach `refreshStatus()` — the request counters must stay zero.
-final class SpyPermissionSource: PermissionStatusReading {
+/// Records every interaction so a request call is provable. The strip can now
+/// request access on a row tap, but its `.onAppear` path must still only
+/// refresh — the request counters must stay zero across appear.
+final class SpyPermissionSource: PermissionRequesting {
     let audioGranted: Bool
     let accessibilityGranted: Bool
     let screenRecordingGranted: Bool
+    let audioStatus: AVAuthorizationStatus
 
     private(set) var refreshCount = 0
     private(set) var requestAudioCount = 0
+    private(set) var requestAccessibilityCount = 0
     private(set) var requestScreenRecordingCount = 0
 
     init(audio: Bool, accessibility: Bool, screenRecording: Bool) {
         audioGranted = audio
         accessibilityGranted = accessibility
         screenRecordingGranted = screenRecording
+        audioStatus = audio ? .authorized : .denied
     }
 
     func refreshStatus() { refreshCount += 1 }
 
-    // Not part of the read-only seam — present only so the test can prove the
-    // strip never reaches them. The model cannot see these through the protocol.
     func requestAudioPermission() { requestAudioCount += 1 }
-    func requestScreenRecordingPermission() { requestScreenRecordingCount += 1 }
+    func requestAccessibilityPermission() { requestAccessibilityCount += 1 }
+    @discardableResult
+    func requestScreenRecordingPermission() -> Bool {
+        requestScreenRecordingCount += 1
+        return screenRecordingGranted
+    }
 }
 
 final class PermissionsStatusStripTests: XCTestCase {
@@ -64,23 +71,21 @@ final class PermissionsStatusStripTests: XCTestCase {
         XCTAssertEqual(spy.requestScreenRecordingCount, 0, "appear must never request screen-recording access")
     }
 
-    // (c) The guarantee holds at the VIEW boundary: the strip is generic over the
-    // read-only seam, so its `Source` cannot name a request API. Binding a
-    // seam-typed spy compiles only because of that constraint, and the exact
-    // path the view's `.onAppear` runs requests nothing.
+    // (c) At the VIEW boundary: the strip can request access on a row tap, but the
+    // exact path its `.onAppear` runs requests nothing — only a no-prompt refresh.
     @MainActor
-    func test_stripViewIsTypedToReadOnlySeam_appearPathNeverRequests() {
+    func test_stripView_appearPathNeverRequests() {
         let spy = SpyPermissionSource(audio: false, accessibility: true, screenRecording: false)
 
         let strip = PermissionsStatusStrip(source: spy)
-        XCTAssertTrue(strip.source === spy, "strip binds the read-only seam spy as its source")
+        XCTAssertTrue(strip.source === spy, "strip binds the spy as its source")
 
         // Drive the same call the view's .onAppear runs (model.onAppear()).
         PermissionsStatusStripModel(source: strip.source).onAppear()
 
         XCTAssertEqual(spy.refreshCount, 1, "view appear must trigger exactly one no-prompt refresh")
-        XCTAssertEqual(spy.requestAudioCount, 0, "view can never request microphone access")
-        XCTAssertEqual(spy.requestScreenRecordingCount, 0, "view can never request screen-recording access")
+        XCTAssertEqual(spy.requestAudioCount, 0, "appear must not request microphone access")
+        XCTAssertEqual(spy.requestScreenRecordingCount, 0, "appear must not request screen-recording access")
     }
 
     // The real PermissionManager satisfies the read-only seam, mapping its

@@ -1,11 +1,13 @@
 import SwiftUI
+import AppKit
+import AVFoundation
 
-// MARK: - Read-only seam
+// MARK: - Status seam
 
-/// Read-only projection of permission state: getters plus a no-prompt refresh,
-/// and nothing else. It refines `ObservableObject` so a SwiftUI view can observe
-/// it directly while still being unable to name a request API — the Settings
-/// status strip is read-only by construction at the view layer, not just the model.
+/// Read-only projection of permission state: getters plus a no-prompt refresh.
+/// It refines `ObservableObject` so a SwiftUI view can observe it directly. The
+/// derived-row model reads only through this seam; requesting access is a
+/// separate `PermissionRequesting` refinement (below) the strip's rows drive.
 protocol PermissionStatusReading: ObservableObject {
     var audioGranted: Bool { get }
     var accessibilityGranted: Bool { get }
@@ -13,10 +15,21 @@ protocol PermissionStatusReading: ObservableObject {
     func refreshStatus()
 }
 
-extension PermissionManager: PermissionStatusReading {
+/// Request-capable refinement: the read-only getters plus the raw microphone
+/// status and the per-permission request entry points. A not-granted row in the
+/// Settings strip taps straight into these.
+protocol PermissionRequesting: PermissionStatusReading {
+    var audioStatus: AVAuthorizationStatus { get }
+    func requestAudioPermission()
+    func requestAccessibilityPermission()
+    @discardableResult func requestScreenRecordingPermission() -> Bool
+}
+
+extension PermissionManager: PermissionRequesting {
     var audioGranted: Bool { audioPermissionStatus == .authorized }
     var accessibilityGranted: Bool { isAccessibilityEnabled }
     var screenRecordingGranted: Bool { isScreenRecordingEnabled }
+    var audioStatus: AVAuthorizationStatus { audioPermissionStatus }
     func refreshStatus() { checkAllPermissions() }
 }
 
@@ -56,8 +69,12 @@ struct PermissionsStatusStripModel<Source: PermissionStatusReading> {
 
 // MARK: - View
 
-struct PermissionsStatusStrip<Source: PermissionStatusReading>: View {
+struct PermissionsStatusStrip<Source: PermissionRequesting>: View {
     @ObservedObject var source: Source
+
+    private enum Permission {
+        case microphone, accessibility, screenRecording
+    }
 
     private var model: PermissionsStatusStripModel<Source> {
         PermissionsStatusStripModel(source: source)
@@ -69,34 +86,78 @@ struct PermissionsStatusStrip<Source: PermissionStatusReading>: View {
             iconSystemName: "lock.shield",
             iconTint: Palette.neutral,
             title: "Permissions",
-            subtitle: "System access Sotto currently holds."
+            subtitle: "System access Sotto currently holds. Tap a row to grant."
         ) {
-            permissionRow(icon: "mic.fill", label: "Microphone", granted: rows.microphone)
-            permissionRow(icon: "accessibility", label: "Accessibility", granted: rows.accessibility)
-            permissionRow(icon: "rectangle.dashed.badge.record", label: "Screen Recording", granted: rows.screenRecording)
+            permissionRow(icon: "mic.fill", label: "Microphone", granted: rows.microphone, permission: .microphone)
+            permissionRow(icon: "accessibility", label: "Accessibility", granted: rows.accessibility, permission: .accessibility)
+            permissionRow(icon: "rectangle.dashed.badge.record", label: "Screen Recording", granted: rows.screenRecording, permission: .screenRecording)
         }
         .onAppear { model.onAppear() }
     }
 
-    private func permissionRow(icon: String, label: String, granted: Bool) -> some View {
-        SettingsRow(
+    @ViewBuilder
+    private func permissionRow(icon: String, label: String, granted: Bool, permission: Permission) -> some View {
+        let row = SettingsRow(
             iconSystemName: icon,
             label: label,
             iconTint: Palette.neutral
         ) {
             statusPill(granted: granted)
         }
+
+        if granted {
+            row
+        } else {
+            Button { request(permission) } label: {
+                row.contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .onHover { inside in
+                if inside { NSCursor.pointingHand.push() } else { NSCursor.pop() }
+            }
+        }
     }
 
     private func statusPill(granted: Bool) -> some View {
         let tone = granted ? Palette.success : Palette.warn
-        return Label(granted ? "Granted" : "Not granted",
-                     systemImage: granted ? "checkmark.circle.fill" : "exclamationmark.circle")
-            .font(.system(size: 10.5, weight: .semibold))
-            .foregroundStyle(tone)
-            .padding(.horizontal, 8)
-            .padding(.vertical, 3)
-            .background(Capsule().fill(tone.opacity(0.16)))
-            .overlay(Capsule().stroke(tone.opacity(0.42), lineWidth: 0.5))
+        return HStack(spacing: 6) {
+            Label(granted ? "Granted" : "Not granted",
+                  systemImage: granted ? "checkmark.circle.fill" : "exclamationmark.circle")
+                .font(.system(size: 10.5, weight: .semibold))
+                .foregroundStyle(tone)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 3)
+                .background(Capsule().fill(tone.opacity(0.16)))
+                .overlay(Capsule().stroke(tone.opacity(0.42), lineWidth: 0.5))
+            if !granted {
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundStyle(Palette.inkSecondary)
+            }
+        }
+    }
+
+    private func request(_ permission: Permission) {
+        switch permission {
+        case .microphone:
+            if source.audioStatus == .notDetermined {
+                source.requestAudioPermission()
+            } else {
+                openSettings("x-apple.systempreferences:com.apple.preference.security?Privacy_Microphone")
+            }
+        case .accessibility:
+            source.requestAccessibilityPermission()
+        case .screenRecording:
+            if !source.requestScreenRecordingPermission() {
+                openSettings("x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture")
+            }
+        }
+        source.refreshStatus()
+    }
+
+    private func openSettings(_ raw: String) {
+        if let url = URL(string: raw) {
+            NSWorkspace.shared.open(url)
+        }
     }
 }
