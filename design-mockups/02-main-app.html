@@ -1,0 +1,557 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#0d0d0f">
+<title>Sotto · Main Window — Design Revamp 02</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..700&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&family=Spline+Sans+Mono:wght@400;500;600&display=swap">
+<style>
+:root{
+  --phosphor:#b9f27e; --accent-rgb:185,242,126;
+  --rec:#ff5a52; --proc:#7fb4ff; --commit:#8af06e; --fail:#ffb86b;
+  --canvas:#0d0d0f; --raise:#16161a; --raise2:#1b1b20; --line:#232329; --line2:#2c2c34;
+  --ink:#e7e7ea; --ink2:#9a9aa2; --ink3:#6d6d78; --ink3-sm:#82828e;
+  --hairline:rgba(255,255,255,.16); --hairline-n:rgba(255,255,255,.10); --sheen:rgba(255,255,255,.22);
+}
+
+*{margin:0;padding:0;box-sizing:border-box}
+html{overflow-x:hidden; color-scheme:dark; scrollbar-color:#26262c #0d0d0f}
+body{
+  background:var(--canvas); color:var(--ink);
+  font-family:'Bricolage Grotesque',sans-serif;
+  min-height:100vh; padding:56px 48px 80px; position:relative;
+}
+body::before{ /* vignette behind the window */
+  content:""; position:fixed; inset:0; z-index:0; pointer-events:none;
+  background:radial-gradient(130% 100% at 50% 20%, transparent 50%, rgba(0,0,0,.55) 100%);
+}
+body::after{ /* grain */
+  content:""; position:fixed; inset:0; z-index:3; pointer-events:none; opacity:.04;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='140' height='140'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/></filter><rect width='140' height='140' filter='url(%23n)'/></svg>");
+  background-size:140px 140px;
+}
+main{max-width:1160px; margin:0 auto; position:relative; z-index:1}
+
+:focus-visible{outline:2px solid var(--phosphor); outline-offset:2px; border-radius:6px}
+button{font:inherit; color:inherit; background:none; border:0; cursor:pointer}
+
+.micro{
+  font:500 11px 'Spline Sans Mono',monospace; text-transform:uppercase;
+  letter-spacing:.18em; color:var(--ink2);
+}
+.micro .ph{color:var(--phosphor)}
+
+header.page{margin-bottom:36px}
+header.page h1{font-size:36px; font-weight:650; letter-spacing:-.03em; margin:14px 0 8px}
+header.page .sub{font:italic 400 17px/1.5 'Newsreader',serif; color:var(--ink2); max-width:660px}
+
+/* ---------- window ---------- */
+.window{
+  width:min(1100px,100%); height:720px; margin:0 auto; display:flex; overflow:hidden;
+  background:#121216; border:1px solid var(--hairline); border-radius:16px;
+  box-shadow:inset 0 1px 0 var(--sheen), 0 48px 96px rgba(0,0,0,.55), 0 14px 36px rgba(0,0,0,.45);
+  position:relative;
+}
+
+/* sidebar */
+.side{
+  width:200px; flex:none; display:flex; flex-direction:column;
+  background:#0e0e12; border-right:1px solid var(--line);
+  padding:16px 10px 12px;
+}
+.tl{display:flex; gap:8px; padding:2px 6px 18px}
+.tl span{width:12px; height:12px; border-radius:50%; box-shadow:inset 0 0 0 .5px rgba(0,0,0,.25)}
+.tl .r{background:#ff5f57}.tl .y{background:#febc2e}.tl .g{background:#28c840}
+
+.wordmark{
+  font:600 15px 'Spline Sans Mono',monospace; letter-spacing:.06em;
+  padding:0 8px 18px; color:var(--ink);
+}
+.wordmark b{color:var(--phosphor); font-weight:600}
+
+nav{display:flex; flex-direction:column; gap:2px; flex:1}
+nav .push{margin-top:auto}
+.nav-item{
+  position:relative; display:flex; align-items:center; gap:10px; width:100%;
+  padding:8px 10px 8px 14px; border-radius:6px; text-align:left;
+  font:500 13.5px 'Bricolage Grotesque',sans-serif; color:var(--ink2);
+  transition:background .18s ease-out, color .18s ease-out;
+}
+.nav-item.sel{background:var(--raise2); color:var(--phosphor)}
+.nav-item.sel::before{
+  content:""; position:absolute; left:3px; top:26%; height:48%; width:2px;
+  border-radius:2px; background:var(--phosphor);
+}
+.nav-item svg{flex:none}
+@media (hover:hover) and (pointer:fine){
+  .nav-item:hover{background:rgba(255,255,255,.04); color:var(--ink)}
+  .nav-item.sel:hover{color:var(--phosphor)}
+}
+
+.micstat{
+  margin-top:12px; display:flex; align-items:center; gap:8px;
+  padding:8px 10px; border-radius:6px;
+  background:var(--raise); border:1px solid var(--hairline-n);
+  font:500 11px 'Spline Sans Mono',monospace; color:var(--ink2); letter-spacing:.02em;
+}
+.micstat .dot{
+  width:6px; height:6px; border-radius:50%; background:var(--commit); flex:none;
+  box-shadow:0 0 6px rgba(138,240,110,.5);
+}
+.micstat span:last-child{overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+
+/* content */
+.content{
+  flex:1; overflow-y:auto; background:#101014; padding:30px 34px 40px;
+  scrollbar-color:#26262c #101014;
+}
+.content::-webkit-scrollbar{width:10px}
+.content::-webkit-scrollbar-thumb{background:#26262c; border-radius:5px; border:3px solid #101014}
+
+.viewhead{display:flex; align-items:baseline; justify-content:space-between; margin-bottom:24px}
+.viewhead h2{font-size:24px; font-weight:650; letter-spacing:-.02em}
+
+h3.group-label{margin:22px 0 10px; font-size:10.5px; font-weight:500}
+h3.group-label:first-of-type{margin-top:0}
+h3.sec-label{
+  margin:28px 0 12px; font:500 11px 'Spline Sans Mono',monospace;
+  text-transform:uppercase; letter-spacing:.2em; color:var(--phosphor);
+}
+h3.sec-label:first-of-type{margin-top:0}
+
+/* stats band */
+.stats{
+  display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-bottom:24px;
+}
+.stat{
+  padding:13px 15px 11px;
+  background:var(--raise); border:1px solid var(--hairline-n); border-radius:10px;
+}
+.stat .num{
+  display:flex; align-items:baseline; gap:8px;
+  font-size:24px; font-weight:650; letter-spacing:-.02em; color:var(--ink);
+  font-variant-numeric:tabular-nums;
+}
+.stat .delta{font:500 11px 'Spline Sans Mono',monospace; letter-spacing:.03em; color:var(--phosphor)}
+.stat .lbl{display:block; margin-top:5px}
+
+/* history cards */
+.card{
+  position:relative; padding:14px 16px 12px; margin-bottom:10px;
+  background:var(--raise); border:1px solid var(--hairline-n); border-radius:10px;
+  transition:transform .18s ease-out, border-color .18s ease-out;
+}
+.card:hover, .card:focus-within{border-color:var(--line2)}
+@media (hover:hover) and (pointer:fine){
+  .card:hover, .card:focus-within{transform:translateY(-1px)}
+}
+.card .txt{
+  font:400 15px/1.55 'Newsreader',serif; color:var(--ink);
+  padding-right:120px;
+}
+.card .meta{
+  margin-top:9px; display:flex; gap:7px; align-items:center;
+  font:400 11px 'Spline Sans Mono',monospace; color:var(--ink2); letter-spacing:.03em;
+}
+.card .meta i{font-style:normal; color:var(--ink3-sm)}
+.acts{
+  position:absolute; top:12px; right:12px; display:flex; gap:6px;
+  opacity:0; transform:translateY(2px);
+  transition:opacity .18s ease-out, transform .18s ease-out;
+}
+.card:hover .acts, .card:focus-within .acts{opacity:1; transform:none}
+.ghost{
+  display:flex; align-items:center; gap:5px;
+  font:500 11px 'Spline Sans Mono',monospace; color:var(--ink2);
+  background:var(--raise2); border:1px solid var(--hairline-n); border-radius:6px;
+  padding:4px 8px;
+  transition:background .18s ease-out, color .18s ease-out;
+}
+.ghost:hover{background:var(--line); color:var(--ink)}
+
+/* model cards */
+.model{
+  display:flex; align-items:center; gap:14px; width:100%; text-align:left;
+  padding:15px 16px; margin-bottom:10px;
+  background:var(--raise); border:1px solid var(--hairline-n); border-radius:10px;
+  transition:transform .18s ease-out, border-color .18s ease-out, background .18s ease-out;
+}
+.model[aria-pressed="true"]{background:var(--raise2); border-color:rgba(var(--accent-rgb),.5)}
+@media (hover:hover) and (pointer:fine){
+  .model:hover{transform:translateY(-1px); border-color:var(--line2)}
+  .model[aria-pressed="true"]:hover{transform:none}
+}
+.radio{
+  width:16px; height:16px; border-radius:50%; flex:none;
+  border:1.5px solid var(--line2); position:relative;
+  transition:border-color .18s ease-out;
+}
+.model[aria-pressed="true"] .radio{border-color:var(--phosphor)}
+.model[aria-pressed="true"] .radio::after{
+  content:""; position:absolute; inset:3px; border-radius:50%; background:var(--phosphor);
+}
+.model .info{flex:1; min-width:0}
+.model .name{display:flex; align-items:center; gap:8px; font-size:15px; font-weight:600}
+.model .desc{margin-top:3px; font-size:13px; color:var(--ink2); line-height:1.45}
+.model .status{
+  flex:none; font:500 11px 'Spline Sans Mono',monospace;
+  text-transform:uppercase; letter-spacing:.14em; color:var(--ink2);
+}
+.chip{
+  font:600 10px 'Spline Sans Mono',monospace; text-transform:uppercase;
+  letter-spacing:.14em; padding:2.5px 7px; border-radius:5px;
+}
+.chip-active{color:var(--phosphor); background:rgba(var(--accent-rgb),.1); border:1px solid rgba(var(--accent-rgb),.3)}
+.chip-exp{color:var(--fail); background:rgba(255,184,107,.08); border:1px solid rgba(255,184,107,.25)}
+
+/* enhancement */
+.enh-row{display:flex; align-items:center; gap:16px; margin-bottom:12px}
+.seg{
+  display:inline-flex; padding:3px; gap:2px;
+  background:var(--raise); border:1px solid var(--hairline-n); border-radius:8px;
+}
+.seg button{
+  font:500 12.5px 'Bricolage Grotesque',sans-serif; color:var(--ink2);
+  padding:6px 16px; border-radius:6px;
+  transition:background .18s ease-out, color .18s ease-out;
+}
+.seg button:hover{color:var(--ink)}
+.seg button.sel{background:var(--raise2); color:var(--ink); box-shadow:inset 0 0 0 1px var(--line2)}
+.enh-hint{font:400 12.5px 'Bricolage Grotesque',sans-serif; color:var(--ink3-sm)}
+
+.prompt-row{
+  display:flex; align-items:center; gap:14px;
+  padding:12px 16px; background:var(--raise);
+  border:1px solid var(--hairline-n); border-radius:10px;
+  transition:opacity .18s ease-out;
+}
+.prompt-row.dim{opacity:.4}
+.prompt-row .txt{
+  flex:1; font:400 12px 'Spline Sans Mono',monospace; color:var(--ink2);
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+
+/* settings — appearance */
+.set-row{display:flex; align-items:center; gap:16px; padding:18px 2px}
+.set-row + .set-row{border-top:1px solid var(--hairline-n)}
+.set-row .rowlbl{width:150px; flex:none}
+.set-note{color:var(--ink3-sm)}
+.swatches{display:flex; gap:18px}
+.swopt{display:flex; flex-direction:column; align-items:center; gap:7px}
+.swname{font-size:10px; letter-spacing:.12em; color:var(--ink3-sm)}
+.swatch{
+  width:26px; height:26px; border-radius:50%; flex:none;
+  display:grid; place-items:center;
+}
+.swatch::before{
+  content:""; width:18px; height:18px; border-radius:50%;
+  background:var(--sw); box-shadow:0 0 0 1px var(--hairline-n);
+}
+.swatch[aria-checked="true"]::before{outline:2px solid var(--sw); outline-offset:2px}
+
+/* stub view */
+.stub{
+  height:420px; display:grid; place-items:center;
+  border:1px dashed var(--line2); border-radius:10px;
+}
+.stub p{text-align:center; line-height:2.2}
+
+@media (prefers-reduced-motion: reduce){
+  /* movement only — color/background/opacity feedback transitions stay */
+  .card{transition:border-color .18s ease-out}
+  .model{transition:border-color .18s ease-out, background .18s ease-out}
+  .card:hover, .card:focus-within, .model:hover{transform:none}
+  .acts{transform:none; transition:opacity .12s linear}
+}
+</style>
+</head>
+<body>
+<main>
+  <header class="page">
+    <p class="micro">SOTTO · DESIGN REVAMP · <span class="ph">02</span></p>
+    <h1>Main window</h1>
+    <p class="sub">The 54px icon rail becomes a real sidebar, and Models graduates from a buried
+    Settings tab to a first-class destination — one click to switch engines, not four.</p>
+  </header>
+
+  <div class="window">
+    <aside class="side">
+      <div class="tl" aria-hidden="true"><span class="r"></span><span class="y"></span><span class="g"></span></div>
+      <p class="wordmark">sotto<b>.</b></p>
+      <nav aria-label="Primary">
+        <button class="nav-item sel" data-view="history" aria-current="page">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15.5 14"/>
+          </svg>
+          History
+        </button>
+        <button class="nav-item" data-view="models">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <rect x="5" y="5" width="14" height="14" rx="2"/><rect x="9.5" y="9.5" width="5" height="5"/>
+            <line x1="9" y1="2" x2="9" y2="5"/><line x1="15" y1="2" x2="15" y2="5"/>
+            <line x1="9" y1="19" x2="9" y2="22"/><line x1="15" y1="19" x2="15" y2="22"/>
+            <line x1="2" y1="9" x2="5" y2="9"/><line x1="2" y1="15" x2="5" y2="15"/>
+            <line x1="19" y1="9" x2="22" y2="9"/><line x1="19" y1="15" x2="22" y2="15"/>
+          </svg>
+          Models
+        </button>
+        <button class="nav-item" data-view="stub" data-title="Dictionary">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+            <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+          </svg>
+          Dictionary
+        </button>
+        <button class="nav-item push" data-view="settings">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/>
+            <line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/>
+            <line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/>
+            <line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/>
+          </svg>
+          Settings
+        </button>
+      </nav>
+      <div class="micstat"><span class="dot" aria-hidden="true"></span><span id="micName" aria-live="polite">Parakeet Realtime</span></div>
+    </aside>
+
+    <div class="content">
+
+      <section id="view-history" aria-label="History">
+        <div class="viewhead"><h2>History</h2><span class="micro">128 NOTES</span></div>
+
+        <div class="stats" role="group" aria-label="Today's dictation stats">
+          <div class="stat">
+            <span class="num">2,341 <span class="delta">+12%</span></span>
+            <span class="micro lbl">WORDS TODAY</span>
+          </div>
+          <div class="stat">
+            <span class="num">142 <span class="delta">+4%</span></span>
+            <span class="micro lbl">AVG WPM</span>
+          </div>
+          <div class="stat">
+            <span class="num">18m</span>
+            <span class="micro lbl">DICTATION TIME</span>
+          </div>
+          <div class="stat">
+            <span class="num">23</span>
+            <span class="micro lbl">SESSIONS</span>
+          </div>
+        </div>
+
+        <h3 class="micro group-label">TODAY</h3>
+        <article class="card" tabindex="0">
+          <p class="txt">Remind me to send the design review notes to Priya before standup tomorrow — and attach the latency CSV from yesterday’s run.</p>
+          <div class="meta"><span>14:32</span><i>·</i><span>0:41</span><i>·</i><span>PARAKEET</span><i>·</i><span>162 WPM</span></div>
+          <div class="acts">
+            <button class="ghost"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>COPY</button>
+            <button class="ghost"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 10 4 15 9 20"/><path d="M20 4v7a4 4 0 0 1-4 4H4"/></svg>INSERT</button>
+          </div>
+        </article>
+        <article class="card" tabindex="0">
+          <p class="txt">The grounded capsule reads better than the floating pill, especially once the transcript runs long. Let’s keep the two-line mode.</p>
+          <div class="meta"><span>11:08</span><i>·</i><span>0:24</span><i>·</i><span>PARAKEET</span><i>·</i><span>158 WPM</span></div>
+          <div class="acts">
+            <button class="ghost"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>COPY</button>
+            <button class="ghost"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 10 4 15 9 20"/><path d="M20 4v7a4 4 0 0 1-4 4H4"/></svg>INSERT</button>
+          </div>
+        </article>
+        <article class="card" tabindex="0">
+          <p class="txt">Order more of the matte black cable sleeves, the two-metre ones, and check whether they ship before Friday.</p>
+          <div class="meta"><span>09:51</span><i>·</i><span>0:18</span><i>·</i><span>PARAKEET</span><i>·</i><span>149 WPM</span></div>
+          <div class="acts">
+            <button class="ghost"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>COPY</button>
+            <button class="ghost"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 10 4 15 9 20"/><path d="M20 4v7a4 4 0 0 1-4 4H4"/></svg>INSERT</button>
+          </div>
+        </article>
+
+        <h3 class="micro group-label">YESTERDAY</h3>
+        <article class="card" tabindex="0">
+          <p class="txt">Draft a reply to Sam: the enhancement pass now only fires when the grounded fraction clears the guard, so the flicker is gone.</p>
+          <div class="meta"><span>18:24</span><i>·</i><span>0:33</span><i>·</i><span>WHISPER&nbsp;TURBO</span><i>·</i><span>171 WPM</span></div>
+          <div class="acts">
+            <button class="ghost"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>COPY</button>
+            <button class="ghost"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 10 4 15 9 20"/><path d="M20 4v7a4 4 0 0 1-4 4H4"/></svg>INSERT</button>
+          </div>
+        </article>
+        <article class="card" tabindex="0">
+          <p class="txt">Note to self — the models tab should be one click from anywhere. Four clicks to switch an engine is indefensible.</p>
+          <div class="meta"><span>16:02</span><i>·</i><span>0:15</span><i>·</i><span>PARAKEET</span><i>·</i><span>154 WPM</span></div>
+          <div class="acts">
+            <button class="ghost"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>COPY</button>
+            <button class="ghost"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 10 4 15 9 20"/><path d="M20 4v7a4 4 0 0 1-4 4H4"/></svg>INSERT</button>
+          </div>
+        </article>
+      </section>
+
+      <section id="view-models" aria-label="Models" hidden>
+        <div class="viewhead"><h2>Models</h2><span class="micro">ON-DEVICE · 2 ENGINES</span></div>
+
+        <h3 class="sec-label">TRANSCRIPTION</h3>
+        <div role="group" aria-label="Transcription model">
+          <button class="model" aria-pressed="true" data-name="Parakeet Realtime">
+            <span class="radio" aria-hidden="true"></span>
+            <span class="info">
+              <span class="name">Parakeet Realtime <span class="chip chip-active">ACTIVE</span></span>
+              <span class="desc">Streaming on-device ASR with end-of-utterance detection. Sub-second finals.</span>
+            </span>
+            <span class="status">READY</span>
+          </button>
+          <button class="model" aria-pressed="false" data-name="Whisper Large v3 Turbo">
+            <span class="radio" aria-hidden="true"></span>
+            <span class="info">
+              <span class="name">Whisper Large v3 Turbo <span class="chip chip-active" hidden>ACTIVE</span></span>
+              <span class="desc">Highest accuracy on long-form and noisy audio. File-based; slower to first word.</span>
+            </span>
+            <span class="status">1.2&nbsp;GB DOWNLOAD</span>
+          </button>
+          <button class="model" aria-pressed="false" data-name="Apple Speech">
+            <span class="radio" aria-hidden="true"></span>
+            <span class="info">
+              <span class="name">Apple Speech <span class="chip chip-exp">EXPERIMENTAL</span><span class="chip chip-active" hidden>ACTIVE</span></span>
+              <span class="desc">System SpeechTranscriber engine. No download; quality varies by locale.</span>
+            </span>
+            <span class="status">READY</span>
+          </button>
+        </div>
+
+        <h3 class="sec-label">ENHANCEMENT</h3>
+        <div class="enh-row">
+          <div class="seg" role="radiogroup" aria-label="Enhancement level">
+            <button role="radio" aria-checked="false" tabindex="-1">Off</button>
+            <button class="sel" role="radio" aria-checked="true" tabindex="0">AFM Light</button>
+          </div>
+          <span class="enh-hint">Punctuation &amp; casing only — never rewrites your words</span>
+        </div>
+        <div class="prompt-row" id="promptRow">
+          <span class="micro">PROMPT</span>
+          <span class="txt">Fix punctuation and casing. Preserve the speaker’s wording, names and numbers exactly. Never paraphrase.</span>
+          <button class="ghost">EDIT</button>
+        </div>
+      </section>
+
+      <section id="view-stub" aria-label="Placeholder" hidden>
+        <div class="viewhead"><h2 id="stubTitle">Dictionary</h2></div>
+        <div class="stub">
+          <p class="micro">OUT OF SCOPE FOR THIS MOCKUP<br>SHOWN FOR INFORMATION ARCHITECTURE ONLY</p>
+        </div>
+      </section>
+
+      <section id="view-settings" aria-label="Settings" hidden>
+        <div class="viewhead"><h2>Settings</h2></div>
+
+        <h3 class="sec-label">APPEARANCE</h3>
+        <div class="set-row">
+          <span class="micro rowlbl">ACCENT</span>
+          <div class="swatches" role="radiogroup" aria-label="Accent color">
+            <span class="swopt">
+              <button class="swatch" role="radio" style="--sw:#b9f27e" data-hex="#b9f27e" data-rgb="185,242,126" aria-checked="true" tabindex="0" aria-label="Phosphor accent"></button>
+              <span class="micro swname" aria-hidden="true">PHOSPHOR</span>
+            </span>
+            <span class="swopt">
+              <button class="swatch" role="radio" style="--sw:#8ad8ff" data-hex="#8ad8ff" data-rgb="138,216,255" aria-checked="false" tabindex="-1" aria-label="Ice accent"></button>
+              <span class="micro swname" aria-hidden="true">ICE</span>
+            </span>
+            <span class="swopt">
+              <button class="swatch" role="radio" style="--sw:#c9a8ff" data-hex="#c9a8ff" data-rgb="201,168,255" aria-checked="false" tabindex="-1" aria-label="Violet accent"></button>
+              <span class="micro swname" aria-hidden="true">VIOLET</span>
+            </span>
+            <span class="swopt">
+              <button class="swatch" role="radio" style="--sw:#ffd27f" data-hex="#ffd27f" data-rgb="255,210,127" aria-checked="false" tabindex="-1" aria-label="Amber accent"></button>
+              <span class="micro swname" aria-hidden="true">AMBER</span>
+            </span>
+          </div>
+        </div>
+        <div class="set-row">
+          <span class="micro rowlbl">REDUCED MOTION</span>
+          <span class="micro set-note">FOLLOWS SYSTEM</span>
+        </div>
+      </section>
+
+    </div>
+  </div>
+</main>
+
+<script>
+const views = {
+  history: document.getElementById('view-history'),
+  models: document.getElementById('view-models'),
+  stub: document.getElementById('view-stub'),
+  settings: document.getElementById('view-settings'),
+};
+
+document.querySelectorAll('.nav-item').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.nav-item').forEach(b => {
+      b.classList.remove('sel');
+      b.removeAttribute('aria-current');
+    });
+    btn.classList.add('sel');
+    btn.setAttribute('aria-current', 'page');
+    Object.values(views).forEach(v => v.hidden = true);
+    const v = btn.dataset.view;
+    views[v].hidden = false;
+    if (v === 'stub') document.getElementById('stubTitle').textContent = btn.dataset.title;
+  });
+});
+
+document.querySelectorAll('.model').forEach(card => {
+  card.addEventListener('click', () => {
+    document.querySelectorAll('.model').forEach(m => {
+      m.setAttribute('aria-pressed', 'false');
+      m.querySelector('.chip-active').hidden = true;
+    });
+    card.setAttribute('aria-pressed', 'true');
+    card.querySelector('.chip-active').hidden = false;
+    document.getElementById('micName').textContent = card.dataset.name;
+  });
+});
+
+const segRadios = [...document.querySelectorAll('.seg [role="radio"]')];
+function pickSeg(btn) {
+  segRadios.forEach(b => {
+    const on = b === btn;
+    b.classList.toggle('sel', on);
+    b.setAttribute('aria-checked', String(on));
+    b.tabIndex = on ? 0 : -1;
+  });
+  document.getElementById('promptRow').classList.toggle('dim', btn.textContent.trim() === 'Off');
+}
+segRadios.forEach(btn => {
+  btn.addEventListener('click', () => pickSeg(btn));
+  btn.addEventListener('keydown', e => {
+    if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) return;
+    e.preventDefault();
+    const other = segRadios[(segRadios.indexOf(btn) + 1) % segRadios.length];
+    pickSeg(other);
+    other.focus();
+  });
+});
+
+const swatches = [...document.querySelectorAll('.swatch')];
+function pickSwatch(btn) {
+  swatches.forEach(b => {
+    const on = b === btn;
+    b.setAttribute('aria-checked', String(on));
+    b.tabIndex = on ? 0 : -1;
+  });
+  document.documentElement.style.setProperty('--phosphor', btn.dataset.hex);
+  document.documentElement.style.setProperty('--accent-rgb', btn.dataset.rgb);
+}
+swatches.forEach(btn => {
+  btn.addEventListener('click', () => pickSwatch(btn));
+  btn.addEventListener('keydown', e => {
+    const dir = {ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1}[e.key];
+    if (!dir) return;
+    e.preventDefault();
+    const next = swatches[(swatches.indexOf(btn) + dir + swatches.length) % swatches.length];
+    pickSwatch(next);
+    next.focus();
+  });
+});
+</script>
+</body>
+</html>
