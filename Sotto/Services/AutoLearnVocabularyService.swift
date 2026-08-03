@@ -220,14 +220,14 @@ final class AutoLearnVocabularyService {
 
         guard currentText != baseline else { return }
 
-        // Strict 1:1 alignment only. `WordDiffEngine.findSingleWordSubstitutions`
+        // Unambiguous alignments only. `WordDiffEngine.findSingleWordSubstitutions`
         // emits the CROSS-PRODUCT of an unequal-length changed span's tokens, so
         // a phrase rewrite — or a phantom whole-field diff from an AX read-back
         // that never matched the pasted baseline — mints substitutions the user
-        // never made (see `CorrectionMiner.alignedSubstitutions`). Accepted cost:
-        // an equal-length multi-token fix ("jon smyth" → "John Smith", a
-        // 2-delete/2-insert span) is dropped — only a single changed token, or a
-        // merge the fragments literally spell, is certain enough to learn from.
+        // never made (see `CorrectionMiner.alignedSubstitutions`). Single-token
+        // swaps, literal merges, and two-token spans paired positionally ("jon
+        // smyth" → "John Smith") are mined; the OOV gate, NER filter, and burst
+        // guard below do the precision work on what survives.
         let allSubstitutions = CorrectionMiner.alignedSubstitutions(original: baseline, edited: currentText)
         // Those drops are otherwise invisible: report how many spans the edit
         // changed vs how many yielded a learnable pair.

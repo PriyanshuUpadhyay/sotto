@@ -60,6 +60,38 @@ import Testing
         #expect(subs.isEmpty)
     }
 
+    // Two-token spans align positionally — the common two-word proper-noun fix
+    // that strict 1:1 alignment used to drop entirely.
+    @Test("two-token span replaced by two tokens mines both pairs")
+    func equalLengthSpanMinesPositionalPairs() {
+        let subs = CorrectionMiner.alignedSubstitutions(
+            original: "met with jon smyth today", edited: "met with John Smith today")
+        #expect(subs.count == 2)
+        #expect(subs.contains { $0.original == "jon" && $0.replacement == "John" })
+        #expect(subs.contains { $0.original == "smyth" && $0.replacement == "Smith" })
+    }
+
+    // Three is where the shape stops being a name fix and starts matching
+    // ordinary phrase rewrites, so positional pairing stops at two.
+    @Test("equal-length span of 3+ tokens stays dropped")
+    func longEqualLengthSpanDropped() {
+        #expect(CorrectionMiner.alignedSubstitutions(
+            original: "we need the quick fix today", edited: "we need a fast patch today").isEmpty)
+        #expect(CorrectionMiner.alignedSubstitutions(
+            original: "call the meeting tomorrow now", edited: "ping our long sync now").isEmpty)
+    }
+
+    // Only the real correction is mined when one word of a two-word fix changed
+    // case only: the diff's LCS matches case-insensitively, so the case-only
+    // token anchors as equal and never becomes half of a positional pair.
+    @Test("case-only half of a two-word fix is not mined")
+    func caseOnlyHalfNotMined() {
+        let subs = CorrectionMiner.alignedSubstitutions(
+            original: "met with jon smyth today", edited: "met with Jon Smith today")
+        #expect(subs.count == 1)
+        #expect(subs.contains { $0.original == "smyth" && $0.replacement == "Smith" })
+    }
+
     @Test("OOV gate rejects dictionary words, accepts unknown terms")
     func oovGate() {
         // Stubbed dictionary — the real gate uses NSSpellChecker, whose verdicts

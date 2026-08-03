@@ -91,10 +91,25 @@ import Foundation
     func phraseRewriteNoCrossProduct() {
         // "the quick fix" → "a fast patch": a 3-token span rewrite, not three
         // 1:1 word substitutions — must never mint pairs like quick→patch.
+        // This path (mine → VocabularyView) has no OOV/NER/burst gate, so three
+        // junk pairs at count 3 would occupy the entire suggestion section.
         let recs = (0..<3).map { _ in
             editRecord(enhanced: "we need the quick fix today", final: "we need a fast patch today")
         }
         #expect(mine(recs).isEmpty)
+    }
+
+    // The two-token exception: a repeated two-word proper-name fix is what
+    // positional pairing exists for, and it does reach the suggestion list.
+    @Test("two-word name fix repeated 3× yields both pairs as suggestions")
+    func twoWordNameFixSuggested() {
+        let recs = (0..<3).map { _ in
+            editRecord(enhanced: "met with jon smyth today", final: "met with John Smith today")
+        }
+        let out = mine(recs)
+        #expect(out.count == 2)
+        #expect(out.allSatisfy { $0.count == 3 })
+        #expect(Set(out.map { $0.replacement }) == ["John", "Smith"])
     }
 
     @Test("insertion into a changed span yields no pairs (1 delete vs 2 inserts)")

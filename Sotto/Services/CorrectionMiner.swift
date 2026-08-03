@@ -44,7 +44,7 @@ enum CorrectionMiner {
     ///   word-replacements — dropped (they are auto-applied already).
     /// - `dismissed`: lowercased `pairKey`s the user dismissed — dropped.
     ///
-    /// Only genuinely 1:1 single-word substitutions count (see
+    /// Only unambiguously aligned substitutions count (see
     /// `alignedSubstitutions`); case-only changes are ignored. Sorted by count
     /// desc, then replacement asc.
     static func mine(records: [EnhancementEditRecord],
@@ -84,20 +84,28 @@ enum CorrectionMiner {
         }
     }
 
-    /// Word pairs from changed spans whose alignment is certain: either exactly
-    /// one deleted token replaced by one inserted token, or a **merge shatter**
-    /// — 2–3 deleted tokens fused into one inserted token that they literally
-    /// spell ("para keet" → "Parakeet", "e mail" → "e-mail"), the dominant
-    /// out-of-vocabulary ASR failure whose fragments both pass spellcheck.
+    /// Word pairs from changed spans whose alignment is unambiguous:
+    /// - one deleted token replaced by one inserted token;
+    /// - a **merge shatter** — 2–3 deleted tokens fused into one inserted token
+    ///   that they literally spell ("para keet" → "Parakeet", "e mail" →
+    ///   "e-mail"), the dominant out-of-vocabulary ASR failure whose fragments
+    ///   both pass spellcheck;
+    /// - a two-token span replaced by two tokens, paired POSITIONALLY ("jon
+    ///   smyth" → "John Smith" yields jon→John and smyth→Smith) — the two-word
+    ///   proper name, the case worth recovering. Held to exactly two: at three
+    ///   the same shape matches ordinary phrase rewrites ("the quick fix" → "a
+    ///   fast patch"), and `mine`'s consumer (`VocabularyView`) has none of the
+    ///   OOV/NER gates that would filter them, so a single rewrite repeated
+    ///   three times would fill the whole suggestion list with junk.
     ///
     /// `WordDiffEngine.findSingleWordSubstitutions` is unusable here: for
     /// unequal-length changed spans it emits the CROSS-PRODUCT of the span's
     /// tokens, so a phrase rewrite or insertion mints pairs the user never made,
     /// which would accumulate to the suggestion threshold. `tokenLevelDiff`
-    /// exposes the raw delete/insert runs between LCS anchors; the two shapes
-    /// above are the only ones where "X became Y" is certain, so everything else
-    /// (multi-word rewrites, pure insertions/deletions, splits) is dropped
-    /// rather than guessed at.
+    /// exposes the raw delete/insert runs between LCS anchors; the shapes above
+    /// are the ones where "X became Y" is determined, so everything else
+    /// (unequal multi-word rewrites, pure insertions/deletions, splits) is
+    /// dropped rather than guessed at.
     static func alignedSubstitutions(original: String, edited: String)
         -> [(original: String, replacement: String)] {
         var pairs = [(original: String, replacement: String)]()
@@ -110,6 +118,11 @@ enum CorrectionMiner {
             } else if inserts.count == 1, (2...3).contains(deletes.count),
                       spellsSameWord(deletes, inserts[0]) {
                 pairs.append((deletes.joined(separator: " "), inserts[0]))
+            } else if deletes.count == 2, inserts.count == 2 {
+                for (deleted, inserted) in zip(deletes, inserts)
+                where deleted.lowercased() != inserted.lowercased() {
+                    pairs.append((deleted, inserted))
+                }
             }
             deletes.removeAll()
             inserts.removeAll()
