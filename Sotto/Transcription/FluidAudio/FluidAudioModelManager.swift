@@ -135,7 +135,7 @@ class FluidAudioModelManager: ObservableObject {
                 // CoherePipeline has no manager; download the CoreML bundle into
                 // the shared FluidAudio models root, then load it lazily at
                 // transcribe time.
-                try await DownloadUtils.downloadRepo(
+                try await ModelHub.download(
                     .cohereTranscribeCoreml,
                     to: FluidAudioModelManager.fluidAudioModelsRootDirectory())
             } else {
@@ -261,7 +261,7 @@ class FluidAudioModelManager: ObservableObject {
             .appendingPathComponent(nemotronStreamingChunkSize.repo.folderName, isDirectory: true)
     }
 
-    // CoherePipeline exposes no cache-directory helper; DownloadUtils.downloadRepo
+    // CoherePipeline exposes no cache-directory helper; ModelHub.download
     // lays the bundle out at <root>/<Repo.cohereTranscribeCoreml.folderName>
     // (== "cohere-transcribe/q8"), which is also the encoder/decoder/vocab dir.
     nonisolated static func cohereCacheDirectory() -> URL {
