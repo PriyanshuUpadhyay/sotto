@@ -59,8 +59,59 @@ class AIService: ObservableObject {
     }
 
     @available(macOS 26.0, *)
-    func enhanceWithAFM(systemPrompt: String, userPrompt: String, generation: Int) async throws -> String {
-        try await AIService.sharedAFMProvider.enhance(systemPrompt: systemPrompt, userPrompt: userPrompt, generation: generation)
+    /// `transcriptChars` is the length of the raw transcript inside `userPrompt`
+    /// (which also carries the instruction wrapper + context) — logged as the
+    /// timings CSV's `transcriptChars` column so it's comparable to `outputChars`.
+    func enhanceWithAFM(
+        systemPrompt: String,
+        userPrompt: String,
+        transcriptChars: Int,
+        callKind: EnhancementTimingLogger.CallKind,
+        generation: Int
+    ) async throws -> String {
+        try await AIService.sharedAFMProvider.enhance(
+            systemPrompt: systemPrompt,
+            userPrompt: userPrompt,
+            transcriptChars: transcriptChars,
+            callKind: callKind,
+            generation: generation
+        )
+    }
+
+    /// Hidden `EnhancementProviderMLX` experiment path — see `MLXProvider`.
+    /// Rebuilt whenever the selected model id changes, since `MLXProvider`
+    /// binds its model at init and caches the loaded weights.
+    private static var sharedMLXProvider: MLXProvider?
+
+    private static func mlxProvider(for modelId: String) -> MLXProvider {
+        if let existing = sharedMLXProvider, existing.modelId == modelId { return existing }
+        let provider = MLXProvider(modelId: modelId)
+        sharedMLXProvider = provider
+        return provider
+    }
+
+    /// True when the hidden flag is on AND the selected model's weights are
+    /// actually on disk. A flag-on-but-missing-weights state must fall through
+    /// to AFM rather than fail the dictation.
+    static var isMLXEnhancementReady: Bool {
+        UserDefaults.standard.bool(forKey: "EnhancementProviderMLX")
+            && MLXModelDownloader.isDownloaded(MLXModelRegistry.selectedModelId)
+    }
+
+    func enhanceWithMLX(
+        systemPrompt: String,
+        userPrompt: String,
+        transcriptChars: Int,
+        callKind: EnhancementTimingLogger.CallKind
+    ) async throws -> (text: String, modelId: String) {
+        let modelId = MLXModelRegistry.selectedModelId
+        let text = try await AIService.mlxProvider(for: modelId).enhance(
+            systemPrompt: systemPrompt,
+            userPrompt: userPrompt,
+            transcriptChars: transcriptChars,
+            callKind: callKind
+        )
+        return (text, modelId)
     }
 
     /// Pages AFM base weights without running enhance. Fire-and-forget; swallows

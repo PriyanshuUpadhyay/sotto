@@ -72,6 +72,11 @@ actor AFMProvider {
     /// even if that dictation's instructions happen to be identical (e.g.
     /// two consecutive dictations in the same app).
     private var warmedGeneration: Int?
+    /// When the warm slot was stashed. Reported as `warmAgeSeconds` on a
+    /// reusing enhance — a TTFT that rises with this age means AFM is letting
+    /// the prefilled prefix decay, which is a different problem than prefill
+    /// simply being expensive.
+    private var warmedAt: Date?
     #endif
 
     /// Chains the fire-and-forget telemetry writes in `enhance(...)` so they
@@ -149,24 +154,31 @@ actor AFMProvider {
 
     // MARK: - Enhance (with timing telemetry)
 
-    /// Match the de-facto contract used by `LocalCLIService.enhance(systemPrompt:userPrompt:)`
-    /// and `MLXProvider.enhance(...)`. Returns the cleaned-up text; the dispatch
-    /// site applies `AIEnhancementOutputFilter` + `stripPreamble`.
+    /// Returns the cleaned-up text; the dispatch site
+    /// (`AIEnhancementService.makeRequest`) applies `AIEnhancementOutputFilter`
+    /// + `stripPreamble`. This is the only enhance path — there is no fallback
+    /// provider behind it.
     ///
     /// Captures per-call prep / ttft / gen / total timing and enqueues a
     /// `promptMode=afm` row to `EnhancementTimingLogger` from every outcome
     /// branch (success / cancelled / safetyRefusal / error) — fire-and-forget,
     /// so the response path never awaits the logger actor's disk I/O. Safety-
-    /// filter refusals record `.safetyRefusal` and throw
-    /// `ProviderError.safetyRefusal` so the orchestrator can fall back to MLX
-    /// (and the refusal rate stays measurable from the timings CSV).
-    func enhance(systemPrompt: String, userPrompt: String, generation: Int) async throws -> String {
+    /// filter refusals record `.safetyRefusal` (keeping the refusal rate
+    /// measurable from the timings CSV) and throw `ProviderError.safetyRefusal`,
+    /// which the dispatch site surfaces as an enhancement error — the dictation
+    /// goes out un-enhanced.
+    func enhance(
+        systemPrompt: String,
+        userPrompt: String,
+        transcriptChars: Int,
+        callKind: EnhancementTimingLogger.CallKind,
+        generation: Int
+    ) async throws -> String {
         #if canImport(FoundationModels)
         try Task.checkCancellation()
         try Self.checkAvailability()
 
         let startedAt = Date()
-        let inputChars = userPrompt.count
         var prepSeconds: TimeInterval? = nil
         var ttftSeconds: TimeInterval? = nil
         var genSeconds: TimeInterval? = nil
@@ -186,7 +198,8 @@ actor AFMProvider {
             prepSeconds: TimeInterval?,
             ttftSeconds: TimeInterval?,
             genSeconds: TimeInterval?,
-            sessionReused: Bool
+            sessionReused: Bool,
+            warmAgeSeconds: TimeInterval?
         ) {
             let total = Date().timeIntervalSince(startedAt)
             lastTelemetryTask = Task { [prev = lastTelemetryTask] in
@@ -194,7 +207,10 @@ actor AFMProvider {
                 await EnhancementTimingLogger.shared.record(
                     modelId: "apple-on-device",
                     promptMode: .afm,
-                    inputChars: inputChars,
+                    transcriptChars: transcriptChars,
+                    promptChars: systemPrompt.count + userPrompt.count,
+                    callKind: callKind,
+                    warmAgeSeconds: warmAgeSeconds,
                     outputChars: outputChars,
                     prepSeconds: prepSeconds,
                     ttftSeconds: ttftSeconds,
@@ -223,17 +239,21 @@ actor AFMProvider {
         let prepStart = Date()
         let session: LanguageModelSession
         let reusedWarm: Bool
+        let warmAge: TimeInterval?
         if let warmed = warmedSession, warmedInstructions == systemPrompt, warmedGeneration == generation {
             session = warmed
             reusedWarm = true
+            warmAge = warmedAt.map { prepStart.timeIntervalSince($0) }
         } else {
             session = LanguageModelSession(instructions: systemPrompt)
             reusedWarm = false
+            warmAge = nil
         }
         if generation >= 0 {
             warmedSession = nil
             warmedInstructions = nil
             warmedGeneration = nil
+            warmedAt = nil
         }
         prepSeconds = Date().timeIntervalSince(prepStart)
 
@@ -242,10 +262,17 @@ actor AFMProvider {
             var output = ""
             var firstChunkAt: TimeInterval? = nil
 
+            // Greedy sampling: cleanup is a deterministic transform, so the
+            // default random sampling only adds run-to-run variance. No
+            // `maximumResponseTokens` — the stream exposes no finish reason, so
+            // a capped response is indistinguishable from a complete one and
+            // would be recorded as a silent `.success` truncation. Wall-clock is
+            // already bounded by the per-call enhancement deadline.
+            let options = GenerationOptions(sampling: .greedy)
             // Streaming path so we can capture TTFT. Each emitted snapshot is
             // a cumulative slice (Apple's `ResponseStream<String>.Snapshot`
             // contract); `.content` is the full text generated so far.
-            let stream = session.streamResponse(to: userPrompt)
+            let stream = session.streamResponse(to: userPrompt, options: options)
             for try await snapshot in stream {
                 if Task.isCancelled { break }
                 if firstChunkAt == nil {
@@ -260,12 +287,12 @@ actor AFMProvider {
             genSeconds = genElapsed
             outputChars = output.count
 
-            Self.logger.notice("🦾 afm: prep=\(prepSeconds ?? 0, format: .fixed(precision: 2), privacy: .public)s ttft=\(ttft, format: .fixed(precision: 2), privacy: .public)s gen=\(genElapsed, format: .fixed(precision: 2), privacy: .public)s input=\(inputChars, privacy: .public)c output=\(output.count, privacy: .public)c warm=\(reusedWarm, privacy: .public)")
+            Self.logger.notice("🦾 afm: prep=\(prepSeconds ?? 0, format: .fixed(precision: 2), privacy: .public)s ttft=\(ttft, format: .fixed(precision: 2), privacy: .public)s gen=\(genElapsed, format: .fixed(precision: 2), privacy: .public)s transcript=\(transcriptChars, privacy: .public)c output=\(output.count, privacy: .public)c warm=\(reusedWarm, privacy: .public)")
 
-            record(.success, outputChars: outputChars, prepSeconds: prepSeconds, ttftSeconds: ttftSeconds, genSeconds: genSeconds, sessionReused: reusedWarm)
+            record(.success, outputChars: outputChars, prepSeconds: prepSeconds, ttftSeconds: ttftSeconds, genSeconds: genSeconds, sessionReused: reusedWarm, warmAgeSeconds: warmAge)
             return output
         } catch is CancellationError {
-            record(.cancelled, outputChars: outputChars, prepSeconds: prepSeconds, ttftSeconds: ttftSeconds, genSeconds: genSeconds, sessionReused: reusedWarm)
+            record(.cancelled, outputChars: outputChars, prepSeconds: prepSeconds, ttftSeconds: ttftSeconds, genSeconds: genSeconds, sessionReused: reusedWarm, warmAgeSeconds: warmAge)
             Self.logger.notice("🦾 afm: cancelled")
             throw CancellationError()
         } catch {
@@ -276,11 +303,11 @@ actor AFMProvider {
             // forward-compatible across SDK revisions.
             let isSafety = Self.isGuardrailViolation(error)
             if isSafety {
-                record(.safetyRefusal, outputChars: outputChars, prepSeconds: prepSeconds, ttftSeconds: ttftSeconds, genSeconds: genSeconds, sessionReused: reusedWarm)
+                record(.safetyRefusal, outputChars: outputChars, prepSeconds: prepSeconds, ttftSeconds: ttftSeconds, genSeconds: genSeconds, sessionReused: reusedWarm, warmAgeSeconds: warmAge)
                 Self.logger.notice("🦾 afm: refused (safety filter) — \(error.localizedDescription, privacy: .public)")
                 throw ProviderError.safetyRefusal(error.localizedDescription)
             }
-            record(.error, outputChars: outputChars, prepSeconds: prepSeconds, ttftSeconds: ttftSeconds, genSeconds: genSeconds, sessionReused: reusedWarm)
+            record(.error, outputChars: outputChars, prepSeconds: prepSeconds, ttftSeconds: ttftSeconds, genSeconds: genSeconds, sessionReused: reusedWarm, warmAgeSeconds: warmAge)
             Self.logger.error("🦾 afm: generate failed: \(error.localizedDescription, privacy: .public) | \(String(describing: error), privacy: .public)")
             throw ProviderError.generationFailed(error.localizedDescription)
         }
@@ -331,6 +358,7 @@ actor AFMProvider {
         warmedSession = session
         warmedInstructions = instructions
         warmedGeneration = generation
+        warmedAt = start
         let elapsed = Date().timeIntervalSince(start)
         Self.logger.notice("🦾 afm: prewarm(instr) fired source=\(source, privacy: .public) instr=\(instructions.count, privacy: .public)c in \(elapsed, format: .fixed(precision: 2), privacy: .public)s")
         #else
@@ -348,6 +376,7 @@ actor AFMProvider {
         warmedSession = nil
         warmedInstructions = nil
         warmedGeneration = nil
+        warmedAt = nil
         #endif
         Self.logger.notice("🦾 afm: reset")
     }

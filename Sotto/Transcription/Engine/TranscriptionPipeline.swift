@@ -306,7 +306,31 @@ class TranscriptionPipeline {
                             ComposeReviewWindowManager.shared.deliverEnhanced(nil, session: $0)
                         } ?? true
                         if surfaceFailure {
-                            if UserDefaults.standard.bool(forKey: "EnableEnhancementFailureNotification") {
+                            // A guardrail refusal is not a malfunction — the
+                            // transcript still pastes, just un-enhanced. Say
+                            // that plainly instead of "Enhancement failed:
+                            // <raw provider string>", and say it regardless of
+                            // the failure-notification pref: a silently
+                            // declined dictation is exactly the case the user
+                            // has no other signal for.
+                            let isRefusal = (error as? EnhancementError).map {
+                                if case .safetyRefusal = $0 { return true } else { return false }
+                            } ?? false
+                            if isRefusal {
+                                // Fire-and-forget, NOT `await MainActor.run`:
+                                // showNotification builds a hosting controller
+                                // and an NSPanel synchronously, so awaiting it
+                                // parks the raw transcript behind whatever else
+                                // the main actor is doing. The toast is
+                                // advisory; the paste is not.
+                                Task { @MainActor in
+                                    NotificationManager.shared.showNotification(
+                                        title: "Enhancement declined — pasted raw transcript",
+                                        type: .warning,
+                                        duration: 2.5
+                                    )
+                                }
+                            } else if UserDefaults.standard.bool(forKey: "EnableEnhancementFailureNotification") {
                                 await MainActor.run {
                                     NotificationManager.shared.showNotification(
                                         title: "Enhancement failed: \(shortReason)",

@@ -9,8 +9,17 @@ import os
 ///
 /// Schema (header on first write):
 /// ```
-/// timestamp,modelId,promptMode,inputChars,outputChars,prepSeconds,ttftSeconds,genSeconds,totalSeconds,gapSinceLastSeconds,outcome,sessionReused
+/// timestamp,modelId,promptMode,transcriptChars,promptChars,callKind,warmAgeSeconds,outputChars,prepSeconds,ttftSeconds,genSeconds,totalSeconds,gapSinceLastSeconds,outcome,sessionReused
 /// ```
+/// `promptChars` / `callKind` / `warmAgeSeconds` exist to explain warm TTFT
+/// (p50 ~0.71s) against Apple's published ~120ms: `promptChars` separates a
+/// prefill cost that scales with prompt size from a fixed per-call floor,
+/// `callKind` keeps the hardened-retry and import paths (different prompt
+/// sizes, no warm reuse) from polluting the primary-path distribution, and
+/// `warmAgeSeconds` tests whether a warm slot decays with age — a TTFT that
+/// climbs with warm age means the prefilled prefix isn't surviving until the
+/// enhance, not that prefill is slow.
+///
 /// `sessionReused` is X1/F7 acceptance evidence: whether this call reused a
 /// record-start-warmed AFM session (stable instruction key) vs building fresh
 /// — before the F7 fix this was near-always `false` once any volatile context
@@ -35,13 +44,23 @@ actor EnhancementTimingLogger {
         case timedOut
         case cancelled
         case error
-        /// AFM declined the prompt via its safety/guardrail filter and the
-        /// dispatcher fell back to MLX. Distinct from `.error` (a hard AFM
-        /// failure) so the refusal RATE is measurable from the CSV — the
-        /// key diagnostic for "is AFM silently routing to the slow MLX path
-        /// on sensitive dictation?". A `.safetyRefusal` afm row is normally
-        /// followed by a `.standard`/`.fastPath` MLX row for the same input.
+        /// AFM declined the prompt via its safety/guardrail filter. Distinct
+        /// from `.error` (a hard AFM failure) so the refusal RATE is measurable
+        /// from the CSV. The MLX fallback no longer exists — the refusal
+        /// surfaces as an enhancement error and there is no follow-up row.
         case safetyRefusal
+    }
+
+    /// Which enhancement path produced this row. The three paths have
+    /// structurally different prompts and warm-reuse eligibility, so TTFT
+    /// percentiles are only comparable within one kind.
+    enum CallKind: String {
+        /// Normal dictation, first pass — the only path eligible for warm reuse.
+        case primary
+        /// Repair-guard retry with the hardened prompt (no volatile context).
+        case hardenedRetry
+        /// File-import re-enhance; runs with generation `-1`, never reuses warm.
+        case `import`
     }
 
     /// Future-compatible: `kvCacheReuse` (W11.A3 follow-up), `afm` (W11.B
@@ -60,7 +79,7 @@ actor EnhancementTimingLogger {
     )
 
     private static let header =
-        "timestamp,modelId,promptMode,inputChars,outputChars,prepSeconds,ttftSeconds,genSeconds,totalSeconds,gapSinceLastSeconds,outcome,sessionReused\n"
+        "timestamp,modelId,promptMode,transcriptChars,promptChars,callKind,warmAgeSeconds,outputChars,prepSeconds,ttftSeconds,genSeconds,totalSeconds,gapSinceLastSeconds,outcome,sessionReused\n"
 
     private static let stopToPasteHeader = "timestamp,stopToPasteSeconds\n"
 
@@ -104,10 +123,18 @@ actor EnhancementTimingLogger {
 
     /// Append one row. All time fields are seconds (Double) — empty string
     /// when nil (e.g. cold-fail before generation reached prep stage).
+    /// `transcriptChars` is the raw transcript length, NOT the prompt length —
+    /// the prompt wrapper's fixed ~235 chars would swamp any
+    /// input-vs-output comparison. `promptChars` is the full prefill size
+    /// (system + user prompt) that TTFT actually pays for. `warmAgeSeconds` is
+    /// nil unless this call reused a warmed session.
     func record(
         modelId: String,
         promptMode: PromptMode,
-        inputChars: Int,
+        transcriptChars: Int,
+        promptChars: Int,
+        callKind: CallKind,
+        warmAgeSeconds: Double?,
         outputChars: Int,
         prepSeconds: Double?,
         ttftSeconds: Double?,
@@ -126,7 +153,10 @@ actor EnhancementTimingLogger {
             timestamp,
             csvEscape(modelId),
             promptMode.rawValue,
-            String(inputChars),
+            String(transcriptChars),
+            String(promptChars),
+            callKind.rawValue,
+            formatSeconds(warmAgeSeconds),
             String(outputChars),
             formatSeconds(prepSeconds),
             formatSeconds(ttftSeconds),

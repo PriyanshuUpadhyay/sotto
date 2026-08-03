@@ -267,8 +267,14 @@ class AIEnhancementService: ObservableObject {
     /// evaluation is undefined timing). A transient `.modelNotReady` at launch
     /// (Apple Intelligence still downloading) must not disable enhancement for
     /// the rest of the session once AFM becomes ready.
+    ///
+    /// Also true when the hidden MLX path is armed, since that path does not
+    /// need AFM at all — gating it on AFM availability would make
+    /// `EnhancementProviderMLX` inert on exactly the machines it exists to
+    /// serve (Apple Intelligence off or unavailable). Off by default, so this
+    /// disjunct changes nothing unless the flag is set and weights are cached.
     var isConfigured: Bool {
-        aiService.checkAvailabilityNow()
+        aiService.checkAvailabilityNow() || AIService.isMLXEnhancementReady
     }
 
     /// The frontmost app used to steer the prompt register and the deterministic
@@ -444,21 +450,69 @@ class AIEnhancementService: ObservableObject {
             self.lastUserMessageSent = formattedText
         }
 
+        // Imports run with generation `-1` (see `enhanceImported`), including
+        // the hardened retry they may trigger — so `import` wins over
+        // `hardenedRetry`, keeping every import row in one bucket.
+        let callKind: EnhancementTimingLogger.CallKind =
+            generation < 0 ? .import : (hardened ? .hardenedRetry : .primary)
+
+        // Hidden `EnhancementProviderMLX` experiment. Replaces AFM outright
+        // when on and the selected model's weights are present; otherwise this
+        // is inert and AFM runs exactly as before.
+        if AIService.isMLXEnhancementReady {
+            return try await enhanceViaMLX(
+                systemMessage: systemMessage,
+                formattedText: formattedText,
+                transcriptChars: text.count,
+                callKind: callKind
+            )
+        }
+
         guard #available(macOS 26.0, *) else {
             throw EnhancementError.customError("Apple Foundation Models requires macOS 26 or later.")
         }
         do {
-            let result = try await aiService.enhanceWithAFM(systemPrompt: systemMessage, userPrompt: formattedText, generation: generation)
+            let result = try await aiService.enhanceWithAFM(systemPrompt: systemMessage, userPrompt: formattedText, transcriptChars: text.count, callKind: callKind, generation: generation)
             await MainActor.run { self.lastEnhancementModelUsed = "apple-on-device" }
             return AIEnhancementOutputFilter.filter(Self.stripPreamble(result))
         } catch is CancellationError {
             throw CancellationError()
         } catch {
             if let providerError = error as? AFMProvider.ProviderError {
+                if case .safetyRefusal = providerError {
+                    throw EnhancementError.safetyRefusal
+                }
                 throw EnhancementError.customError(providerError.errorDescription ?? "An unknown Apple Foundation Models error occurred.")
             } else {
                 throw EnhancementError.customError(error.localizedDescription)
             }
+        }
+    }
+
+    /// Runs one enhancement through `MLXProvider` and applies the same output
+    /// filtering as the AFM path. Errors surface as `EnhancementError` exactly
+    /// like AFM's, so callers need no MLX-specific handling.
+    private func enhanceViaMLX(
+        systemMessage: String,
+        formattedText: String,
+        transcriptChars: Int,
+        callKind: EnhancementTimingLogger.CallKind
+    ) async throws -> String {
+        do {
+            let (result, modelId) = try await aiService.enhanceWithMLX(
+                systemPrompt: systemMessage,
+                userPrompt: formattedText,
+                transcriptChars: transcriptChars,
+                callKind: callKind
+            )
+            await MainActor.run { self.lastEnhancementModelUsed = modelId }
+            return AIEnhancementOutputFilter.filter(Self.stripPreamble(result))
+        } catch is CancellationError {
+            throw CancellationError()
+        } catch let providerError as MLXProvider.ProviderError {
+            throw EnhancementError.customError(providerError.errorDescription ?? "An unknown MLX error occurred.")
+        } catch {
+            throw EnhancementError.customError(error.localizedDescription)
         }
     }
 
@@ -825,6 +879,11 @@ enum EnhancementError: Error {
     case serverError
     case rateLimitExceeded
     case timeout
+    /// AFM's guardrail declined the prompt. Kept distinct from `.customError`
+    /// so the pipeline can tell the user their transcript went out raw
+    /// *because it was declined*, not because enhancement broke. Never
+    /// retried — a refusal is deterministic for the same prompt.
+    case safetyRefusal
     case customError(String)
 }
 
@@ -845,6 +904,8 @@ extension EnhancementError: LocalizedError {
             return "Rate limit exceeded. Please try again later."
         case .timeout:
             return "Enhancement request timed out. Check your connection or increase the timeout duration."
+        case .safetyRefusal:
+            return "Apple Foundation Models declined this transcript (safety filter)."
         case .customError(let message):
             return message
         }
