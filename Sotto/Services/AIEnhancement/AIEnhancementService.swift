@@ -311,7 +311,7 @@ class AIEnhancementService: ObservableObject {
             """
 
 
-            The following are important vocabulary words, proper nouns, and technical terms. When these words or similar-sounding words appear in the <TRANSCRIPT>, ensure they are spelled EXACTLY as shown below:
+            The following are the user's vocabulary words, proper nouns, and technical terms. Spell them EXACTLY as shown. Speech recognition often replaces them with ordinary words that sound similar, so also restore a vocabulary term when the <TRANSCRIPT> wording sounds like it AND that term fits the sentence — e.g. a transcript reading 'red us' where the list has Redis. If the wording is not a close sound match, or the vocabulary term makes no sense there, leave the transcript wording untouched. Never force a vocabulary word in.
             <CUSTOM_VOCABULARY>
             \(bound(customVocabulary, maxBytes: 1024))
             </CUSTOM_VOCABULARY>

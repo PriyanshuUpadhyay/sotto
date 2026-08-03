@@ -220,12 +220,6 @@ struct EnhancementSanityCheckTests {
             bad: "The transcript asks to review logs and diagnose issues."
         ),
         FewShot(
-            name: "useSkillDirectly",
-            raw: "tell me one thing would I be able to use the skill directly you know",
-            good: "Tell me one thing — would I be able to use the skill directly?",
-            bad: "Yes, you can use the skill directly."
-        ),
-        FewShot(
             name: "selfCorrectionShipDate",
             raw: "lets ship it on friday scratch that lets ship it on monday",
             good: "Let's ship it on Monday.",
@@ -236,6 +230,24 @@ struct EnhancementSanityCheckTests {
             raw: "the timeout is thirty seconds the timeout is sixty seconds",
             good: "The timeout is 60 seconds.",
             bad: "The timeout is 60 seconds due to network latency issues."
+        ),
+        FewShot(
+            name: "cuelessPartialRestatement",
+            raw: "we wont be I'll be reviewing the plan and then we start",
+            good: "I'll be reviewing the plan, and then we start.",
+            bad: "You'll be reviewing the plan, and then you start."
+        ),
+        FewShot(
+            name: "duplicatedPhraseComposio",
+            raw: "we would want to move from move trivial tasks from Composio",
+            good: "We would want to move trivial tasks from Composio.",
+            bad: "Yes, we should move trivial tasks from Composio."
+        ),
+        FewShot(
+            name: "midSentenceFalseStart",
+            raw: "can you check the the upload transf transport later",
+            good: "Can you check the upload transport later?",
+            bad: "The transcript asks whether the upload transport was checked."
         ),
         FewShot(
             name: "spokenList",

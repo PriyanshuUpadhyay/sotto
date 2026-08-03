@@ -366,4 +366,45 @@ struct ActiveAppContextBlockTests {
         _ = container
         UserDefaults.standard.removeObject(forKey: Self.key)
     }
+
+    // MARK: - Custom vocabulary section
+
+    /// The vocabulary instruction must ask for more than exact spelling: ASR
+    /// substitutes ordinary words for vocabulary terms ("red us" for Redis),
+    /// which only a sound-alike + context mandate recovers. It must equally
+    /// carry the counterweight — no forcing a term in where it doesn't fit —
+    /// since an unbounded substitution licence invites over-correction.
+    // Both cases pass `activeApp`/`customVocabulary` explicitly, so neither
+    // reads `useActiveAppContext` — deliberately NOT touching `Self.key`, which
+    // the toggle tests in this suite mutate in parallel.
+    @Test("nonempty custom vocabulary splices the sound-alike instruction and the term")
+    func customVocabularySectionInstruction() async {
+        let container = Self.makeContainer()
+        let service = AIEnhancementService(modelContext: container.mainContext)
+
+        let prompt = await service.getSystemInstructions(activeApp: nil, customVocabulary: "Redis")
+
+        #expect(prompt.contains("<CUSTOM_VOCABULARY>\nRedis\n</CUSTOM_VOCABULARY>"))
+        #expect(prompt.contains("EXACTLY"))
+        #expect(prompt.contains("sounds like it"))
+        #expect(prompt.contains("fits the sentence"))
+        #expect(prompt.contains("leave the transcript wording untouched"))
+        #expect(prompt.contains("Never force a vocabulary word in"))
+
+        _ = container
+    }
+
+    /// The closing tag — not the opening one, which the CONTEXT rule names in
+    /// prose whether or not a vocabulary section is spliced.
+    @Test("empty custom vocabulary splices no vocabulary section")
+    func emptyCustomVocabularyHasNoSection() async {
+        let container = Self.makeContainer()
+        let service = AIEnhancementService(modelContext: container.mainContext)
+
+        let prompt = await service.getSystemInstructions(activeApp: nil, customVocabulary: "")
+
+        #expect(!prompt.contains("</CUSTOM_VOCABULARY>"))
+
+        _ = container
+    }
 }
