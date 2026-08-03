@@ -16,7 +16,7 @@ LOCAL_DERIVED_DATA := $(CURDIR)/.local-build
 #     Certificate Type: Code Signing
 #
 # Override with: make local LOCAL_SIGN_IDENTITY="other-name" — exact name or SHA1.
-LOCAL_SIGN_IDENTITY ?= $(shell /usr/bin/security find-identity -p codesigning -v 2>/dev/null | grep -F '"sotto-local"' | head -1 | awk '{ print $$2 }' | grep -E '^[A-F0-9]+$$' || echo "-")
+LOCAL_SIGN_IDENTITY ?= $(shell /usr/bin/security find-identity -p codesigning -v 2>/dev/null | grep -F -e '"sotto-local"' -e '"voiceink-fork-local"' | head -1 | awk '{ print $$2 }' | grep -E '^[A-F0-9]+$$' || echo "-")
 
 .PHONY: all clean whisper setup build local check healthcheck help dev run reload test dmg
 
