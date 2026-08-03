@@ -220,15 +220,36 @@ final class AutoLearnVocabularyService {
 
         guard currentText != baseline else { return }
 
-        let allSubstitutions = WordDiffEngine.findSingleWordSubstitutions(original: baseline, edited: currentText)
+        // Strict 1:1 alignment only. `WordDiffEngine.findSingleWordSubstitutions`
+        // emits the CROSS-PRODUCT of an unequal-length changed span's tokens, so
+        // a phrase rewrite — or a phantom whole-field diff from an AX read-back
+        // that never matched the pasted baseline — mints substitutions the user
+        // never made (see `CorrectionMiner.alignedSubstitutions`). Accepted cost:
+        // an equal-length multi-token fix ("jon smyth" → "John Smith", a
+        // 2-delete/2-insert span) is dropped — only a single changed token, or a
+        // merge the fragments literally spell, is certain enough to learn from.
+        let allSubstitutions = CorrectionMiner.alignedSubstitutions(original: baseline, edited: currentText)
+        // Those drops are otherwise invisible: report how many spans the edit
+        // changed vs how many yielded a learnable pair.
+        let changedSpans = WordDiffEngine.tokenLevelDiff(original: baseline, edited: currentText)
+            .split(whereSeparator: { if case .equal = $0 { return true } else { return false } })
+            .count
+        logger.notice("🧠 auto-vocab: \(changedSpans, privacy: .public) changed spans, \(allSubstitutions.count, privacy: .public) mined")
         guard !allSubstitutions.isEmpty else { return }
 
-        // Only consider corrections to words that were part of the pasted transcript
+        // Only consider corrections to words that were part of the pasted
+        // transcript. A merged original is multi-word ("para keet"), so every
+        // component must trace back to the paste, not the original as a whole.
         let pastedTokens = Set(pastedText.components(separatedBy: .whitespacesAndNewlines)
             .map { $0.trimmingCharacters(in: .punctuationCharacters).lowercased() }
             .filter { !$0.isEmpty })
 
-        let substitutions = allSubstitutions.filter { pastedTokens.contains($0.original.lowercased()) }
+        let substitutions = allSubstitutions.filter { sub in
+            let components = sub.original.components(separatedBy: .whitespaces)
+                .map { $0.lowercased() }
+                .filter { !$0.isEmpty }
+            return !components.isEmpty && components.allSatisfy { pastedTokens.contains($0) }
+        }
         guard !substitutions.isEmpty else { return }
 
         guard isSupportedLanguage(currentText) else { return }
@@ -245,13 +266,22 @@ final class AutoLearnVocabularyService {
                     .map { $0.lowercased() }
                     .contains(replWord.lowercased())
             }
-            if let closest = candidates.min(by: { abs($0.position - correctedPosition) < abs($1.position - correctedPosition) }) {
+            if let closest = candidates.min(by: { abs($0.position - correctedPosition) < abs($1.position - correctedPosition) }),
+               Self.isLikelyProperTerm(closest.name) {
                 wordsToAdd.append(closest.name)
             }
         }
 
         let uniqueWordsToAdd = Array(NSOrderedSet(array: wordsToAdd)) as! [String]
         guard !uniqueWordsToAdd.isEmpty else { return }
+
+        // A single edit pass yielding this many new entities is a bogus surface
+        // read-back (pre-existing field content diffed against the paste), not
+        // user corrections — drop the batch rather than poison the vocabulary.
+        guard uniqueWordsToAdd.count <= 3 else {
+            logger.notice("⚠️ auto-vocab: dropping burst of \(uniqueWordsToAdd.count, privacy: .public) candidates — diff looks bogus")
+            return
+        }
 
         let descriptor = FetchDescriptor<VocabularyWord>()
         let existing = (try? context.fetch(descriptor)) ?? []
@@ -294,6 +324,32 @@ final class AutoLearnVocabularyService {
                 })
             )
         }
+    }
+
+    /// OOV gate: a candidate is worth learning only if at least one of its
+    /// whitespace-separated components is NOT a known dictionary word. NLTagger
+    /// tags sentence-start capitalized common words ("No", "Same", "Filter") as
+    /// named entities, and learning those actively biases the ASR wrong. The
+    /// deliberate cost is that dictionary-word proper names ("Hunter") are no
+    /// longer auto-learned — precision over recall.
+    ///
+    /// The component is LOWERCASED before the check: NSSpellChecker treats
+    /// all-caps tokens as acronyms and never flags them (same caveat as
+    /// `PhoneticCorrectionService`). `isMisspelled` is injected — defaulting to
+    /// the OS spell checker — so tests don't depend on host dictionary state.
+    static func isLikelyProperTerm(
+        _ name: String,
+        isMisspelled: (String) -> Bool = AutoLearnVocabularyService.osIsMisspelled
+    ) -> Bool {
+        let components = name.components(separatedBy: .whitespaces).filter { !$0.isEmpty }
+        guard !components.isEmpty else { return false }
+        return components.contains { isMisspelled($0.lowercased()) }
+    }
+
+    /// OS spell-checker OOV probe — the production `isLikelyProperTerm` predicate.
+    static func osIsMisspelled(_ word: String) -> Bool {
+        let range = NSSpellChecker.shared.checkSpelling(of: word, startingAt: 0)
+        return range.location != NSNotFound && range.length > 0
     }
 
     private static let nerSupportedLanguages: Set<NLLanguage> = [

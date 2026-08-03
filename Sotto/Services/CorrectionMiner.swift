@@ -84,17 +84,20 @@ enum CorrectionMiner {
         }
     }
 
-    /// Word pairs from changed spans that are EXACTLY one deleted token replaced
-    /// by one inserted token — a guaranteed 1:1 alignment.
+    /// Word pairs from changed spans whose alignment is certain: either exactly
+    /// one deleted token replaced by one inserted token, or a **merge shatter**
+    /// — 2–3 deleted tokens fused into one inserted token that they literally
+    /// spell ("para keet" → "Parakeet", "e mail" → "e-mail"), the dominant
+    /// out-of-vocabulary ASR failure whose fragments both pass spellcheck.
     ///
     /// `WordDiffEngine.findSingleWordSubstitutions` is unusable here: for
     /// unequal-length changed spans it emits the CROSS-PRODUCT of the span's
     /// tokens, so a phrase rewrite or insertion mints pairs the user never made,
     /// which would accumulate to the suggestion threshold. `tokenLevelDiff`
-    /// exposes the raw delete/insert runs between LCS anchors; a run of one
-    /// delete + one insert is the only shape where "X became Y" is certain, so
-    /// everything else (multi-word rewrites, pure insertions/deletions) is
-    /// dropped rather than guessed at.
+    /// exposes the raw delete/insert runs between LCS anchors; the two shapes
+    /// above are the only ones where "X became Y" is certain, so everything else
+    /// (multi-word rewrites, pure insertions/deletions, splits) is dropped
+    /// rather than guessed at.
     static func alignedSubstitutions(original: String, edited: String)
         -> [(original: String, replacement: String)] {
         var pairs = [(original: String, replacement: String)]()
@@ -104,6 +107,9 @@ enum CorrectionMiner {
         func flushSpan() {
             if deletes.count == 1, inserts.count == 1 {
                 pairs.append((deletes[0], inserts[0]))
+            } else if inserts.count == 1, (2...3).contains(deletes.count),
+                      spellsSameWord(deletes, inserts[0]) {
+                pairs.append((deletes.joined(separator: " "), inserts[0]))
             }
             deletes.removeAll()
             inserts.removeAll()
@@ -121,6 +127,18 @@ enum CorrectionMiner {
         }
         flushSpan()
         return pairs
+    }
+
+    /// Orthographic identity: the deleted fragments, concatenated with no
+    /// separator, spell the inserted token — ignoring case and the hyphens a
+    /// merge often introduces ("e" + "mail" → "e-mail"). Leading/trailing
+    /// punctuation is already stripped by the diff's tokenizer. This is what
+    /// keeps the merge branch certain rather than a guess: any span that isn't
+    /// a literal fusion ("the" + "meeting" vs "sync") is rejected.
+    private static func spellsSameWord(_ fragments: [String], _ merged: String) -> Bool {
+        let fused = fragments.joined().lowercased()
+        guard !fused.isEmpty else { return false }
+        return fused == merged.lowercased().replacingOccurrences(of: "-", with: "")
     }
 }
 
