@@ -367,6 +367,20 @@ struct ActiveAppContextBlockTests {
         UserDefaults.standard.removeObject(forKey: Self.key)
     }
 
+    @Test("cleanup prompt defines numbered-list cues and the quantity boundary")
+    func numberedListPromptContract() {
+        let prompt = String(format: AIPrompts.customPromptTemplate, AIPrompts.cleanupRules)
+
+        #expect(prompt.contains("explicit item count"))
+        #expect(prompt.contains("vertical numbered list with one item per line"))
+        #expect(prompt.contains("one … two …"))
+        #expect(prompt.contains("first … second …"))
+        #expect(prompt.contains("my tasks are one update the brief two send it to Mina"))
+        #expect(prompt.contains("the steps are 1 install dependencies 2 run the tests 3 deploy the app"))
+        #expect(prompt.contains("i need four things milk eggs bread and butter"))
+        #expect(prompt.contains("i bought one apple and two bananas"))
+    }
+
     // MARK: - Custom vocabulary section
 
     /// The vocabulary instruction must ask for more than exact spelling: ASR

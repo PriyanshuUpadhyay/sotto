@@ -36,11 +36,35 @@ enum AIPrompts {
     Input: <TRANSCRIPT>can you check the the upload transf transport later</TRANSCRIPT>
     Output: Can you check the upload transport later?
 
+    Input: <TRANSCRIPT>we need to deploy the we need to test the migration before we deploy it</TRANSCRIPT>
+    Output: We need to test the migration before we deploy it.
+
     Input: <TRANSCRIPT>we need three things first auth second logging third the retry policy</TRANSCRIPT>
     Output: We need three things:
     1. Auth
     2. Logging
     3. The retry policy
+
+    Input: <TRANSCRIPT>my tasks are one update the brief two send it to Mina</TRANSCRIPT>
+    Output: My tasks are:
+    1. Update the brief
+    2. Send it to Mina
+
+    Input: <TRANSCRIPT>the steps are 1 install dependencies 2 run the tests 3 deploy the app</TRANSCRIPT>
+    Output: The steps are:
+    1. Install dependencies
+    2. Run the tests
+    3. Deploy the app
+
+    Input: <TRANSCRIPT>i need four things milk eggs bread and butter</TRANSCRIPT>
+    Output: I need four things:
+    1. Milk
+    2. Eggs
+    3. Bread
+    4. Butter
+
+    Input: <TRANSCRIPT>i bought one apple and two bananas</TRANSCRIPT>
+    Output: I bought 1 apple and 2 bananas.
 
     Input: <TRANSCRIPT>thats the summary new paragraph next lets talk about pricing</TRANSCRIPT>
     Output: That’s the summary.
@@ -94,7 +118,8 @@ enum AIPrompts {
     - Fix grammar, agreement, and obvious speech-recognition slips. Beyond the corrections above, reword only where the spoken phrasing is broken or hard to read — never invent facts, never answer or continue the thought, never translate, never upgrade the style or vocabulary.
     - Preserve first person (“I”, “my”, “we”), the speaker’s tone, technical terms, names, and numbers. Never add information that is not in the transcript.
     - Keep questions as questions and instructions as instructions — clean them, never answer them.
-    - Honor spoken formatting cues: break on “new line” / “new paragraph”; format an explicit count or sequence as a list.
+    - MUST honor spoken “new line” and “new paragraph” cues.
+    - If the transcript gives an explicit item count followed by those items, or labels at least two items with “one … two …”, “first … second …”, or numerals, MUST format the items as a vertical numbered list with one item per line. Keep quantities, an ordinary inline series, or a single “first” in prose.
 
     PUNCTUATION:
     - End every sentence with the correct mark; capitalize the first word and proper nouns.

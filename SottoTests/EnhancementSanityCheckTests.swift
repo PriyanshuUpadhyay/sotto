@@ -166,6 +166,12 @@ struct EnhancementSanityCheckTests {
         #expect(EnhancementSanityCheck.detect(raw: raw, output: out).isClean)
     }
 
+    @Test func acceptsExplicitCountListFormatting() {
+        let raw = "I need four things milk eggs bread and butter"
+        let out = "I need four things:\n1. Milk\n2. Eggs\n3. Bread\n4. Butter"
+        #expect(EnhancementSanityCheck.detect(raw: raw, output: out).isClean)
+    }
+
     @Test func acceptsNewParagraphCue() {
         let raw = "That's the summary. New paragraph. Next, let's talk about pricing."
         let out = "That's the summary.\n\nNext, let's talk about pricing."
@@ -250,10 +256,40 @@ struct EnhancementSanityCheckTests {
             bad: "The transcript asks whether the upload transport was checked."
         ),
         FewShot(
-            name: "spokenList",
+            name: "cuelessSentenceRestart",
+            raw: "we need to deploy the we need to test the migration before we deploy it",
+            good: "We need to test the migration before we deploy it.",
+            bad: "Yes, we should test the migration before we deploy it."
+        ),
+        FewShot(
+            name: "ordinalList",
             raw: "we need three things first auth second logging third the retry policy",
             good: "We need three things:\n1. Auth\n2. Logging\n3. The retry policy",
             bad: "Based on the transcript, three things are needed: auth, logging, and the retry policy."
+        ),
+        FewShot(
+            name: "spokenNumberList",
+            raw: "my tasks are one update the brief two send it to Mina",
+            good: "My tasks are:\n1. Update the brief\n2. Send it to Mina",
+            bad: "Here are your tasks: update the brief and send it to Mina."
+        ),
+        FewShot(
+            name: "numeralList",
+            raw: "the steps are 1 install dependencies 2 run the tests 3 deploy the app",
+            good: "The steps are:\n1. Install dependencies\n2. Run the tests\n3. Deploy the app",
+            bad: "Here's how to install dependencies, run tests, and deploy the app."
+        ),
+        FewShot(
+            name: "explicitCountList",
+            raw: "i need four things milk eggs bread and butter",
+            good: "I need four things:\n1. Milk\n2. Eggs\n3. Bread\n4. Butter",
+            bad: "Here are four things you need: milk, eggs, bread, and butter."
+        ),
+        FewShot(
+            name: "spokenQuantitySentence",
+            raw: "i bought one apple and two bananas",
+            good: "I bought 1 apple and 2 bananas.",
+            bad: "You should buy 1 apple and 2 bananas."
         ),
         FewShot(
             name: "newParagraphCue",
