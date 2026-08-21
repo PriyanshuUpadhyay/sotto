@@ -3,13 +3,11 @@ import LaunchAtLogin
 import AVFoundation
 
 struct GeneralTab: View {
-    @EnvironmentObject private var updaterViewModel: UpdaterViewModel
     @EnvironmentObject private var menuBarManager: MenuBarManager
     @ObservedObject private var soundManager = SoundManager.shared
     @ObservedObject private var mediaController = MediaController.shared
     @StateObject private var permissions = PermissionManager()
 
-    @AppStorage("autoUpdateCheck") private var autoUpdateCheck = true
     @AppStorage(SottoFeedback.hapticsEnabledKey) private var hapticsEnabled = true
 
     @State private var isMuteSystemExpanded = false
@@ -32,8 +30,6 @@ struct GeneralTab: View {
         case soundFeedback
         case launchAtLogin
         case hideDock
-        case autoUpdate
-        case checkForUpdates
         case permissionsStatus
     }
 
@@ -44,15 +40,14 @@ struct GeneralTab: View {
     }
 
     /// Each migrated control mapped to its existing persisted key / manager.
-    /// `checkForUpdates` (action) and `permissionsStatus` (read-only) own no
-    /// persisted setting, so they are not listed here.
+    /// `permissionsStatus` is read-only and owns no persisted setting, so it
+    /// is not listed here.
     static let migratedBindings: [MigratedBinding] = [
         .init(section: .audioInput,         settingsKey: "audioInputMode"),          // AudioDeviceManager
         .init(section: .soundFeedback,      settingsKey: "isSoundFeedbackEnabled"),  // SoundManager.isEnabled
         .init(section: .soundFeedback,      settingsKey: "isSystemMuteEnabled"),     // MediaController.isSystemMuteEnabled
         .init(section: .hideDock,           settingsKey: "IsMenuBarOnly"),           // MenuBarManager.isMenuBarOnly
         .init(section: .launchAtLogin,      settingsKey: "LaunchAtLogin"),           // LaunchAtLogin library
-        .init(section: .autoUpdate,         settingsKey: "autoUpdateCheck"),         // @AppStorage
     ]
 
     /// The exact, ordered list the body's `ForEach` renders from. It IS
@@ -184,43 +179,6 @@ struct GeneralTab: View {
                 ) {
                     Toggle("", isOn: $menuBarManager.isMenuBarOnly)
                         .labelsHidden()
-                }
-            }
-
-        case .autoUpdate:
-            SettingsCard(
-                iconSystemName: "arrow.down.circle",
-                iconTint: Palette.neutral,
-                title: "Updates",
-                subtitle: "Keep Sotto up to date."
-            ) {
-                SettingsRow(
-                    iconSystemName: "arrow.down.circle",
-                    label: "Auto-check Updates",
-                    iconTint: Palette.neutral
-                ) {
-                    Toggle("", isOn: $autoUpdateCheck)
-                        .labelsHidden()
-                        .onChange(of: autoUpdateCheck) { _, newValue in
-                            updaterViewModel.toggleAutoUpdates(newValue)
-                        }
-                }
-            }
-
-        case .checkForUpdates:
-            SettingsCard(
-                iconSystemName: "arrow.triangle.2.circlepath",
-                iconTint: Palette.neutral,
-                title: "Check for Updates",
-                subtitle: "Look for a new version now."
-            ) {
-                HStack(spacing: 8) {
-                    Button("Check for Updates") {
-                        updaterViewModel.checkForUpdates()
-                    }
-                    .disabled(!updaterViewModel.canCheckForUpdates)
-
-                    Spacer()
                 }
             }
 

@@ -1,13 +1,12 @@
 import SwiftUI
 
-/// Shared button style for SOLID Acid-Lime CTAs. Bakes DARK onyx text AND icons
-/// (`Palette.surfaceBase`) onto a `Palette.brandAcid` (#D4FF3A) fill so the
-/// white-text-on-lime contrast failure can NEVER be reintroduced at a call site.
+/// Shared button style for solid accent CTAs. It owns a contrast-safe adaptive
+/// foreground and the `Palette.brandAcid` fill so call sites cannot create a
+/// low-contrast label.
 ///
 /// Consume via `.buttonStyle(LimeFillButtonStyle())` (or `.buttonStyle(.limeFill)`
-/// for the default pill). Do NOT set a per-site `.foregroundColor(...)` or
-/// `.background(...brandAcid)` on the label — the style owns both the dark
-/// foreground and the lime fill. Onyx system only: consumes `Palette` tokens.
+/// for the default pill). Do not set a per-site foreground or accent fill;
+/// this style owns both adaptive colors.
 struct LimeFillButtonStyle: ButtonStyle {
     /// Corner shape of the lime fill. `.capsule` for pill CTAs (model cards),
     /// `.rounded(radius)` for block CTAs (permissions row).
@@ -24,8 +23,7 @@ struct LimeFillButtonStyle: ButtonStyle {
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            // The contrast guarantee: dark onyx text AND icons on lime.
-            .foregroundStyle(Palette.surfaceBase)
+            .foregroundStyle(Palette.onAccent)
             .padding(.horizontal, horizontalPadding)
             .padding(.vertical, verticalPadding)
             .frame(maxWidth: fullWidth ? .infinity : nil)

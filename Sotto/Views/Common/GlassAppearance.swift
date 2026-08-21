@@ -1,5 +1,6 @@
 import SwiftUI
 import AppKit
+import Combine
 import os.signpost
 
 // MARK: - GlassAppearance
@@ -33,6 +34,8 @@ final class GlassAppearanceDetector: ObservableObject {
 
     private var spaceObserver: NSObjectProtocol?
     private var wallpaperObserver: NSObjectProtocol?
+    private var systemAppearanceObserver: NSKeyValueObservation?
+    private var appearanceChoiceCancellable: AnyCancellable?
 
     private static let signposter = OSSignposter(subsystem: "com.sotto.glass", category: "appearance")
 
@@ -52,6 +55,17 @@ final class GlassAppearanceDetector: ObservableObject {
         ) { [weak self] _ in
             Task { @MainActor in self?.refresh() }
         }
+        systemAppearanceObserver = NSApplication.shared.observe(
+            \.effectiveAppearance,
+            options: [.new]
+        ) { [weak self] _, _ in
+            Task { @MainActor in self?.refresh() }
+        }
+        appearanceChoiceCancellable = AppearanceStore.shared.$choice
+            .dropFirst()
+            .sink { [weak self] _ in
+                Task { @MainActor in self?.refresh() }
+            }
         refresh()
     }
 
@@ -71,6 +85,9 @@ final class GlassAppearanceDetector: ObservableObject {
     }
 
     private func sampleAppearance() -> GlassAppearance {
+        if let forced = AppearanceStore.shared.choice.glassAppearance {
+            return forced
+        }
         guard let screen = NSScreen.main else { return systemFallback() }
         guard let url = NSWorkspace.shared.desktopImageURL(for: screen) else {
             return systemFallback()

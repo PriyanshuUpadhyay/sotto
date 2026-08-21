@@ -28,6 +28,7 @@ struct SottoApp: App {
     @StateObject private var aiService = AIService()
     @StateObject private var enhancementService: AIEnhancementService
     @StateObject private var failureRegistry: FailureRegistry
+    @StateObject private var appearance = AppearanceStore.shared
     @State private var showMenuBarIcon = true
 
     // Audio cleanup manager for automatic deletion of old audio files
@@ -369,7 +370,6 @@ struct SottoApp: App {
                 .environmentObject(transcriptionModelManager)
                 .environmentObject(recorderUIManager)
                 .environmentObject(hotkeyManager)
-                .environmentObject(updaterViewModel)
                 .environmentObject(menuBarManager)
                 .environmentObject(aiService)
                 .environmentObject(enhancementService)
@@ -416,6 +416,7 @@ struct SottoApp: App {
                         }
                     }
                     .tint(Brand.tint)
+                    .preferredColorScheme(appearance.choice.colorScheme)
         }
         .windowStyle(.hiddenTitleBar)
         .defaultSize(width: 950, height: 730)
@@ -440,13 +441,13 @@ struct SottoApp: App {
                 .environmentObject(transcriptionModelManager)
                 .environmentObject(recorderUIManager)
                 .environmentObject(hotkeyManager)
-                .environmentObject(updaterViewModel)
                 .environmentObject(menuBarManager)
                 .environmentObject(aiService)
                 .environmentObject(enhancementService)
                 .environmentObject(failureRegistry)
                 .modelContainer(container)
                 .tint(Brand.tint)
+                .preferredColorScheme(appearance.choice.colorScheme)
         }
 
         MenuBarExtra(isInserted: $showMenuBarIcon) {
@@ -479,6 +480,7 @@ struct SottoApp: App {
             Button("Toggle Menu Bar Only") {
                 menuBarManager.isMenuBarOnly.toggle()
             }
+            .preferredColorScheme(appearance.choice.colorScheme)
         }
         #endif
     }

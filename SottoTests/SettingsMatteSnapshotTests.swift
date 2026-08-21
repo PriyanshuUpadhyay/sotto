@@ -6,16 +6,28 @@ final class SettingsMatteSnapshotTests: XCTestCase {
     // The matte rail selection no longer paints the row Brand.tint with black
     // text; it uses mtRaise2 fill + phosphor glyph + inkPrimary label.
     func testRailSelectionFillIsMatteNotAccent() {
-        XCTAssertEqual(SettingsRailRowStyle.selectedFill, Palette.mtRaise2)
-        XCTAssertEqual(SettingsRailRowStyle.selectedGlyph, Palette.phosphor)
-        XCTAssertNotEqual(SettingsRailRowStyle.selectedFill, Brand.tint)
+        XCTAssertEqual(
+            SettingsRailRowStyle.selectedFill.resolvedNSColor(),
+            Palette.mtRaise2.resolvedNSColor()
+        )
+        XCTAssertEqual(
+            SettingsRailRowStyle.selectedGlyph.resolvedNSColor(),
+            Palette.phosphor.resolvedNSColor()
+        )
+        XCTAssertNotEqual(
+            SettingsRailRowStyle.selectedFill.resolvedNSColor(),
+            Brand.tint.resolvedNSColor()
+        )
     }
 
     // Idle/hover stay matte (no accent fill on unselected rows).
     func testRailIdleAndHoverAreMatte() {
-        XCTAssertEqual(SettingsRailRowStyle.label, Palette.inkPrimary)
-        XCTAssertEqual(SettingsRailRowStyle.idleLabel, Palette.inkSecondary)
-        XCTAssertEqual(SettingsRailRowStyle.hoverFill, Palette.mtRaise)
+        XCTAssertEqual(SettingsRailRowStyle.label.resolvedNSColor(), Palette.inkPrimary.resolvedNSColor())
+        XCTAssertEqual(
+            SettingsRailRowStyle.idleLabel.resolvedNSColor(),
+            Palette.inkSecondary.resolvedNSColor()
+        )
+        XCTAssertEqual(SettingsRailRowStyle.hoverFill.resolvedNSColor(), Palette.mtRaise.resolvedNSColor())
     }
 
     // MARK: - Snapshots (gated; rail selected+idle + a representative pane)

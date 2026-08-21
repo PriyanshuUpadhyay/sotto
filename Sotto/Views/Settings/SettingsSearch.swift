@@ -69,8 +69,6 @@ extension GeneralTab.GeneralTabSection {
         case .soundFeedback: return "Sound Feedback"
         case .launchAtLogin: return "Launch at Login"
         case .hideDock: return "Hide Dock Icon"
-        case .autoUpdate: return "Automatic Updates"
-        case .checkForUpdates: return "Check for Updates"
         case .permissionsStatus: return "Permissions"
         }
     }

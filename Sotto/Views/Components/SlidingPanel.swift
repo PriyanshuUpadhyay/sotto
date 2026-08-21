@@ -28,10 +28,10 @@ struct SlidingPanel<PanelContent: View>: ViewModifier {
                     panelContent()
                         .frame(width: panelWidth)
                         .frame(maxHeight: .infinity)
-                        .background(Palette.surfaceOverlay)
+                        .background(Theme.panel)
                         .overlay(alignment: .leading) {
                             Rectangle()
-                                .fill(Palette.hairline)
+                                .fill(Theme.hairline)
                                 .frame(width: 1)
                         }
                         .shadow(color: .black.opacity(0.08), radius: 8, x: -2, y: 0)

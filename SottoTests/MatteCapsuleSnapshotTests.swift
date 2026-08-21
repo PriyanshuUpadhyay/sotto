@@ -27,11 +27,16 @@ final class MatteCapsuleSnapshotTests: XCTestCase {
     }
 
     func testStateColorMapping() {
-        XCTAssertEqual(NSColor(CapsuleState.recording.color), NSColor(Palette.stateRecord))
-        XCTAssertEqual(NSColor(CapsuleState.processing.color), NSColor(Palette.stateProcessing))
-        XCTAssertEqual(NSColor(CapsuleState.commit.color), NSColor(Palette.stateCommit))
-        XCTAssertEqual(NSColor(CapsuleState.fail.color), NSColor(Palette.stateFail))
-        XCTAssertEqual(NSColor(CapsuleState.idleReady.color), NSColor(Palette.phosphor))
+        let mappings: [(CapsuleState, Color)] = [
+            (.recording, Palette.stateRecord),
+            (.processing, Palette.stateProcessing),
+            (.commit, Palette.stateCommit),
+            (.fail, Palette.stateFail),
+            (.idleReady, Palette.phosphor),
+        ]
+        for (state, expected) in mappings {
+            XCTAssertEqual(state.color.resolvedNSColor(), expected.resolvedNSColor())
+        }
     }
 
     // MARK: - P2.2 · Dock-safe placement

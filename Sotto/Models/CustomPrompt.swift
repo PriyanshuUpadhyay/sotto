@@ -131,7 +131,7 @@ extension CustomPrompt {
             GlassCard(cornerRadius: 14, padding: 0) {
                 Image(systemName: icon)
                     .font(.system(size: 20, weight: .medium))
-                    .foregroundColor(isSelected ? Palette.brandAcid : Palette.onyxFg)
+                    .foregroundColor(isSelected ? Palette.brandAcid : Palette.inkPrimary)
                     .frame(width: 48, height: 48)
             }
             .overlay(
@@ -161,17 +161,17 @@ extension CustomPrompt {
                         HStack(spacing: 2) {
                             Image(systemName: "mic.fill")
                                 .font(.system(size: 7))
-                                .foregroundColor(isSelected ? Palette.brandAcid : Palette.onyxMute)
+                                .foregroundColor(isSelected ? Palette.brandAcid : Palette.inkSecondary)
 
                             if triggerWords.count == 1 {
                                 Text("\"\(triggerWords[0])...\"")
                                     .font(.system(size: 8, weight: .regular))
-                                    .foregroundColor(isSelected ? Palette.brandAcid : Palette.onyxMute)
+                                    .foregroundColor(isSelected ? Palette.brandAcid : Palette.inkSecondary)
                                     .lineLimit(1)
                             } else {
                                 Text("\"\(triggerWords[0])...\" +\(triggerWords.count - 1)")
                                     .font(.system(size: 8, weight: .regular))
-                                    .foregroundColor(isSelected ? Palette.brandAcid : Palette.onyxMute)
+                                    .foregroundColor(isSelected ? Palette.brandAcid : Palette.inkSecondary)
                                     .lineLimit(1)
                             }
                         }

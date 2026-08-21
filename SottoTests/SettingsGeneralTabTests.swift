@@ -37,12 +37,11 @@ final class SettingsGeneralTabTests: XCTestCase {
         let cases = Set(GeneralTab.GeneralTabSection.allCases)
         let required: Set<GeneralTab.GeneralTabSection> = [
             .audioInput, .soundFeedback,
-            .launchAtLogin, .hideDock, .autoUpdate,
-            .checkForUpdates, .permissionsStatus,
+            .launchAtLogin, .hideDock, .permissionsStatus,
         ]
         XCTAssertEqual(
             cases, required,
-            "GeneralTab descriptor must be exactly the 7 required sections; diff: \(cases.symmetricDifference(required))"
+            "GeneralTab descriptor must be exactly the 5 required sections; diff: \(cases.symmetricDifference(required))"
         )
     }
 
@@ -51,13 +50,13 @@ final class SettingsGeneralTabTests: XCTestCase {
     /// (action / read-only). A new case left unclassified fails this test.
     func test_everySectionIsAccountedFor_boundOrNonPersisted() {
         let bound = Set(GeneralTab.migratedBindings.map(\.section))
-        let nonPersisted: Set<GeneralTab.GeneralTabSection> = [.checkForUpdates, .permissionsStatus]
+        let nonPersisted: Set<GeneralTab.GeneralTabSection> = [.permissionsStatus]
         XCTAssertEqual(
             bound.union(nonPersisted),
             Set(GeneralTab.GeneralTabSection.allCases),
             "every section must be a migrated binding or an explicit non-persisted section"
         )
-        // The two non-persisted sections must NOT carry a persisted key.
+        // The read-only section must not carry a persisted key.
         XCTAssertTrue(bound.isDisjoint(with: nonPersisted),
                       "action / read-only sections must not be listed in migratedBindings")
     }
@@ -73,17 +72,14 @@ final class SettingsGeneralTabTests: XCTestCase {
         XCTAssertEqual(byKey[.soundFeedback], ["isSoundFeedbackEnabled", "isSystemMuteEnabled"])
         XCTAssertEqual(byKey[.hideDock], ["IsMenuBarOnly"])
         XCTAssertEqual(byKey[.launchAtLogin], ["LaunchAtLogin"])
-        XCTAssertEqual(byKey[.autoUpdate], ["autoUpdateCheck"])
     }
 
-    /// Every migrated persisted control must have a binding entry — dropping
-    /// recorder appearance, sound, mute, hide-dock, launch-at-login, or
-    /// auto-update fails this test.
+    /// Every migrated persisted control must have a binding entry.
     func test_eachMigratedControlHasBinding() {
         let bound = Set(GeneralTab.migratedBindings.map(\.section))
         for section: GeneralTab.GeneralTabSection in [
             .audioInput, .soundFeedback,
-            .hideDock, .launchAtLogin, .autoUpdate,
+            .hideDock, .launchAtLogin,
         ] {
             XCTAssertTrue(bound.contains(section),
                           "missing migrated binding for \(section)")

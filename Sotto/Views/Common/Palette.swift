@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 /// Functional accents for Sotto UI. Single source of truth for brand + state
@@ -16,14 +17,26 @@ import SwiftUI
 /// - `Palette.hairline` / `hairlineSoft` for glass borders.
 /// - `Palette.innerHi` for the top-edge sheen on glass surfaces.
 enum Palette {
-    /// #30D158 — mid-saturation green. Reads positive without lab-green shock.
-    static let success = Color(red: 0.188, green: 0.820, blue: 0.345)
+    static func adaptive(light: UInt32, dark: UInt32) -> Color {
+        Color(nsColor: NSColor(name: nil, dynamicProvider: { appearance in
+            let value = appearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua ? dark : light
+            return NSColor(
+                srgbRed: CGFloat((value >> 16) & 0xff) / 255,
+                green: CGFloat((value >> 8) & 0xff) / 255,
+                blue: CGFloat(value & 0xff) / 255,
+                alpha: 1
+            )
+        }))
+    }
 
-    /// #FF9F0A — amber. Warning signal.
-    static let warn = Color(red: 1.00, green: 0.624, blue: 0.039)
+    /// Completion signal. Dark keeps #30D158; Light uses a contrast-safe green.
+    static let success = adaptive(light: 0x2f6f1d, dark: 0x30d158)
 
-    /// #8E8E93 — system gray. Idle baseline.
-    static let neutral = Color(red: 0.557, green: 0.557, blue: 0.576)
+    /// Warning signal. Dark keeps #FF9F0A; Light uses a contrast-safe amber.
+    static let warn = adaptive(light: 0x8a4b00, dark: 0xff9f0a)
+
+    /// Idle baseline. Dark keeps #8E8E93; Light uses a stronger system gray.
+    static let neutral = adaptive(light: 0x515157, dark: 0x8e8e93)
 
     /// #0F0F12-ish — onyx backdrop tone for the cinematic walkthrough host
     /// and other dark-mode surfaces that anchor a `.onyx` GlassCard. Matches
@@ -31,11 +44,11 @@ enum Palette {
     /// Kept transitionally; AppDelegate host migrates to `onyxBg` in W4.
     static let onyxBackground = Color(red: 0.06, green: 0.06, blue: 0.07)
 
-    /// #D4FF3A (`0xD4FF3A`) — Acid Lime brand accent (Sotto). Wordmark stop,
+    /// Dark #D4FF3A — Acid Lime brand accent. Wordmark stop,
     /// selected row, section labels, prompt glyph, CTA halo, HUD audio bars.
     /// Source of truth: spec §1.4. Single source of truth — no inline hex
     /// permitted at call sites; consume via `Palette.brandAcid`.
-    static let brandAcid = Color(red: 0xD4 / 255.0, green: 0xFF / 255.0, blue: 0x3A / 255.0)
+    static let brandAcid = adaptive(light: 0x3d6b00, dark: 0xd4ff3a)
 
     /// `brandAcid` α 0.42 — muted lime fill (chip backgrounds, halo bases).
     static let brandAcidMuted = brandAcid.opacity(0.42)
@@ -43,18 +56,18 @@ enum Palette {
     /// `brandAcid` α 0.55 — lime glow (halo end frames, shadow tints).
     static let brandAcidGlow = brandAcid.opacity(0.55)
 
-    /// #FF3B30 — recording dot + fail state (spec §4.2).
-    static let recRed = Color(red: 1.000, green: 0.231, blue: 0.188)
+    /// Recording dot and fail state (Dark #FF3B30; spec §4.2).
+    static let recRed = adaptive(light: 0xb42318, dark: 0xff3b30)
 
-    /// #30D158 — committed (post-paste) halo. Named alias for spec §4.2 parity;
+    /// Committed halo. Named alias for spec §4.2 parity;
     /// shares the value with `success`.
     static let commitGreen = success
 
-    /// #5AC8FA — transcribing sweep + capsule border (spec §4.2).
-    static let transCyan = Color(red: 0.353, green: 0.784, blue: 0.980)
+    /// Transcribing sweep and capsule border (Dark #5AC8FA; spec §4.2).
+    static let transCyan = adaptive(light: 0x006b8f, dark: 0x5ac8fa)
 
-    /// #BF5AF2 — enhancing halo breath + arc spin (spec §4.2).
-    static let enhViolet = Color(red: 0.749, green: 0.353, blue: 0.949)
+    /// Enhancing halo breath and arc spin (Dark #BF5AF2; spec §4.2).
+    static let enhViolet = adaptive(light: 0x6941a5, dark: 0xbf5af2)
 
     /// #0A0A0D — onyx background. Replaces the previously-hardcoded
     /// `Color(red: 0.06, green: 0.06, blue: 0.07)` in onyx hosts.
@@ -105,27 +118,26 @@ enum Palette {
     /// White α 0.38 — tertiary text / metadata / disabled.
     static let textTertiary = Color.white.opacity(0.38)
 
-    // MARK: - Graphite Matte surface ladder (dark-only, v1)
-    /// #0d0d0f — window background (furthest back).
-    static let mtCanvas = Color(red: 0x0d/255.0, green: 0x0d/255.0, blue: 0x0f/255.0)
-    /// #16161a — cards, panels, capsule body.
-    static let mtRaise  = Color(red: 0x16/255.0, green: 0x16/255.0, blue: 0x1a/255.0)
-    /// #1b1b20 — nested controls, selected rows.
-    static let mtRaise2 = Color(red: 0x1b/255.0, green: 0x1b/255.0, blue: 0x20/255.0)
-    /// #232329 — hairline dividers / borders.
-    static let mtLine   = Color(red: 0x23/255.0, green: 0x23/255.0, blue: 0x29/255.0)
-    /// #2c2c34 — stronger hairline (focus, capsule edge).
-    static let mtLine2  = Color(red: 0x2c/255.0, green: 0x2c/255.0, blue: 0x34/255.0)
+    // MARK: - Graphite Matte surface ladder
+    /// Window background (furthest back).
+    static let mtCanvas = adaptive(light: 0xf5f5f7, dark: 0x0d0d0f)
+    /// Cards, panels, and the capsule body.
+    static let mtRaise = adaptive(light: 0xffffff, dark: 0x16161a)
+    /// Nested controls and selected rows.
+    static let mtRaise2 = adaptive(light: 0xe8e8ed, dark: 0x1b1b20)
+    /// Hairline dividers and borders.
+    static let mtLine = adaptive(light: 0xd2d2d7, dark: 0x232329)
+    /// Stronger hairline for focus and capsule edges.
+    static let mtLine2 = adaptive(light: 0x8e8e93, dark: 0x2c2c34)
 
     // MARK: - Ink ladder
-    /// #e7e7ea — primary text.
-    static let inkPrimary   = Color(red: 0xe7/255.0, green: 0xe7/255.0, blue: 0xea/255.0)
-    /// #9a9aa2 — labels, secondary. Also the grade for small mono metadata +
-    /// microlabels (clears 4.5:1 text-AA on every matte surface; P0 decision).
-    static let inkSecondary = Color(red: 0x9a/255.0, green: 0x9a/255.0, blue: 0xa2/255.0)
-    /// #6d6d78 — idle/disabled/decorative + LARGE-TEXT/graphical only (< 4.5:1
-    /// on matte → NEVER body copy or small metadata; P0 contrast report).
-    static let inkTertiary  = Color(red: 0x6d/255.0, green: 0x6d/255.0, blue: 0x78/255.0)
+    static let inkPrimary = adaptive(light: 0x1d1d1f, dark: 0xe7e7ea)
+    static let inkSecondary = adaptive(light: 0x515157, dark: 0x9a9aa2)
+    /// Large-text, graphical, disabled, and decorative use only.
+    static let inkTertiary = adaptive(light: 0x6e6e73, dark: 0x6d6d78)
+
+    /// Foreground for solid accent fills.
+    static let onAccent = adaptive(light: 0xffffff, dark: 0x0d0d0f)
 
     // MARK: - Brand accent — user-selectable (default phosphor lime #b9f27e)
     /// The "signal" accent. Resolves the stored `AccentStore` choice so every
@@ -134,14 +146,14 @@ enum Palette {
     static var phosphor: Color { AccentStore.shared.choice.color }
 
     // MARK: - State colors (4 functional now; syntax hues kept, wired at P12)
-    /// #ff5a52 — recording (SACRED red).
-    static let stateRecord     = Color(red: 0xff/255.0, green: 0x5a/255.0, blue: 0x52/255.0)
-    /// #7fb4ff — processing (transcribe+enhance, single working hue for now).
-    static let stateProcessing = Color(red: 0x7f/255.0, green: 0xb4/255.0, blue: 0xff/255.0)
-    /// #8af06e — commit.
-    static let stateCommit     = Color(red: 0x8a/255.0, green: 0xf0/255.0, blue: 0x6e/255.0)
-    /// #ffb86b — fail.
-    static let stateFail       = Color(red: 0xff/255.0, green: 0xb8/255.0, blue: 0x6b/255.0)
+    /// Recording signal (Dark #ff5a52).
+    static let stateRecord = adaptive(light: 0xb42318, dark: 0xff5a52)
+    /// Processing signal (Dark #7fb4ff).
+    static let stateProcessing = adaptive(light: 0x005ea8, dark: 0x7fb4ff)
+    /// Commit signal (Dark #8af06e).
+    static let stateCommit = adaptive(light: 0x2f6f1d, dark: 0x8af06e)
+    /// Failure signal (Dark #ffb86b).
+    static let stateFail = adaptive(light: 0x8a4b00, dark: 0xffb86b)
     // Deferred syntax hues (kept in token file, activated at P12 — NOT used in Wave A):
     /// #c46bf0 — keyword-violet (enhance, P12).
     static let synEnhance = Color(red: 0xc4/255.0, green: 0x6b/255.0, blue: 0xf0/255.0)

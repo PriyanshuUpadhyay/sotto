@@ -58,7 +58,6 @@ class MiniRecorderPanel: NSPanel {
         titlebarAppearsTransparent = true
         titleVisibility = .hidden
         standardWindowButton(.closeButton)?.isHidden = true
-        appearance = NSAppearance(named: .darkAqua)
         // Spec §3.1 panel-infrastructure decision — full-strip panel with
         // hit-test passthrough EXCEPT on the satellite frames. Satellites
         // are display-only in v1, so passing the entire panel through is

@@ -21,10 +21,10 @@ enum AccentChoice: String, CaseIterable, Identifiable {
 
     var color: Color {
         switch self {
-        case .phosphor: return Color(red: 0xb9/255.0, green: 0xf2/255.0, blue: 0x7e/255.0)
-        case .ice:      return Color(red: 0x8a/255.0, green: 0xd8/255.0, blue: 0xff/255.0)
-        case .violet:   return Color(red: 0xc9/255.0, green: 0xa8/255.0, blue: 0xff/255.0)
-        case .amber:    return Color(red: 0xff/255.0, green: 0xd2/255.0, blue: 0x7f/255.0)
+        case .phosphor: return Palette.adaptive(light: 0x3d6b00, dark: 0xb9f27e)
+        case .ice: return Palette.adaptive(light: 0x006b8f, dark: 0x8ad8ff)
+        case .violet: return Palette.adaptive(light: 0x6941a5, dark: 0xc9a8ff)
+        case .amber: return Palette.adaptive(light: 0x815000, dark: 0xffd27f)
         }
     }
 }
@@ -65,11 +65,10 @@ extension View {
     func brandAccented() -> some View { self.tint(Brand.tint) }
 }
 
-/// Root wrapper for independently-hosted surfaces (NSHostingController
-/// panels: mini recorder, compose review). They sit outside the observed
-/// window roots, so without this an accent change never invalidates them.
+/// Applies shared accent and appearance state to independent hosting roots.
 struct AccentObserving<Content: View>: View {
     @ObservedObject private var accent = AccentStore.shared
+    @ObservedObject private var appearance = AppearanceStore.shared
     private let content: Content
 
     init(@ViewBuilder content: () -> Content) {
@@ -77,6 +76,8 @@ struct AccentObserving<Content: View>: View {
     }
 
     var body: some View {
-        content.tint(Brand.tint)
+        content
+            .tint(Brand.tint)
+            .preferredColorScheme(appearance.choice.colorScheme)
     }
 }

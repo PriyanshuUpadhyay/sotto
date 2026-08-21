@@ -1,3 +1,4 @@
+import AppKit
 import Testing
 import SwiftUI
 @testable import Sotto
@@ -21,15 +22,23 @@ struct PaletteTests {
     }
 }
 
+extension Color {
+    func resolvedNSColor(in appearance: NSAppearance.Name = .darkAqua) -> NSColor {
+        var resolved = NSColor.clear
+        NSAppearance(named: appearance)!.performAsCurrentDrawingAppearance {
+            resolved = NSColor(self).usingColorSpace(.sRGB) ?? NSColor(self)
+        }
+        return resolved
+    }
+}
+
 private extension Color {
-    /// Pull the SRGB components out of a SwiftUI Color via NSColor on macOS.
-    /// Approximate; epsilon of 0.005 in tests is well above NSColor round-trip noise.
     func resolveComponents() -> (r: Double, g: Double, b: Double) {
-        #if canImport(AppKit)
-        let ns = NSColor(self).usingColorSpace(.sRGB) ?? NSColor(self)
-        return (Double(ns.redComponent), Double(ns.greenComponent), Double(ns.blueComponent))
-        #else
-        return (0, 0, 0)
-        #endif
+        let resolved = resolvedNSColor()
+        return (
+            Double(resolved.redComponent),
+            Double(resolved.greenComponent),
+            Double(resolved.blueComponent)
+        )
     }
 }

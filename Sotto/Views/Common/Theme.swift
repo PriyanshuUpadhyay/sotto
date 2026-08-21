@@ -36,8 +36,8 @@ enum Theme {
 }
 
 extension Theme {
-    // Dark-only matte semantic aliases (v1). Content surfaces stay flat
-    // graphite for razor legibility; shell/rail may still use `Material.chrome`.
+    // Appearance-adaptive matte aliases. Content surfaces stay flat graphite;
+    // shell and rail surfaces can still use `Material.chrome`.
     static let canvas = Palette.mtCanvas
     static let panel = Palette.mtRaise
     static let selectedRow = Palette.mtRaise2

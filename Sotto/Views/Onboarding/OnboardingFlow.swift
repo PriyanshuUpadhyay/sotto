@@ -444,10 +444,10 @@ private struct ModelTierStepView: View {
     }
 }
 
-/// Matte primary CTA — solid phosphor fill with dark (canvas) label, the
-/// onboarding-scale equivalent of `phosphorPill()` (a rounded block instead of
-/// a small capsule). Bakes the dark-on-phosphor contrast guarantee at the style
-/// so no call site can reintroduce light-on-lime. Shared across the onboarding
+/// Matte primary CTA — solid phosphor fill with an adaptive on-accent label,
+/// the onboarding-scale equivalent of `phosphorPill()` (a rounded block instead
+/// of a small capsule). The style owns foreground contrast in both appearances.
+/// Shared across the onboarding
 /// step views (`WelcomeStepView`, `HotkeyStepView`).
 struct OnboardingPhosphorButtonStyle: ButtonStyle {
     var horizontalPadding: CGFloat = 24
@@ -455,7 +455,7 @@ struct OnboardingPhosphorButtonStyle: ButtonStyle {
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .foregroundStyle(Palette.mtCanvas)
+            .foregroundStyle(Palette.onAccent)
             .padding(.horizontal, horizontalPadding)
             .padding(.vertical, verticalPadding)
             .background(

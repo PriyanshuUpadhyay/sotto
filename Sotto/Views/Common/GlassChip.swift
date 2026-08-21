@@ -32,14 +32,14 @@ struct GlassChip: ViewModifier {
             .padding(.vertical, paddingV)
             .background(
                 shape
-                    .fill(Color(red: 0.078, green: 0.078, blue: 0.110).opacity(0.55))
+                    .fill(Theme.panel.opacity(0.55))
                     .background(
                         // backdrop refraction layer
                         shape.fill(.ultraThinMaterial)
                     )
             )
             .overlay(
-                shape.stroke(Palette.hairline, lineWidth: 1)
+                shape.stroke(Theme.hairline, lineWidth: 1)
             )
             .overlay(
                 // top-edge sheen (1.5pt inset highlight on the top)
@@ -84,18 +84,18 @@ private struct GlassChipPreviewBody: View {
                 Text("REC")
                     .font(.system(size: 10.5, weight: .medium, design: .monospaced))
                     .tracking(0.06 * 10.5)
-                    .foregroundColor(Palette.onyxFg)
+                    .foregroundColor(Palette.inkPrimary)
                     .glassChip()
                 Text("00:14")
                     .font(.system(size: 10.5, weight: .medium, design: .monospaced))
                     .tracking(0.06 * 10.5)
-                    .foregroundColor(Palette.onyxMute)
+                    .foregroundColor(Palette.inkSecondary)
                     .glassChip()
             }
             Text("MODEL · Parakeet → Gemma 4")
                 .font(.system(size: 11, weight: .medium, design: .monospaced))
                 .tracking(0.06 * 11)
-                .foregroundColor(Palette.onyxFg)
+                .foregroundColor(Palette.inkPrimary)
                 .glassPanel()
         }
         .padding(40)

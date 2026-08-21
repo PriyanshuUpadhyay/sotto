@@ -249,10 +249,10 @@ struct SettingsContentView: View {
 
 // MARK: - Appearance
 
-/// APPEARANCE settings: the 4-swatch accent picker + the static reduced-motion
-/// row. Writes `AccentStore` (persisted to UserDefaults); window roots observe
-/// the store so the accent updates live.
+/// Appearance settings: app color scheme, accent, and reduced-motion status.
+/// Both user choices persist to UserDefaults and update all window roots live.
 struct AppearanceSettingsView: View {
+    @ObservedObject private var appearance = AppearanceStore.shared
     @ObservedObject private var accent = AccentStore.shared
 
     var body: some View {
@@ -262,9 +262,24 @@ struct AppearanceSettingsView: View {
                     iconSystemName: "paintpalette",
                     iconTint: Brand.tint,
                     title: "Appearance",
-                    subtitle: "Accent color for selection, signals, and the recorder."
+                    subtitle: "Color scheme and accent for Sotto."
                 ) {
                     VStack(alignment: .leading, spacing: 0) {
+                        HStack(alignment: .center, spacing: 16) {
+                            rowLabel("Appearance")
+                            Picker("Appearance", selection: $appearance.choice) {
+                                ForEach(AppearanceChoice.allCases) { choice in
+                                    Text(choice.title).tag(choice)
+                                }
+                            }
+                            .labelsHidden()
+                            .pickerStyle(.segmented)
+                            .frame(maxWidth: 280)
+                        }
+                        .padding(.vertical, 14)
+
+                        Rectangle().fill(Theme.hairline).frame(height: 1)
+
                         HStack(alignment: .center, spacing: 16) {
                             rowLabel("Accent")
                             HStack(spacing: 18) {

@@ -184,7 +184,7 @@ private struct CopyConfirmationToastView: View {
 
             Text("Copied to clipboard")
                 .font(.system(size: 13, weight: .regular, design: .monospaced))
-                .foregroundColor(Palette.onyxFg)
+                .foregroundColor(Palette.inkPrimary)
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12)

@@ -202,7 +202,7 @@ struct WaveformView: View {
                         Text(formatTime(duration * Double(hoverLocation / geometry.size.width)))
                             .font(.system(size: 10, weight: .medium))
                             .monospacedDigit()
-                            .foregroundColor(.black)
+                            .foregroundColor(Palette.onAccent)
                             .padding(.horizontal, 6)
                             .padding(.vertical, 3)
                             .background(Capsule().fill(Brand.tint))

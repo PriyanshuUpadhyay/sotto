@@ -39,7 +39,7 @@ extension BrandTokenTests {
         }
         AccentStore.shared.choice = .phosphor
 
-        let c = NSColor(Brand.tint).usingColorSpace(.sRGB)!
+        let c = Brand.tint.resolvedNSColor()
         XCTAssertEqual(c.redComponent,   0xB9/255.0, accuracy: 0.01)
         XCTAssertEqual(c.greenComponent, 0xF2/255.0, accuracy: 0.01)
         XCTAssertEqual(c.blueComponent,  0x7E/255.0, accuracy: 0.01)
@@ -66,7 +66,7 @@ extension BrandTokenTests {
         XCTAssertEqual(stored.flatMap(AccentChoice.init(rawValue:)), .ice,
                        "the stored raw value must round-trip back to the same AccentChoice")
 
-        let tint = NSColor(Brand.tint).usingColorSpace(.sRGB)!
+        let tint = Brand.tint.resolvedNSColor()
         XCTAssertEqual(tint.redComponent,   0x8A/255.0, accuracy: 0.01)
         XCTAssertEqual(tint.greenComponent, 0xD8/255.0, accuracy: 0.01)
         XCTAssertEqual(tint.blueComponent,  0xFF/255.0, accuracy: 0.01)

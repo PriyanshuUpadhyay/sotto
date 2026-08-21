@@ -108,15 +108,23 @@ enum MenuBarIconRenderer {
     // MARK: - Public icon
 
     /// The menu bar icon for `state`. The brand glyph is non-template, so macOS
-    /// will not auto-tint the label-colored mark — its color is resolved here
-    /// against `NSApp.effectiveAppearance` (covers light / dark / high-contrast).
+    /// will not auto-tint the label-colored mark. The menu-bar label supplies
+    /// its own appearance so an app-specific theme cannot reduce icon contrast.
     /// `unresolvedFailures > 0` stamps a red corner dot on top.
-    static func image(for state: IconState, unresolvedFailures: Int) -> NSImage {
+    static func image(
+        for state: IconState,
+        unresolvedFailures: Int,
+        appearance: NSAppearance? = nil
+    ) -> NSImage {
         var markColor = NSColor.labelColor
-        NSApp.effectiveAppearance.performAsCurrentDrawingAppearance {
+        var stateColor = NSColor(state.capsuleState.color)
+        let drawingAppearance = appearance ?? NSApp.effectiveAppearance
+        drawingAppearance.performAsCurrentDrawingAppearance {
             markColor = NSColor.labelColor.usingColorSpace(.sRGB) ?? .labelColor
+            let resolvedStateColor = NSColor(state.capsuleState.color)
+            stateColor = resolvedStateColor.usingColorSpace(.sRGB) ?? resolvedStateColor
         }
-        let base = glyphImage(for: state, markColor: markColor)
+        let base = glyphImage(for: state, markColor: markColor, stateColor: stateColor)
         guard unresolvedFailures > 0 else { return base }
         return stampingFailureDot(
             on: base,
@@ -132,10 +140,12 @@ enum MenuBarIconRenderer {
     /// ink mark for the `StateCue` SF Symbol (the non-color shape cue) tinted in
     /// the state color; transient working states (`arming`/`processing`) keep the
     /// mark and add a state-colored corner dot.
-    private static func glyphImage(for state: IconState, markColor: NSColor) -> NSImage {
+    private static func glyphImage(
+        for state: IconState,
+        markColor: NSColor,
+        stateColor: NSColor
+    ) -> NSImage {
         let label = accessibilityLabel(for: state)
-        let cs = state.capsuleState
-        let stateColor = NSColor(cs.color)
         switch state {
         case .idle:
             return brandGlyph(center: .mark(markColor), underscore: stateColor,
@@ -351,7 +361,8 @@ struct MenuBarIcon: View {
         // and image(for:) re-resolves colors each rebuild.
         Image(nsImage: MenuBarIconRenderer.image(
             for: observer.iconState,
-            unresolvedFailures: observer.unresolvedFailures
+            unresolvedFailures: observer.unresolvedFailures,
+            appearance: NSAppearance(named: colorScheme == .dark ? .darkAqua : .aqua)
         ))
         .frame(width: 18, height: 18)
         .id("\(colorScheme)-\(accent.choice.rawValue)")

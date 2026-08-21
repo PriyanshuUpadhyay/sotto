@@ -39,7 +39,6 @@ final class ReviewTrayPanel: NSPanel {
         titlebarAppearsTransparent = true
         titleVisibility = .hidden
         standardWindowButton(.closeButton)?.isHidden = true
-        appearance = NSAppearance(named: .darkAqua)
         animationBehavior = .none
     }
 

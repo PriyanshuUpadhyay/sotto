@@ -117,6 +117,20 @@ extension MenuBarIconTests {
         XCTAssertFalse(img.isTemplate)
         XCTAssertEqual(img.size, NSSize(width: 18, height: 18))
     }
+
+    func test_explicitMenuBarAppearanceControlsRenderedColors() {
+        let aqua = MenuBarIconRenderer.image(
+            for: .idle,
+            unresolvedFailures: 0,
+            appearance: NSAppearance(named: .aqua)
+        )
+        let darkAqua = MenuBarIconRenderer.image(
+            for: .idle,
+            unresolvedFailures: 0,
+            appearance: NSAppearance(named: .darkAqua)
+        )
+        XCTAssertNotEqual(aqua.tiffRepresentation, darkAqua.tiffRepresentation)
+    }
 }
 
 // MARK: - W14 · CapsuleState mapping (matte syntax-state restyle)
@@ -138,10 +152,15 @@ extension MenuBarIconTests {
 
     func test_capsuleState_idle_usesPhosphorSignal() {
         // Idle/ready accent is phosphor (the brand "signal" at rest), per brief.
-        XCTAssertEqual(MenuBarIconRenderer.IconState.idle.capsuleState.color, Palette.phosphor)
-        XCTAssertEqual(MenuBarIconRenderer.IconState.recording.capsuleState.color, Palette.stateRecord)
-        XCTAssertEqual(MenuBarIconRenderer.IconState.transcribing.capsuleState.color, Palette.stateProcessing)
-        XCTAssertEqual(MenuBarIconRenderer.IconState.committed.capsuleState.color, Palette.stateCommit)
-        XCTAssertEqual(MenuBarIconRenderer.IconState.fail.capsuleState.color, Palette.stateFail)
+        let mappings: [(MenuBarIconRenderer.IconState, Color)] = [
+            (.idle, Palette.phosphor),
+            (.recording, Palette.stateRecord),
+            (.transcribing, Palette.stateProcessing),
+            (.committed, Palette.stateCommit),
+            (.fail, Palette.stateFail),
+        ]
+        for (state, expected) in mappings {
+            XCTAssertEqual(state.capsuleState.color.resolvedNSColor(), expected.resolvedNSColor())
+        }
     }
 }

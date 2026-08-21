@@ -919,7 +919,7 @@ private struct CardSurfaceBackground: ViewModifier {
         return content
             .padding(padding)
             .background(shape.fill(isSelected ? Theme.selectedRow : Theme.panel))
-            .overlay(shape.fill(Color.white.opacity(hovering && !isSelected ? 0.04 : 0)))
+            .overlay(shape.fill(Theme.inkPrimary.opacity(hovering && !isSelected ? 0.04 : 0)))
             .overlay(shape.strokeBorder(isSelected ? Theme.hairlineStrong : Theme.hairline, lineWidth: 1))
             .onHover { hovering = $0 }
     }

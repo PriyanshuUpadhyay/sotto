@@ -97,8 +97,8 @@ private struct SettingsRowPreviewBody: View {
             }
 
             SettingsRow(
-                iconSystemName: "lock.fill",
-                label: "Auto-check Updates",
+                iconSystemName: "power",
+                label: "Launch at Login",
                 iconTint: Palette.success
             ) {
                 Toggle("", isOn: $toggleB).labelsHidden()
