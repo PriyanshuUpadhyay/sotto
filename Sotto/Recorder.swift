@@ -159,9 +159,12 @@ class Recorder: NSObject, ObservableObject {
                 DispatchQueue.main.async { [weak self] in
                     self?.startAudioMeterTimer()
                 }
-                Task { [weak self] in
-                    guard let self = self else { return }
-                    await self.playbackController.pauseMedia()
+                // Marks the pause obligation synchronously on this serial
+                // queue, so a stop that overtakes the async pause below can
+                // still cancel it instead of leaving media paused for good.
+                PlaybackController.shared.beginPauseWindow()
+                Task {
+                    await PlaybackController.shared.pauseMedia()
                 }
                 DispatchQueue.main.async {
                     completion(.success(()))
