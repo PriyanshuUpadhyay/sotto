@@ -1,0 +1,3 @@
+;; Classpath for the acceptance shells: `bb --config acceptance/bb.edn <script>`
+;; so `acceptance/*.clj` can require the pure namespaces under src/.
+{:paths ["src"]}

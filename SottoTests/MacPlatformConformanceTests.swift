@@ -72,10 +72,7 @@ final class MacPlatformConformanceTests: XCTestCase {
     }
 
     func test_appearanceStore_persistsChoice() {
-        let suite = "MacPlatformConformanceTests.\(UUID().uuidString)"
-        let defaults = UserDefaults(suiteName: suite)!
-        addTeardownBlock { UserDefaults.standard.removePersistentDomain(forName: suite) }
-
+        let defaults = isolatedDefaults()
         let store = AppearanceStore(defaults: defaults)
         XCTAssertEqual(store.choice, .system, "no stored preference means follow system")
 

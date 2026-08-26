@@ -57,10 +57,10 @@ if [ "${SOTTO_SKIP_RELEASE_BUILD:-0}" != "1" ]; then
 fi
 
 echo "==> building acceptance manifest"
-bb "$ROOT/acceptance/manifest.clj" "$MANIFEST"
+bb --config "$ROOT/acceptance/bb.edn" "$ROOT/acceptance/manifest.clj" "$MANIFEST"
 
 echo "==> generating acceptance tests"
-bb "$ROOT/acceptance/generate.clj" "$GENERATED" "$IR_DIR"/*.json
+bb --config "$ROOT/acceptance/bb.edn" "$ROOT/acceptance/generate.clj" "$GENERATED" "$IR_DIR"/*.json
 
 ONLY_TESTING=()
 while IFS= read -r class; do
@@ -91,4 +91,4 @@ set -e
 
 RESULT_BUNDLE="$(ls -td "$ROOT"/.local-build-test/Logs/Test/*.xcresult 2>/dev/null | head -1)"
 [ -n "$RESULT_BUNDLE" ] || { echo "no result bundle produced" >&2; exit 1; }
-bb "$ROOT/acceptance/report.clj" "$RESULT_BUNDLE"
+bb --config "$ROOT/acceptance/bb.edn" "$ROOT/acceptance/report.clj" "$RESULT_BUNDLE"

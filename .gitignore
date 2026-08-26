@@ -39,6 +39,10 @@ build/
 tmp/
 .test-build/
 
+## Clojure tooling output for the acceptance pipeline specs
+acceptance/target/
+acceptance/.cpcache/
+
 # CocoaPods
 #
 # We recommend against adding the Pods directory to your .gitignore. However
