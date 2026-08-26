@@ -405,6 +405,42 @@ final class Pipeline_LatencyAcceptanceTests: XCTestCase {
             exampleIndex: 4
         )
     }
+
+    func test_Pipeline_Latency_08_row1() async throws {
+        try await AcceptanceRuntime.run(
+            feature: "Pipeline Latency",
+            scenario: "Pipeline Latency 08",
+            scenarioIndex: 7,
+            exampleIndex: 0
+        )
+    }
+
+    func test_Pipeline_Latency_08_row2() async throws {
+        try await AcceptanceRuntime.run(
+            feature: "Pipeline Latency",
+            scenario: "Pipeline Latency 08",
+            scenarioIndex: 7,
+            exampleIndex: 1
+        )
+    }
+
+    func test_Pipeline_Latency_09_row1() async throws {
+        try await AcceptanceRuntime.run(
+            feature: "Pipeline Latency",
+            scenario: "Pipeline Latency 09",
+            scenarioIndex: 8,
+            exampleIndex: 0
+        )
+    }
+
+    func test_Pipeline_Latency_09_row2() async throws {
+        try await AcceptanceRuntime.run(
+            feature: "Pipeline Latency",
+            scenario: "Pipeline Latency 09",
+            scenarioIndex: 8,
+            exampleIndex: 1
+        )
+    }
 }
 
 @MainActor

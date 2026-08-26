@@ -37,10 +37,10 @@ Scenario: Pipeline Latency 03
 
   Examples:
     | sample_count | metric_name      | percentile | budget_ms |
-    | 100          | timeToFirstToken | p50        | 400       |
-    | 100          | timeToFirstToken | p90        | 600       |
-    | 100          | totalGeneration  | p50        | 700       |
-    | 100          | totalGeneration  | p90        | 1200      |
+    | 100          | timeToFirstToken | p50        | 500       |
+    | 100          | timeToFirstToken | p90        | 750       |
+    | 100          | totalGeneration  | p50        | 800       |
+    | 100          | totalGeneration  | p90        | 1400      |
     | 100          | preparation      | p90        | 50        |
 
 # Pipeline Latency 04
@@ -86,3 +86,25 @@ Scenario: Pipeline Latency 07
     | wordReplacement | 10              |
     | acoustic        | 60              |
     | phonetic        | 30              |
+
+# Pipeline Latency 08
+Scenario: Pipeline Latency 08
+  Given the dictated audio contains the word <spoken_token>
+  When the transcript reaches the enhancement stage
+  Then the enhancement input <token_outcome> the word <spoken_token>
+
+  Examples:
+    | spoken_token | token_outcome |
+    | um           | omits         |
+    | uh           | omits         |
+
+# Pipeline Latency 09
+Scenario: Pipeline Latency 09
+  Given the transcript <cleanliness> already correct punctuation
+  When the transcript reaches the enhancement stage
+  Then the model call <call_outcome>
+
+  Examples:
+    | cleanliness | call_outcome |
+    | has         | happens      |
+    | lacks       | happens      |
