@@ -71,7 +71,7 @@
                               (first (sut/rows one-step-scenario))))
 
   (it "names the method after the scenario and row"
-    (should-contain "func test_Filler_Word_Control_01_row1() throws {" @generated))
+    (should-contain "func test_Filler_Word_Control_01_row1() async throws {" @generated))
 
   (it "passes the feature and scenario names through"
     (should-contain "feature: \"Filler Word Control\"" @generated)
