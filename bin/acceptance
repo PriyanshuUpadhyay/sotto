@@ -1,0 +1,94 @@
+#!/usr/bin/env bash
+# Normal acceptance run: parse -> generate -> execute.
+#
+#   1. gherkin-parser turns every features/*.feature into APS IR
+#   2. acceptance/manifest.clj snapshots the project facts the scenarios assert
+#   3. acceptance/generate.clj emits the executable tests from the IR
+#   4. xcodebuild runs ONLY those generated tests
+#
+# Generated acceptance tests never run as part of `make test`; the unit target
+# skips them explicitly.
+set -euo pipefail
+
+cd "$(dirname "$0")/.."
+ROOT="$PWD"
+export PATH="$ROOT/.swarmforge/bin:$PATH"
+
+IR_DIR="$ROOT/tmp/acceptance/ir"
+MANIFEST="$ROOT/tmp/acceptance/manifest.json"
+GENERATED="$ROOT/SottoTests/Generated/GeneratedAcceptanceTests.swift"
+ACCEPTANCE_DERIVED_DATA="$ROOT/.local-build-acceptance"
+RELEASE_APP="$ACCEPTANCE_DERIVED_DATA/Build/Products/Release/Sotto.app"
+
+# Same identity the Makefile uses, so an acceptance run signs like a local build.
+SIGN_IDENTITY="$(bash "$ROOT/scripts/local-sign-identity.sh")"
+
+# Shared by both xcodebuild invocations below. They differ only in
+# configuration, derived data, and what they build or run.
+SIGNING_FLAGS=(
+  -project Sotto.xcodeproj -scheme Sotto
+  -xcconfig LocalBuild.xcconfig
+  -skipMacroValidation
+  "CODE_SIGN_IDENTITY=$SIGN_IDENTITY"
+  CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=YES
+  DEVELOPMENT_TEAM="" ENABLE_HARDENED_RUNTIME=NO
+  "CODE_SIGN_ENTITLEMENTS=$ROOT/Sotto/Sotto.local.entitlements"
+)
+
+command -v gherkin-parser >/dev/null 2>&1 || {
+  echo "gherkin-parser missing. Run: swarm_tool.sh ensure gherkin-parser" >&2
+  exit 1
+}
+
+echo "==> parsing features"
+rm -rf "$IR_DIR" && mkdir -p "$IR_DIR"
+for feature in "$ROOT"/features/*.feature; do
+  stem="$(basename "$feature" .feature)"
+  gherkin-parser "$feature" "$IR_DIR/$stem.json"
+done
+
+# The features talk about a release build, so measure one. A failure here is
+# not fatal: the manifest falls back to whatever bundle exists and the steps
+# that need the artifact report what they actually measured.
+if [ "${SOTTO_SKIP_RELEASE_BUILD:-0}" != "1" ]; then
+  echo "==> building Release app for artifact probes"
+  if xcodebuild "${SIGNING_FLAGS[@]}" -configuration Release \
+      -derivedDataPath "$ACCEPTANCE_DERIVED_DATA" \
+      build -quiet; then
+    [ -d "$RELEASE_APP" ] && export SOTTO_ACCEPTANCE_APP="$RELEASE_APP"
+  else
+    echo "    release build failed; probing the newest available bundle instead" >&2
+  fi
+fi
+
+echo "==> building acceptance manifest"
+bb --config "$ROOT/acceptance/bb.edn" "$ROOT/acceptance/manifest.clj" "$MANIFEST"
+
+echo "==> generating acceptance tests"
+bb --config "$ROOT/acceptance/bb.edn" "$ROOT/acceptance/generate.clj" \
+  "$GENERATED" features "$IR_DIR"/*.json
+
+ONLY_TESTING=()
+while IFS= read -r class; do
+  ONLY_TESTING+=("-only-testing:SottoTests/$class")
+done < <(grep -oE 'final class [A-Za-z0-9_]+' "$GENERATED" | awk '{print $3}')
+
+# xcodebuild only forwards variables named TEST_RUNNER_* into the test process,
+# with the prefix stripped — that is how the manifest path reaches the runtime.
+# xcodebuild's own exit status is reported by the summary below, so let the
+# run finish even when scenarios fail.
+echo "==> running generated acceptance tests"
+set +e
+SOTTO_HEADLESS_TESTS=1 \
+TEST_RUNNER_SOTTO_HEADLESS_TESTS=1 \
+TEST_RUNNER_SOTTO_ACCEPTANCE_MANIFEST="$MANIFEST" \
+TEST_RUNNER_SOTTO_ACCEPTANCE_IR="$IR_DIR" \
+xcodebuild test "${SIGNING_FLAGS[@]}" -configuration Debug \
+  -derivedDataPath "$ROOT/.local-build-test" \
+  "${ONLY_TESTING[@]}" \
+  SWIFT_ACTIVE_COMPILATION_CONDITIONS='$(inherited) LOCAL_BUILD'
+set -e
+
+RESULT_BUNDLE="$(ls -td "$ROOT"/.local-build-test/Logs/Test/*.xcresult 2>/dev/null | head -1)"
+[ -n "$RESULT_BUNDLE" ] || { echo "no result bundle produced" >&2; exit 1; }
+bb --config "$ROOT/acceptance/bb.edn" "$ROOT/acceptance/report.clj" "$RESULT_BUNDLE"

@@ -100,6 +100,7 @@ extension VocabularyTab.VocabularyTabSection {
         switch self {
         case .dictionary: return "Dictionary"
         case .wordReplacements: return "Word Replacements"
+        case .fillerWords: return "Filler Words"
         }
     }
 }

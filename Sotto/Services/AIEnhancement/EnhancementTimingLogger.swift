@@ -46,7 +46,7 @@ actor EnhancementTimingLogger {
         case error
         /// AFM declined the prompt via its safety/guardrail filter. Distinct
         /// from `.error` (a hard AFM failure) so the refusal RATE is measurable
-        /// from the CSV. The MLX fallback no longer exists — the refusal
+        /// from the CSV. There is no second provider — the refusal
         /// surfaces as an enhancement error and there is no follow-up row.
         case safetyRefusal
     }

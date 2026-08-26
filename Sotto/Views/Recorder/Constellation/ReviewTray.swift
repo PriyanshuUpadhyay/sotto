@@ -122,10 +122,14 @@ struct ReviewTray: View {
 
     // MARK: - Ghost actions (hover/focus reveal)
 
+    /// VoiceOver announces these; the pill paints them uppercased.
+    static let undoButtonLabel = "Undo"
+    static let copyButtonLabel = "Copy"
+
     private var actions: some View {
         HStack(spacing: 6) {
-            ghostButton(icon: "arrow.uturn.backward", label: "UNDO") { undo() }
-            ghostButton(icon: "doc.on.doc", label: "COPY") { copy() }
+            ghostButton(icon: "arrow.uturn.backward", label: Self.undoButtonLabel) { undo() }
+            ghostButton(icon: "doc.on.doc", label: Self.copyButtonLabel) { copy() }
         }
         .onGeometryChange(for: CGFloat.self) { $0.size.width } action: {
             actionsClip = $0 + 8
@@ -137,7 +141,7 @@ struct ReviewTray: View {
             HStack(spacing: 4) {
                 Image(systemName: icon)
                     .font(.system(size: 9, weight: .semibold))
-                Text(label)
+                Text(label.uppercased())
                     .font(.microlabel(9))
                     .tracking(1.0)
             }
@@ -147,7 +151,7 @@ struct ReviewTray: View {
             .contentShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
         }
         .buttonStyle(.plain)
-        .accessibilityLabel(label.capitalized)
+        .accessibilityLabel(label)
     }
 
     // MARK: - Data

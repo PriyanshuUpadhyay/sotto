@@ -1,0 +1,162 @@
+#!/usr/bin/env bb
+;; Persistent runner adapter for `gherkin-mutator` (APS mutator-spec).
+;;
+;; Protocol: one JSON job per stdin line, one JSON response per stdout line.
+;; Nothing else may go to stdout; diagnostics go to stderr.
+;;
+;;   in   {"id","feature_json","generated_dir","work_dir","timeout"}
+;;   out  {"id","outcome","output","error","duration"}
+;;
+;; The generated tests are bound to scenario structure, not to example values,
+;; so a mutated IR needs no regeneration and no rebuild: the job only points
+;; SOTTO_ACCEPTANCE_IR at its mutated feature.json and reruns the already-built
+;; bundle with `test-without-building`. `bin/acceptance-mutate` does the one
+;; `build-for-testing` before any worker starts.
+
+(ns acceptance-runner-worker
+  (:require [babashka.fs :as fs]
+            [babashka.process :refer [process]]
+            [cheshire.core :as json]
+            [clojure.java.io :as io]
+            [clojure.string :as str]))
+
+(def repo-root (or (System/getenv "SOTTO_REPO") "."))
+(def derived-data (or (System/getenv "SOTTO_ACCEPTANCE_DERIVED_DATA")
+                      (str repo-root "/.local-build-acceptance-mutation")))
+(def manifest (System/getenv "SOTTO_ACCEPTANCE_MANIFEST"))
+(def base-ir-dir (System/getenv "SOTTO_ACCEPTANCE_IR_DIR"))
+
+(defn- absolute
+  "The mutator may hand out paths relative to its own working directory, but the
+  test process runs from xcodebuild's. Resolve against the repo root so the IR
+  the runtime is pointed at is findable from anywhere."
+  [path]
+  (when-not (str/blank? path)
+    (str (fs/absolutize (fs/path repo-root path)))))
+
+(defn- log [& parts]
+  (binding [*out* *err*] (println (str/join " " parts)) (flush)))
+
+(defn- identifier
+  "Mirrors `acceptance.generator/identifier`, which named the test method."
+  [s]
+  (-> s
+      (str/replace #"[^A-Za-z0-9]+" "_")
+      (str/replace #"^_+|_+$" "")))
+
+(defn- class-name
+  "The generated class for a feature. Mirrors `acceptance.generator/identifier`,
+  which is what named the class in the first place."
+  [feature-name]
+  (-> feature-name
+      (str/replace #"[^A-Za-z0-9]+" "_")
+      (str/replace #"^_+|_+$" "")
+      (str "AcceptanceTests")))
+
+(defn- read-ir [path] (json/parse-string (slurp path) true))
+
+(defn- mutated-row
+  "Which [scenario-index example-index] the mutation changed, by comparing the
+  mutated IR against the base. The job carries no mutation path, and running
+  anything but the affected row would let an untouched scenario stand in as
+  evidence."
+  [base mutated]
+  (first
+   (for [[si [b m]] (map-indexed vector (map vector (:scenarios base) (:scenarios mutated)))
+         [ei [be me]] (map-indexed vector (map vector (:examples b) (:examples m)))
+         :when (not= be me)]
+     [si ei])))
+
+(defn- only-testing
+  "Restrict the run to the single generated test method for the mutated example
+  row. Anything wider lets a scenario the mutation never touched report a pass."
+  [feature-json]
+  (let [mutated (read-ir feature-json)
+        feature-name (:name mutated)
+        klass (class-name feature-name)
+        ;; The mutator names every mutated IR "feature.json", so the base has to
+        ;; be found by the feature it names, not by its filename.
+        base (->> (when base-ir-dir (fs/glob base-ir-dir "*.json"))
+                  (map (comp read-ir str))
+                  (filter #(= feature-name (:name %)))
+                  first)
+        [si ei] (when base (mutated-row base mutated))]
+    (if (and si ei)
+      (let [scenario (nth (:scenarios mutated) si)]
+        [(str "-only-testing:SottoTests/" klass
+              "/test_" (identifier (:name scenario)) "_row" (inc ei))])
+      ;; No single differing row (an unmutated probe run): fall back to the class.
+      [(str "-only-testing:SottoTests/" klass)])))
+
+(defn- run-tests
+  "Runs the built bundle against `feature-json`. Returns the APS outcome."
+  [feature-json work-dir]
+  (let [feature-json (absolute feature-json)
+        ir-path (str/join ":" (remove str/blank? [feature-json base-ir-dir]))
+        ;; xcodebuild refuses to write a result bundle that already exists, and
+        ;; the mutator reuses one work dir per mutation across runs.
+        result-bundle (doto (str (absolute work-dir) "/result.xcresult") fs/delete-tree)
+        proc (process (concat ["xcodebuild" "test-without-building"
+                               "-project" (str repo-root "/Sotto.xcodeproj")
+                               "-scheme" "Sotto"
+                               "-configuration" "Debug"
+                               "-derivedDataPath" derived-data
+                               "-resultBundlePath" result-bundle]
+                              (only-testing feature-json))
+                      {:out :string :err :string :continue true
+                       :extra-env {"SOTTO_HEADLESS_TESTS" "1"
+                                   "TEST_RUNNER_SOTTO_HEADLESS_TESTS" "1"
+                                   "TEST_RUNNER_SOTTO_ACCEPTANCE_MANIFEST" (or manifest "")
+                                   "TEST_RUNNER_SOTTO_ACCEPTANCE_IR" ir-path}})
+        {:keys [exit out err]} @proc
+        text (str out err)]
+    (cond
+      ;; xcodebuild prints "Test case '...' failed" for a scenario that ran and
+      ;; failed. Anchor on that rather than on the exit status: a non-zero exit
+      ;; also covers a bundle that never launched, which is an error, not a kill.
+      (re-find #"(?i)Test case '[^']*' failed|Testing failed:" text)
+      {:outcome "test_failure" :output text}
+
+      ;; A run where nothing actually ran proves nothing about the mutation.
+      ;; Scenarios skip when the IR or a probed fact is missing, and counting
+      ;; that as a survival would report a vacuous pass.
+      (not (re-find #"(?i)Test case '[^']*' passed" text))
+      {:outcome "infrastructure_error" :output text
+       :error "the mutated scenario did not run; it skipped or never started"}
+
+      ;; `test-without-building` reports EXECUTE SUCCEEDED; a plain `test`
+      ;; reports TEST SUCCEEDED. Accept either.
+      (re-find #"\*\* TEST (?:EXECUTE )?SUCCEEDED \*\*" text)
+      {:outcome "test_success" :output text}
+
+      :else
+      {:outcome "infrastructure_error" :output text
+       :error (str "xcodebuild exited " exit " with no test verdict")})))
+
+(defn- handle [job]
+  (let [started (System/nanoTime)
+        {:keys [outcome output error]} (try
+                                         (run-tests (:feature_json job) (:work_dir job))
+                                         (catch Exception e
+                                           {:outcome "infrastructure_error"
+                                            :output ""
+                                            :error (.getMessage e)}))]
+    {:id (:id job)
+     :outcome outcome
+     ;; The mutator only needs enough to explain a survivor; the full xcodebuild
+     ;; log would swamp the protocol stream.
+     :output (apply str (take-last 4000 (or output "")))
+     :error (or error "")
+     :duration (- (System/nanoTime) started)}))
+
+(defn -main [& _]
+  (log "runner-worker ready; derived data" derived-data)
+  (doseq [line (line-seq (io/reader *in*))]
+    (when-not (str/blank? line)
+      (let [job (json/parse-string line true)]
+        (log "job" (:id job))
+        (println (json/generate-string (handle job)))
+        (flush)))))
+
+(when (= *file* (System/getProperty "babashka.file"))
+  (apply -main *command-line-args*))

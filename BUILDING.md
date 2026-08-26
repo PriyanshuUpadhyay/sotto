@@ -5,7 +5,7 @@ This guide provides detailed instructions for building Sotto from source.
 ## Prerequisites
 
 Before you begin, ensure you have:
-- macOS 14.4 or later
+- macOS 26.0 or later
 - Xcode (latest version recommended)
 - Swift (latest version recommended)
 - Git (for cloning repositories)

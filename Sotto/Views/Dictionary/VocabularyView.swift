@@ -42,6 +42,9 @@ struct VocabularyView: View {
         UserDefaults.standard.set(sortMode.rawValue, forKey: "vocabularySortMode")
     }
 
+    /// VoiceOver + tooltip label for the dictionary add button.
+    static let addButtonLabel = "Add word"
+
     private var shouldShowAddButton: Bool {
         !newWord.isEmpty
     }
@@ -91,7 +94,8 @@ struct VocabularyView: View {
                     }
                     .buttonStyle(.borderless)
                     .disabled(newWord.isEmpty)
-                    .help("Add word")
+                    .help(VocabularyView.addButtonLabel)
+                    .accessibilityLabel(VocabularyView.addButtonLabel)
                 }
             }
             .animation(Animation.haloPhaseCrossfade, value: shouldShowAddButton)

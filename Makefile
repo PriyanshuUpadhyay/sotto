@@ -4,21 +4,26 @@ WHISPER_CPP_DIR := $(DEPS_DIR)/whisper.cpp
 FRAMEWORK_PATH := $(WHISPER_CPP_DIR)/build-apple/whisper.xcframework
 LOCAL_DERIVED_DATA := $(CURDIR)/.local-build
 
-# Local-build signing identity. Defaults to a self-signed root cert named
-# "sotto-local" in the login keychain so each rebuild keeps a stable
-# cdhash → macOS Accessibility / Input Monitoring permissions persist across
-# rebuilds. Falls back to ad-hoc signing if the cert is not present.
-#
-# To create the cert (one-time, ~30 sec):
-#   Keychain Access → Certificate Assistant → Create a Certificate…
-#     Name: sotto-local
-#     Identity Type: Self Signed Root
-#     Certificate Type: Code Signing
+# Local-build signing identity. scripts/local-sign-identity.sh explains the
+# cert and how to create it; bin/acceptance reads the identity from there too,
+# so every local invocation signs the same way.
 #
 # Override with: make local LOCAL_SIGN_IDENTITY="other-name" — exact name or SHA1.
-LOCAL_SIGN_IDENTITY ?= $(shell /usr/bin/security find-identity -p codesigning -v 2>/dev/null | grep -F -e '"sotto-local"' -e '"voiceink-fork-local"' | head -1 | awk '{ print $$2 }' | grep -E '^[A-F0-9]+$$' || echo "-")
+LOCAL_SIGN_IDENTITY ?= $(shell bash $(CURDIR)/scripts/local-sign-identity.sh)
 
-.PHONY: all clean whisper setup build local check healthcheck help dev run reload test dmg
+# Shared by every local xcodebuild invocation below. Signing has to match across
+# `local`, `test`, and `property`: a run that signs differently gets a different
+# cdhash and re-prompts for Accessibility / Input Monitoring.
+LOCAL_XCODE_FLAGS = -project Sotto.xcodeproj -scheme Sotto -configuration Debug \
+	-xcconfig LocalBuild.xcconfig \
+	-skipMacroValidation \
+	'CODE_SIGN_IDENTITY=$(LOCAL_SIGN_IDENTITY)' \
+	CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=YES \
+	DEVELOPMENT_TEAM="" ENABLE_HARDENED_RUNTIME=NO \
+	CODE_SIGN_ENTITLEMENTS=$(CURDIR)/Sotto/Sotto.local.entitlements \
+	SWIFT_ACTIVE_COMPILATION_CONDITIONS='$$(inherited) LOCAL_BUILD'
+
+.PHONY: all clean whisper setup build local check healthcheck help dev run reload test acceptance acceptance-mutate property dmg
 
 # Default target
 all: check build
@@ -67,17 +72,8 @@ local: check setup
 		echo "  Signing: $(LOCAL_SIGN_IDENTITY) (stable cdhash; permissions persist across rebuilds)"; \
 	fi
 	@rm -rf "$(LOCAL_DERIVED_DATA)"
-	xcodebuild -project Sotto.xcodeproj -scheme Sotto -configuration Debug \
+	xcodebuild $(LOCAL_XCODE_FLAGS) \
 		-derivedDataPath "$(LOCAL_DERIVED_DATA)" \
-		-xcconfig LocalBuild.xcconfig \
-		-skipMacroValidation \
-		'CODE_SIGN_IDENTITY=$(LOCAL_SIGN_IDENTITY)' \
-		CODE_SIGNING_REQUIRED=NO \
-		CODE_SIGNING_ALLOWED=YES \
-		DEVELOPMENT_TEAM="" \
-		ENABLE_HARDENED_RUNTIME=NO \
-		CODE_SIGN_ENTITLEMENTS=$(CURDIR)/Sotto/Sotto.local.entitlements \
-		SWIFT_ACTIVE_COMPILATION_CONDITIONS='$$(inherited) LOCAL_BUILD' \
 		build
 	@APP_PATH="$(LOCAL_DERIVED_DATA)/Build/Products/Debug/Sotto.app" && \
 	if [ -d "$$APP_PATH" ]; then \
@@ -124,6 +120,21 @@ reload: local
 # longer depends on LOCAL_BUILD being set here.)
 # Separate DerivedData so a test run never clobbers `make local`'s install build.
 TEST_DERIVED_DATA := $(CURDIR)/.local-build-test
+# `bb clojure` resolves deps through the JVM, and macOS ships no JDK, so find
+# one the same way the signing identity is found: use what the environment
+# already set, else ask java_home, else the Homebrew install.
+JAVA_HOME ?= $(shell /usr/libexec/java_home 2>/dev/null || echo /opt/homebrew/opt/openjdk)
+# Generated acceptance tests live in the SottoTests target but are NOT unit
+# tests: they run only through `make acceptance` (bin/acceptance), which parses
+# the features and regenerates them first. Skipping them here keeps the two
+# suites separate.
+ACCEPTANCE_SKIPS := $(shell sed -n 's/^final class \([A-Za-z0-9_]*\).*/-skip-testing:SottoTests\/\1/p' SottoTests/Generated/GeneratedAcceptanceTests.swift 2>/dev/null)
+# Property tests are randomized checks over invariants, not unit tests, so they
+# stay out of the unit suite (and out of coverage and mutation with it). Run
+# them with `make property`.
+PROPERTY_CLASSES := $(shell sed -n 's/^final class \([A-Za-z0-9_]*\).*/\1/p' SottoTests/Property/*.swift 2>/dev/null)
+PROPERTY_SKIPS := $(addprefix -skip-testing:SottoTests/,$(PROPERTY_CLASSES))
+PROPERTY_ONLY := $(addprefix -only-testing:SottoTests/,$(PROPERTY_CLASSES))
 # Sign the test host with the SAME stable identity as `make local` (not ad-hoc).
 # Ad-hoc (`-`) gives the test-host app a fresh cdhash every run, so macOS treats
 # it as a new app and re-prompts for Accessibility / Input Monitoring / etc. on
@@ -132,17 +143,38 @@ TEST_DERIVED_DATA := $(CURDIR)/.local-build-test
 # Falls back to ad-hoc automatically when the cert is absent (LOCAL_SIGN_IDENTITY=-).
 test: check setup
 	@echo "Running SottoTests headlessly (non-activating)..."
-	SOTTO_HEADLESS_TESTS=1 xcodebuild test \
-		-project Sotto.xcodeproj -scheme Sotto -configuration Debug \
+	SOTTO_HEADLESS_TESTS=1 xcodebuild test $(LOCAL_XCODE_FLAGS) \
 		-derivedDataPath "$(TEST_DERIVED_DATA)" \
-		-xcconfig LocalBuild.xcconfig \
 		-only-testing:SottoTests \
-		-skipMacroValidation \
-		'CODE_SIGN_IDENTITY=$(LOCAL_SIGN_IDENTITY)' CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=YES \
-		DEVELOPMENT_TEAM="" ENABLE_HARDENED_RUNTIME=NO \
-		CODE_SIGN_ENTITLEMENTS=$(CURDIR)/Sotto/Sotto.local.entitlements \
-		SWIFT_ACTIVE_COMPILATION_CONDITIONS='$$(inherited) LOCAL_BUILD' \
+		$(ACCEPTANCE_SKIPS) \
+		$(PROPERTY_SKIPS) \
 		-quiet
+
+# Run the Gherkin acceptance pipeline: parse features, snapshot project facts,
+# generate the executable tests, run only those.
+acceptance:
+	@bash bin/acceptance
+
+# Run the property tests: the Swift invariants over the app's pure logic, then
+# the Babashka acceptance pipeline's own. Separate from `make test` on purpose.
+# A failing property names the seed and the input that broke it; `-quiet` keeps
+# that in the result bundle, so read it there or rerun this target without it.
+property:
+	@echo "Running Swift property tests..."
+	SOTTO_HEADLESS_TESTS=1 xcodebuild test $(LOCAL_XCODE_FLAGS) \
+		-derivedDataPath "$(TEST_DERIVED_DATA)" \
+		$(PROPERTY_ONLY) \
+		-quiet
+	@echo "Running acceptance pipeline property specs..."
+	@command -v bb >/dev/null 2>&1 || { echo "bb (Babashka) is not installed"; exit 1; }
+	@cd acceptance && JAVA_HOME="$(JAVA_HOME)" PATH="$(JAVA_HOME)/bin:$$PATH" bb clojure -M:property
+
+# Gherkin acceptance mutation: mutate the example values in features/ and check
+# that the acceptance scenarios notice. Builds the test bundle once, then each
+# mutation only repoints the runtime at its mutated IR.
+# One worker by default; each one runs a full xcodebuild test host.
+acceptance-mutate:
+	@WORKERS=$(WORKERS) bash bin/acceptance-mutate $(LEVEL)
 
 # Run application
 run:
@@ -178,5 +210,9 @@ help:
 	@echo "  run                Launch the built Sotto app"
 	@echo "  dev                Build and run the app (for development)"
 	@echo "  all                Run full build process (default)"
+	@echo "  test               Run the unit test suite headlessly"
+	@echo "  acceptance         Run the Gherkin acceptance pipeline"
+	@echo "  acceptance-mutate  Mutate feature example values and check the scenarios catch it"
+	@echo "  property           Run the property tests (Swift + acceptance pipeline)"
 	@echo "  clean              Remove build artifacts"
 	@echo "  help               Show this help message"

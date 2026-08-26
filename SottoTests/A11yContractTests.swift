@@ -42,4 +42,29 @@ final class A11yContractTests: XCTestCase {
         XCTAssertNotNil(Motion.pulse(Motion.recordPulse, reduceMotion: false))
         XCTAssertNil(Motion.pulse(Motion.recordPulse, reduceMotion: true))
     }
+
+    // MARK: - Mac Platform Conformance 03
+    //
+    // Every reachable control the feature names must announce a non-empty
+    // VoiceOver label.
+
+    func testMenuBarItemAnnouncesNonEmptyLabelInEveryState() {
+        for state in MenuBarIconRenderer.IconState.allCases {
+            let label = MenuBarIconRenderer.accessibilityLabel(for: state)
+            XCTAssertFalse(label.isEmpty, "menu bar item must announce a label in \(state)")
+        }
+    }
+
+    func testDictionaryAddButtonAnnouncesNonEmptyLabel() {
+        XCTAssertFalse(VocabularyView.addButtonLabel.isEmpty,
+                       "dictionary add button must announce a VoiceOver label")
+    }
+
+    func testReviewTrayActionsAnnounceDistinctNonEmptyLabels() {
+        let labels = [ReviewTray.undoButtonLabel, ReviewTray.copyButtonLabel]
+        XCTAssertTrue(labels.allSatisfy { !$0.isEmpty },
+                      "each review tray action must announce a VoiceOver label")
+        XCTAssertEqual(Set(labels).count, labels.count,
+                       "the review tray actions must not announce the same label")
+    }
 }
