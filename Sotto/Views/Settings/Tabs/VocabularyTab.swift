@@ -9,8 +9,8 @@ struct VocabularyTab: View {
 
     // MARK: - Introspectable composition descriptor
     //
-    // The three former destinations — Dictionary words, Word replacements, and
-    // Snippets — are merged into this one tab. Each section is enumerated here
+    // Dictionary words, Word replacements, and Filler words are merged into
+    // this one tab. Each section is enumerated here
     // and rendered through the EXHAUSTIVE `view(for:)` switch over
     // `ForEach(renderedSections)`, where `renderedSections == allCases`. So the
     // rendered composition IS this descriptor by construction: a section cannot
@@ -22,6 +22,7 @@ struct VocabularyTab: View {
     enum VocabularyTabSection: CaseIterable, Hashable {
         case dictionary
         case wordReplacements
+        case fillerWords
     }
 
     /// The exact, ordered list the body's `ForEach` renders from. It IS
@@ -40,6 +41,13 @@ struct VocabularyTab: View {
     /// `WordReplacementView` (over the `WordReplacement` SwiftData model).
     static func wordReplacementsView() -> WordReplacementView {
         WordReplacementView()
+    }
+
+    /// Factory for the filler-word section, reusing the existing
+    /// `FillerWordsSettingsView`, which owns both the removal toggle and the
+    /// editable filler word list.
+    static func fillerWordsView() -> FillerWordsSettingsView {
+        FillerWordsSettingsView()
     }
 
     var body: some View {
@@ -92,6 +100,16 @@ struct VocabularyTab: View {
                 subtitle: "Automatically replace words or phrases."
             ) {
                 Self.wordReplacementsView()
+            }
+
+        case .fillerWords:
+            SettingsCard(
+                iconSystemName: "text.badge.minus",
+                iconTint: Brand.tint,
+                title: "Filler Words",
+                subtitle: "Drop hesitation sounds from the transcript."
+            ) {
+                Self.fillerWordsView()
             }
         }
     }

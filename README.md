@@ -25,7 +25,7 @@ Sotto is a native macOS app that turns speech into text entirely on your device.
 
 ### Requirements
 
-- macOS 14.4 or later
+- macOS 26.0 or later
 - Xcode (to build from source)
 
 ### Build from Source

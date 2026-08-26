@@ -26,7 +26,7 @@ enum MenuBarIconRenderer {
     /// (which holds `.done` for ~1.5s post-commit and `.failed` until dismissed).
     /// Failure-registry overlay is composited as a red corner dot by
     /// `image(for:unresolvedFailures:)`.
-    enum IconState: Equatable {
+    enum IconState: Equatable, CaseIterable {
         case idle
         case arming         // HaloPhase.armed — pre-first-audio breathe
         case recording

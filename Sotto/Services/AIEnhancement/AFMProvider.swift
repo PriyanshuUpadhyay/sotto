@@ -8,16 +8,12 @@ import FoundationModels
 /// On-device LLM provider using Apple's Foundation Models framework (AFM).
 /// Available on macOS 26+ with Apple Intelligence enabled.
 ///
-/// W11.B — promoted to the **primary** local-enhance path; MLX becomes the
-/// fallback for users whose machine doesn't have AFM available (Intel,
-/// Apple Intelligence disabled, or model still downloading). The dispatch
-/// site (AIEnhancementService.makeRequest) handles routing + safety-filter
-/// fallback to MLX.
+/// The only local-enhance path. When AFM is unavailable (Intel, Apple
+/// Intelligence disabled, or model still downloading) enhancement is reported
+/// as unavailable rather than routed elsewhere.
 ///
 /// All state is actor-isolated. Per-call timing is captured and emitted to
-/// `EnhancementTimingLogger.shared.record(promptMode: .afm, …)` matching the
-/// MLXProvider telemetry shape so AFM rows show up alongside MLX rows in the
-/// CSV.
+/// `EnhancementTimingLogger.shared.record(promptMode: .afm, …)`.
 @available(macOS 26.0, *)
 actor AFMProvider {
 
@@ -27,9 +23,9 @@ actor AFMProvider {
         case deviceNotEligible
         case frameworkUnavailable
         case generationFailed(String)
-        /// W11.B — sentinel for AFM safety-filter (guardrail) refusals so the
-        /// orchestrator can transparently fall back to MLX without surfacing
-        /// the refusal as a user-visible error. Other generation errors keep
+        /// Sentinel for AFM safety-filter (guardrail) refusals so the
+        /// orchestrator can surface them as `EnhancementError.safetyRefusal`
+        /// rather than a generic failure. Other generation errors keep
         /// propagating via `.generationFailed`.
         case safetyRefusal(String)
 
@@ -94,9 +90,8 @@ actor AFMProvider {
     // MARK: - Availability
 
     /// Synchronous availability probe. Use from settings UI / `isAPIKeyValid`
-    /// to decide whether to expose the provider, and from the routing layer
-    /// to pick AFM-vs-MLX. Throws a recoverable error if Apple Intelligence
-    /// isn't ready; never crashes.
+    /// to decide whether to expose the provider. Throws a recoverable error
+    /// if Apple Intelligence isn't ready; never crashes.
     nonisolated static func checkAvailability() throws {
         #if canImport(FoundationModels)
         switch SystemLanguageModel.default.availability {
@@ -137,18 +132,18 @@ actor AFMProvider {
         } catch let err as ProviderError {
             switch err {
             case .appleIntelligenceNotEnabled:
-                return "MLX (Apple Intelligence not enabled)"
+                return "Unavailable (Apple Intelligence not enabled)"
             case .modelNotReady:
-                return "MLX (AFM model still downloading)"
+                return "Unavailable (model still downloading)"
             case .deviceNotEligible:
-                return "MLX (device not eligible for AFM)"
+                return "Unavailable (device not eligible)"
             case .frameworkUnavailable:
-                return "MLX (FoundationModels framework unavailable)"
+                return "Unavailable (FoundationModels framework missing)"
             default:
-                return "MLX (AFM unavailable)"
+                return "Unavailable"
             }
         } catch {
-            return "MLX (AFM unavailable)"
+            return "Unavailable"
         }
     }
 
@@ -297,7 +292,7 @@ actor AFMProvider {
             throw CancellationError()
         } catch {
             // Detect AFM safety-filter (guardrail) refusal so the dispatcher
-            // can fall back to MLX. SDK exposes this as
+            // reports it as a refusal, not a failure. SDK exposes this as
             // `LanguageModelSession.GenerationError.guardrailViolation` on
             // macOS 26; fallback to localized-description matching keeps us
             // forward-compatible across SDK revisions.
@@ -318,7 +313,7 @@ actor AFMProvider {
 
     // MARK: - Prewarm
 
-    /// W11.B prewarm hook. Mirrors `MLXProvider.warm(source:)` so the
+    /// Prewarm hook, so the
     /// `ModelPrewarmService` can fire on the same triggers (app launch,
     /// wake, recording start). Calls `LanguageModelSession.prewarm()` to
     /// trigger asset paging without running an enhancement.
@@ -370,7 +365,7 @@ actor AFMProvider {
     /// NEW dictation (`AIEnhancementService.beginNewDictation`), on top of
     /// `enhance(...)`'s own generation-tagged consume check, so a warm from
     /// an ended dictation can never survive even briefly into whatever comes
-    /// next. Also symmetric with `MLXProvider.reset()`.
+    /// next.
     func reset() {
         #if canImport(FoundationModels)
         warmedSession = nil

@@ -267,14 +267,8 @@ class AIEnhancementService: ObservableObject {
     /// evaluation is undefined timing). A transient `.modelNotReady` at launch
     /// (Apple Intelligence still downloading) must not disable enhancement for
     /// the rest of the session once AFM becomes ready.
-    ///
-    /// Also true when the hidden MLX path is armed, since that path does not
-    /// need AFM at all — gating it on AFM availability would make
-    /// `EnhancementProviderMLX` inert on exactly the machines it exists to
-    /// serve (Apple Intelligence off or unavailable). Off by default, so this
-    /// disjunct changes nothing unless the flag is set and weights are cached.
     var isConfigured: Bool {
-        aiService.checkAvailabilityNow() || AIService.isMLXEnhancementReady
+        aiService.checkAvailabilityNow()
     }
 
     /// The frontmost app used to steer the prompt register and the deterministic
@@ -456,24 +450,12 @@ class AIEnhancementService: ObservableObject {
         let callKind: EnhancementTimingLogger.CallKind =
             generation < 0 ? .import : (hardened ? .hardenedRetry : .primary)
 
-        // Hidden `EnhancementProviderMLX` experiment. Replaces AFM outright
-        // when on and the selected model's weights are present; otherwise this
-        // is inert and AFM runs exactly as before.
-        if AIService.isMLXEnhancementReady {
-            return try await enhanceViaMLX(
-                systemMessage: systemMessage,
-                formattedText: formattedText,
-                transcriptChars: text.count,
-                callKind: callKind
-            )
-        }
-
         guard #available(macOS 26.0, *) else {
             throw EnhancementError.customError("Apple Foundation Models requires macOS 26 or later.")
         }
         do {
             let result = try await aiService.enhanceWithAFM(systemPrompt: systemMessage, userPrompt: formattedText, transcriptChars: text.count, callKind: callKind, generation: generation)
-            await MainActor.run { self.lastEnhancementModelUsed = "apple-on-device" }
+            await MainActor.run { self.lastEnhancementModelUsed = AIProvider.resolved().modelIdentifier }
             return AIEnhancementOutputFilter.filter(Self.stripPreamble(result))
         } catch is CancellationError {
             throw CancellationError()
@@ -486,33 +468,6 @@ class AIEnhancementService: ObservableObject {
             } else {
                 throw EnhancementError.customError(error.localizedDescription)
             }
-        }
-    }
-
-    /// Runs one enhancement through `MLXProvider` and applies the same output
-    /// filtering as the AFM path. Errors surface as `EnhancementError` exactly
-    /// like AFM's, so callers need no MLX-specific handling.
-    private func enhanceViaMLX(
-        systemMessage: String,
-        formattedText: String,
-        transcriptChars: Int,
-        callKind: EnhancementTimingLogger.CallKind
-    ) async throws -> String {
-        do {
-            let (result, modelId) = try await aiService.enhanceWithMLX(
-                systemPrompt: systemMessage,
-                userPrompt: formattedText,
-                transcriptChars: transcriptChars,
-                callKind: callKind
-            )
-            await MainActor.run { self.lastEnhancementModelUsed = modelId }
-            return AIEnhancementOutputFilter.filter(Self.stripPreamble(result))
-        } catch is CancellationError {
-            throw CancellationError()
-        } catch let providerError as MLXProvider.ProviderError {
-            throw EnhancementError.customError(providerError.errorDescription ?? "An unknown MLX error occurred.")
-        } catch {
-            throw EnhancementError.customError(error.localizedDescription)
         }
     }
 

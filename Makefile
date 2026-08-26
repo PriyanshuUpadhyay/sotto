@@ -18,7 +18,7 @@ LOCAL_DERIVED_DATA := $(CURDIR)/.local-build
 # Override with: make local LOCAL_SIGN_IDENTITY="other-name" — exact name or SHA1.
 LOCAL_SIGN_IDENTITY ?= $(shell /usr/bin/security find-identity -p codesigning -v 2>/dev/null | grep -F -e '"sotto-local"' -e '"voiceink-fork-local"' | head -1 | awk '{ print $$2 }' | grep -E '^[A-F0-9]+$$' || echo "-")
 
-.PHONY: all clean whisper setup build local check healthcheck help dev run reload test dmg
+.PHONY: all clean whisper setup build local check healthcheck help dev run reload test acceptance dmg
 
 # Default target
 all: check build
@@ -124,6 +124,11 @@ reload: local
 # longer depends on LOCAL_BUILD being set here.)
 # Separate DerivedData so a test run never clobbers `make local`'s install build.
 TEST_DERIVED_DATA := $(CURDIR)/.local-build-test
+# Generated acceptance tests live in the SottoTests target but are NOT unit
+# tests: they run only through `make acceptance` (bin/acceptance), which parses
+# the features and regenerates them first. Skipping them here keeps the two
+# suites separate.
+ACCEPTANCE_SKIPS := $(shell sed -n 's/^final class \([A-Za-z0-9_]*\).*/-skip-testing:SottoTests\/\1/p' SottoTests/Generated/GeneratedAcceptanceTests.swift 2>/dev/null)
 # Sign the test host with the SAME stable identity as `make local` (not ad-hoc).
 # Ad-hoc (`-`) gives the test-host app a fresh cdhash every run, so macOS treats
 # it as a new app and re-prompts for Accessibility / Input Monitoring / etc. on
@@ -137,12 +142,18 @@ test: check setup
 		-derivedDataPath "$(TEST_DERIVED_DATA)" \
 		-xcconfig LocalBuild.xcconfig \
 		-only-testing:SottoTests \
+		$(ACCEPTANCE_SKIPS) \
 		-skipMacroValidation \
 		'CODE_SIGN_IDENTITY=$(LOCAL_SIGN_IDENTITY)' CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=YES \
 		DEVELOPMENT_TEAM="" ENABLE_HARDENED_RUNTIME=NO \
 		CODE_SIGN_ENTITLEMENTS=$(CURDIR)/Sotto/Sotto.local.entitlements \
 		SWIFT_ACTIVE_COMPILATION_CONDITIONS='$$(inherited) LOCAL_BUILD' \
 		-quiet
+
+# Run the Gherkin acceptance pipeline: parse features, snapshot project facts,
+# generate the executable tests, run only those.
+acceptance:
+	@bash bin/acceptance
 
 # Run application
 run:
@@ -178,5 +189,7 @@ help:
 	@echo "  run                Launch the built Sotto app"
 	@echo "  dev                Build and run the app (for development)"
 	@echo "  all                Run full build process (default)"
+	@echo "  test               Run the unit test suite headlessly"
+	@echo "  acceptance         Run the Gherkin acceptance pipeline"
 	@echo "  clean              Remove build artifacts"
 	@echo "  help               Show this help message"

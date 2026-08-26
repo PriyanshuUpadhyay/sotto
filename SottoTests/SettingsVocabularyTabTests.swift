@@ -14,8 +14,8 @@ final class SettingsVocabularyTabTests: XCTestCase {
     }
 
     // MARK: - Anchor
-    // "Dictionary + Word replacements both editable from this one tab over the
-    //  same SwiftData models as before."
+    // "Dictionary + Word replacements + Filler words all editable from this one
+    //  tab over the same models as before."
     //
     // The body renders `ForEach(VocabularyTab.renderedSections)` and dispatches
     // to an EXHAUSTIVE `view(for:)` switch. `renderedSections == VocabularyTab
@@ -26,11 +26,11 @@ final class SettingsVocabularyTabTests: XCTestCase {
     func test_allRequiredSectionsPresent() {
         let cases = Set(VocabularyTab.VocabularyTabSection.allCases)
         let required: Set<VocabularyTab.VocabularyTabSection> = [
-            .dictionary, .wordReplacements,
+            .dictionary, .wordReplacements, .fillerWords,
         ]
         XCTAssertEqual(
             cases, required,
-            "VocabularyTab descriptor must be exactly the 2 merged sections; diff: \(cases.symmetricDifference(required))"
+            "VocabularyTab descriptor must be exactly the 3 merged sections; diff: \(cases.symmetricDifference(required))"
         )
     }
 

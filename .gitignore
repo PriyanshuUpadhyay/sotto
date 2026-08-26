@@ -33,6 +33,10 @@ playground.xcworkspace
 build/
 .local-build/
 .local-build-test/
+.local-build-acceptance/
+
+## Agent scratch (parsed IR, manifests, handoff drafts)
+tmp/
 .test-build/
 
 # CocoaPods

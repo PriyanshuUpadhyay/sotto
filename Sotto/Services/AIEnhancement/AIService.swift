@@ -2,7 +2,7 @@ import Foundation
 import os
 
 /// The enhancement surface collapsed to a single on-device path: Apple
-/// Foundation Models (AFM). The former multi-provider selection (MLX / Local
+/// Foundation Models (AFM). The former multi-provider selection (Local
 /// CLI / cloud) was removed; this enum is retained as a single case so the
 /// rest of the app keeps a stable provider identity.
 enum AIProvider: String, CaseIterable, Codable {
@@ -11,6 +11,21 @@ enum AIProvider: String, CaseIterable, Codable {
     init(from decoder: Decoder) throws {
         _ = try? decoder.singleValueContainer().decode(String.self)
         self = .foundationModels
+    }
+
+    /// Recorded against a finished enhancement so history rows name the real
+    /// provider.
+    var modelIdentifier: String {
+        switch self {
+        case .foundationModels: return "apple-on-device"
+        }
+    }
+
+    /// `defaults` is read for no key on purpose: the hidden
+    /// `EnhancementProviderMLX` opt-in and its MLX path were removed, so the
+    /// preference is inert and every enhancement resolves to AFM.
+    static func resolved(defaults: UserDefaults = .standard) -> AIProvider {
+        .foundationModels
     }
 }
 
@@ -76,42 +91,6 @@ class AIService: ObservableObject {
             callKind: callKind,
             generation: generation
         )
-    }
-
-    /// Hidden `EnhancementProviderMLX` experiment path — see `MLXProvider`.
-    /// Rebuilt whenever the selected model id changes, since `MLXProvider`
-    /// binds its model at init and caches the loaded weights.
-    private static var sharedMLXProvider: MLXProvider?
-
-    private static func mlxProvider(for modelId: String) -> MLXProvider {
-        if let existing = sharedMLXProvider, existing.modelId == modelId { return existing }
-        let provider = MLXProvider(modelId: modelId)
-        sharedMLXProvider = provider
-        return provider
-    }
-
-    /// True when the hidden flag is on AND the selected model's weights are
-    /// actually on disk. A flag-on-but-missing-weights state must fall through
-    /// to AFM rather than fail the dictation.
-    static var isMLXEnhancementReady: Bool {
-        UserDefaults.standard.bool(forKey: "EnhancementProviderMLX")
-            && MLXModelDownloader.isDownloaded(MLXModelRegistry.selectedModelId)
-    }
-
-    func enhanceWithMLX(
-        systemPrompt: String,
-        userPrompt: String,
-        transcriptChars: Int,
-        callKind: EnhancementTimingLogger.CallKind
-    ) async throws -> (text: String, modelId: String) {
-        let modelId = MLXModelRegistry.selectedModelId
-        let text = try await AIService.mlxProvider(for: modelId).enhance(
-            systemPrompt: systemPrompt,
-            userPrompt: userPrompt,
-            transcriptChars: transcriptChars,
-            callKind: callKind
-        )
-        return (text, modelId)
     }
 
     /// Pages AFM base weights without running enhance. Fire-and-forget; swallows

@@ -9,9 +9,9 @@ final class ModelPrewarmService: ObservableObject {
     private let whisperModelManager: WhisperModelManager
     private let modelContext: ModelContext
     /// W11.A1: optional dependency. Injected post-init via the app-level service
-    /// container so MLX prewarm can fire alongside transcription model prewarm.
-    /// nil-safe: if not wired, MLX prewarm degrades to no-op (recording-start
-    /// hook still fires).
+    /// container so enhancement prewarm can fire alongside transcription model
+    /// prewarm. nil-safe: if not wired, enhancement prewarm degrades to no-op
+    /// (recording-start hook still fires).
     private weak var enhancementService: AIEnhancementService?
     /// The app's single engine. Transcription prewarm routes through
     /// `engine.warmUpTranscriptionModel()` so it warms the SAME

@@ -37,10 +37,28 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         guard !AppRuntimeMode.isHeadlessTest else { return }
+        guard PlatformSupport.launchOutcome() == .opensMenuBarItem else {
+            reportUnsupportedMacOSVersion()
+            return
+        }
         warnIfDuplicateInstanceRunning()
         menuBarManager?.applyActivationPolicy()
         surfaceWindowOnUserLaunch(notification)
         requestMissingPermissionsOnLaunch()
+    }
+
+    /// macOS older than `PlatformSupport.minimumMacOS` cannot run Sotto — the
+    /// menu bar item never appears, so say why and quit instead of leaving a
+    /// half-started process behind.
+    private func reportUnsupportedMacOSVersion() {
+        logger.error("Unsupported macOS version; Sotto needs \(PlatformSupport.minimumMacOSDisplayString, privacy: .public)")
+        let alert = NSAlert()
+        alert.alertStyle = .critical
+        alert.messageText = "Unsupported macOS version"
+        alert.informativeText = PlatformSupport.unsupportedVersionMessage
+        alert.addButton(withTitle: "Quit")
+        alert.runModal()
+        NSApp.terminate(nil)
     }
 
     /// Re-prompt for any permission Sotto still lacks, once per launch. Onboarding

@@ -8,25 +8,28 @@ class FillerWordManager: ObservableObject {
         "hmm", "hm", "mmm", "mm", "mh", "ehh"
     ]
 
-    private let fillerWordsKey = "FillerWords"
-    private let removeFillerWordsKey = "RemoveFillerWords"
+    private static let fillerWordsKey = "FillerWords"
+    private static let removeFillerWordsKey = "RemoveFillerWords"
+
+    private let defaults: UserDefaults
 
     @Published var fillerWords: [String] {
         didSet {
-            UserDefaults.standard.set(fillerWords, forKey: fillerWordsKey)
+            defaults.set(fillerWords, forKey: Self.fillerWordsKey)
         }
     }
 
     var isEnabled: Bool {
-        UserDefaults.standard.bool(forKey: removeFillerWordsKey)
+        defaults.bool(forKey: Self.removeFillerWordsKey)
     }
 
-    private init() {
-        if let saved = UserDefaults.standard.stringArray(forKey: fillerWordsKey) {
-            self.fillerWords = saved
-        } else {
-            self.fillerWords = Self.defaultFillerWords
-        }
+    /// `fillerWords` overrides the persisted list; tests pass an isolated
+    /// `defaults` domain so editing the list never touches the real one.
+    init(defaults: UserDefaults = .standard, fillerWords: [String]? = nil) {
+        self.defaults = defaults
+        self.fillerWords = fillerWords
+            ?? defaults.stringArray(forKey: Self.fillerWordsKey)
+            ?? Self.defaultFillerWords
     }
 
     func addWord(_ word: String) -> Bool {
@@ -40,5 +43,4 @@ class FillerWordManager: ObservableObject {
     func removeWord(_ word: String) {
         fillerWords.removeAll { $0.lowercased() == word.lowercased() }
     }
-
 }
