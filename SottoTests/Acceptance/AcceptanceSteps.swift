@@ -266,7 +266,9 @@ enum AcceptanceSteps {
 
         ("^the model call (happens|is skipped)$", { args, world in
             let input = try required(world.enhancementInput, orFail: "the transcript never reached the enhancement stage")
-            let skipWhenClean = UserDefaults.standard.object(forKey: "SkipEnhancementWhenClean") as? Bool ?? false
+            // The world's own defaults domain, so the scenario reads the
+            // shipped default rather than whatever this developer has set.
+            let skipWhenClean = world.defaults.object(forKey: "SkipEnhancementWhenClean") as? Bool ?? false
             let called = EnhancementSanityCheck.shouldCallModel(input, skipWhenClean: skipWhenClean)
             try expect(called == (args[0] == "happens"),
                        orFail: "the model call \(called ? "happens" : "is skipped") for: \(input)")
