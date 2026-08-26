@@ -28,6 +28,34 @@ struct AcceptanceManifest: Decodable {
         }
     }
 
+    // MARK: - Interrogation
+    //
+    // The scenarios ask whether the project still carries something. How each
+    // fact answers that — exact name, case-insensitive name, or substring of a
+    // mangled symbol — belongs with the probe that gathered it, not with the
+    // step that reads it. A fact the probes could not gather answers nil, so
+    // the step skips instead of passing on missing evidence.
+
+    func declaresSwiftType(_ name: String) -> Bool {
+        declaredSwiftTypes.contains(name)
+    }
+
+    /// Swift manglings embed the type name literally, so a substring search
+    /// over the symbol table answers "does the binary still carry this type".
+    func binaryExportsSymbol(for typeName: String) -> Bool? {
+        binarySymbols?.contains { $0.contains(typeName) }
+    }
+
+    func bundleShipsResource(named name: String) -> Bool? {
+        bundleResources?.contains(name)
+    }
+
+    /// `Package.resolved` records identities in the casing the package author
+    /// chose, which need not match the casing the feature file uses.
+    func buildResolvesPackage(named name: String) -> Bool? {
+        resolvedPackages?.contains { $0.caseInsensitiveCompare(name) == .orderedSame }
+    }
+
     static func load() throws -> AcceptanceManifest {
         guard let path = ProcessInfo.processInfo.environment["SOTTO_ACCEPTANCE_MANIFEST"] else {
             throw LoadError.missingPath

@@ -6,13 +6,17 @@ import SwiftData
 enum StepError: Error, CustomStringConvertible {
     case failed(String)
     case skipped(String)
+    /// No handler matches the step text at all.
     case undefined(String)
+    /// A handler matched, but the step names a value this project does not know.
+    case unknown(String)
 
     var description: String {
         switch self {
-        case .failed(let why):    return why
-        case .skipped(let why):   return "skipped: \(why)"
+        case .failed(let why):     return why
+        case .skipped(let why):    return "skipped: \(why)"
         case .undefined(let text): return "no step handler matches: \(text)"
+        case .unknown(let what):   return "unknown \(what)"
         }
     }
 }
@@ -184,27 +188,26 @@ enum AcceptanceSteps {
         }),
 
         ("^no Swift source file declares the type (.+)$", { args, world in
-            try expect(!world.manifest.declaredSwiftTypes.contains(args[0]),
+            try expect(!world.manifest.declaresSwiftType(args[0]),
                        orFail: "\(args[0]) is still declared in the Swift sources")
         }),
 
         ("^the shipped binary exports no symbol for (.+)$", { args, world in
-            let symbols = try required(world.manifest.binarySymbols, orSkip: "no shipped binary to inspect")
-            try expect(!symbols.contains(where: { $0.contains(args[0]) }),
-                       orFail: "the binary still carries a symbol for \(args[0])")
+            let exported = try required(world.manifest.binaryExportsSymbol(for: args[0]),
+                                        orSkip: "no shipped binary to inspect")
+            try expect(!exported, orFail: "the binary still carries a symbol for \(args[0])")
         }),
 
         ("^the app bundle contains no resource named (.+)$", { args, world in
-            let resources = try required(world.manifest.bundleResources, orSkip: "no app bundle to inspect")
-            try expect(!resources.contains(args[0]),
-                       orFail: "the app bundle still ships \(args[0])")
+            let shipped = try required(world.manifest.bundleShipsResource(named: args[0]),
+                                       orSkip: "no app bundle to inspect")
+            try expect(!shipped, orFail: "the app bundle still ships \(args[0])")
         }),
 
         ("^the build resolves no package dependency named (.+)$", { args, world in
-            let packages = try required(world.manifest.resolvedPackages,
+            let resolved = try required(world.manifest.buildResolvesPackage(named: args[0]),
                                         orSkip: "no resolved package list to inspect")
-            try expect(!packages.contains(where: { $0.caseInsensitiveCompare(args[0]) == .orderedSame }),
-                       orFail: "the build still resolves \(args[0])")
+            try expect(!resolved, orFail: "the build still resolves \(args[0])")
         }),
 
         // MARK: Enhancement provider
@@ -293,7 +296,7 @@ enum AcceptanceSteps {
         case ("General", "device priority list"):
             return GeneralTab.renderedSections.contains(.audioInput)
         default:
-            throw StepError.undefined("unknown control \"\(control)\" for the \(tab) tab")
+            throw StepError.unknown("control \"\(control)\" for the \(tab) tab")
         }
     }
 
@@ -338,7 +341,7 @@ enum AcceptanceSteps {
         switch text {
         case "opens its menu bar item":          return .opensMenuBarItem
         case "reports an unsupported macOS version": return .unsupportedMacOSVersion
-        default: throw StepError.undefined("unknown launch result \"\(text)\"")
+        default: throw StepError.unknown("launch result \"\(text)\"")
         }
     }
 
@@ -347,14 +350,14 @@ enum AcceptanceSteps {
         case "follow system": return .system
         case "light":         return .light
         case "dark":          return .dark
-        default: throw StepError.undefined("unknown appearance preference \"\(text)\"")
+        default: throw StepError.unknown("appearance preference \"\(text)\"")
         }
     }
 
     private static func providerNamed(_ text: String) throws -> AIProvider {
         switch text {
         case "AppleFoundation": return .foundationModels
-        default: throw StepError.undefined("unknown provider \"\(text)\"")
+        default: throw StepError.unknown("provider \"\(text)\"")
         }
     }
 }

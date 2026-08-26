@@ -8,27 +8,6 @@
    :steps [{:text "I open the <settings_tab> settings tab"}]
    :examples [{:settings_tab "Vocabulary"}]})
 
-(describe "substitute"
-  (it "replaces a placeholder with its example value"
-    (should= "I open the Vocabulary settings tab"
-             (sut/substitute "I open the <settings_tab> settings tab"
-                             {:settings_tab "Vocabulary"})))
-
-  (it "replaces every occurrence of the same placeholder"
-    (should= "um then um"
-             (sut/substitute "<w> then <w>" {:w "um"})))
-
-  (it "replaces each placeholder in turn"
-    (should= "Vocabulary shows filler word list"
-             (sut/substitute "<tab> shows <control>"
-                             {:tab "Vocabulary" :control "filler word list"})))
-
-  (it "renders a non-string value as its printed form"
-    (should= "under 1500 ms" (sut/substitute "under <budget> ms" {:budget 1500})))
-
-  (it "leaves text alone when the example is empty"
-    (should= "the app is running" (sut/substitute "the app is running" {}))))
-
 (describe "swift-string"
   (it "quotes plain text"
     (should= "\"the app is running\"" (sut/swift-string "the app is running")))
@@ -53,21 +32,18 @@
   (it "numbers the rows from one"
     (should= [1 2] (map :index (sut/rows {:steps [] :examples [{} {}]}))))
 
-  (it "substitutes each row's values into every step"
-    (should= [["I open the Vocabulary settings tab"]]
-             (map :steps (sut/rows one-step-scenario))))
+  (it "records each row's zero-based position in the IR examples"
+    (should= [0 1] (map :example-index (sut/rows {:steps [] :examples [{} {}]}))))
 
-  (it "runs a scenario with no examples once, unsubstituted"
-    (should= [{:index 1 :steps ["the app is running"]}]
-             (map #(update % :steps vec)
-                  (sut/rows {:name "X" :steps [{:text "the app is running"}]}))))
+  (it "runs a scenario with no examples once, against row zero"
+    (should= [{:index 1 :example-index 0}]
+             (sut/rows {:name "X" :steps [{:text "the app is running"}]})))
 
   (it "runs a scenario with an empty examples table once"
     (should= 1 (count (sut/rows {:name "X" :steps [] :examples []})))))
 
 (describe "method"
-  (with generated (sut/method {:name "Filler Word Control"}
-                              one-step-scenario
+  (with generated (sut/method {:name "Filler Word Control"} 3 one-step-scenario
                               (first (sut/rows one-step-scenario))))
 
   (it "names the method after the scenario and row"
@@ -77,8 +53,12 @@
     (should-contain "feature: \"Filler Word Control\"" @generated)
     (should-contain "scenario: \"Filler Word Control 01\"" @generated))
 
-  (it "passes the substituted steps as Swift strings"
-    (should-contain "\"I open the Vocabulary settings tab\"" @generated))
+  (it "addresses the scenario and example row by position, not by value"
+    (should-contain "scenarioIndex: 3" @generated)
+    (should-contain "exampleIndex: 0" @generated))
+
+  (it "embeds no example value, so a mutated IR needs no regeneration"
+    (should-not-contain "Vocabulary" @generated))
 
   (it "carries no assertion of its own"
     (should-not-contain "XCTAssert" @generated)))
@@ -94,6 +74,9 @@
 
   (it "emits one method per scenario example row"
     (should= 2 (count (re-seq #"func test_" (sut/class-source @feature)))))
+
+  (it "numbers each scenario by its position in the feature"
+    (should-contain "scenarioIndex: 1" (sut/class-source @feature)))
 
   (it "runs on the main actor, because the steps touch view state"
     (should (str/starts-with? (sut/class-source @feature) "@MainActor\n"))))

@@ -1,0 +1,79 @@
+#!/usr/bin/env bash
+# Gherkin acceptance mutation.
+#
+#   1. parse features, snapshot the manifest, generate tests + APS metadata
+#   2. build the test bundle ONCE (build-for-testing)
+#   3. run gherkin-mutator per feature; each mutation only repoints the runtime
+#      at its mutated IR and reruns the built bundle
+#
+# Differential by default: --level soft, per the constitution. Pass a level as
+# the first argument to override (e.g. `bin/acceptance-mutate hard`).
+#
+# WORKERS defaults to 1. Each worker runs a full xcodebuild test host, and
+# several at once saturate the machine; raise it only on a box that can take it.
+set -euo pipefail
+
+cd "$(dirname "$0")/.."
+ROOT="$PWD"
+export PATH="$ROOT/.swarmforge/bin:$PATH"
+export SOTTO_REPO="$ROOT"
+
+LEVEL="${1:-soft}"
+WORKERS="${WORKERS:-1}"
+# Call the APS task directly: the .swarmforge/bin wrapper discards --workers and
+# forces 4, which is more xcodebuild hosts than this run wants.
+APS_CONFIG="$ROOT/.swarmforge/tools/Acceptance-Pipeline-Specification/bb.edn"
+IR_DIR="$ROOT/tmp/acceptance/ir"
+MANIFEST="$ROOT/tmp/acceptance/manifest.json"
+GENERATED_DIR="$ROOT/SottoTests/Generated"
+GENERATED="$GENERATED_DIR/GeneratedAcceptanceTests.swift"
+WORK_DIR="$ROOT/tmp/acceptance/mutation"
+DERIVED="$ROOT/.local-build-acceptance-mutation"
+
+SIGN_IDENTITY="$(bash "$ROOT/scripts/local-sign-identity.sh")"
+SIGNING_FLAGS=(
+  -project Sotto.xcodeproj -scheme Sotto -configuration Debug
+  -xcconfig LocalBuild.xcconfig
+  -skipMacroValidation
+  "CODE_SIGN_IDENTITY=$SIGN_IDENTITY"
+  CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=YES
+  DEVELOPMENT_TEAM="" ENABLE_HARDENED_RUNTIME=NO
+  "CODE_SIGN_ENTITLEMENTS=$ROOT/Sotto/Sotto.local.entitlements"
+)
+
+echo "==> parsing features"
+rm -rf "$IR_DIR" && mkdir -p "$IR_DIR" "$WORK_DIR"
+for feature in "$ROOT"/features/*.feature; do
+  gherkin-parser "$feature" "$IR_DIR/$(basename "$feature" .feature).json"
+done
+
+echo "==> building acceptance manifest"
+bb --config "$ROOT/acceptance/bb.edn" "$ROOT/acceptance/manifest.clj" "$MANIFEST"
+
+echo "==> generating acceptance tests and metadata"
+bb --config "$ROOT/acceptance/bb.edn" "$ROOT/acceptance/generate.clj" \
+  "$GENERATED" features "$IR_DIR"/*.json
+
+echo "==> building the test bundle once"
+xcodebuild build-for-testing "${SIGNING_FLAGS[@]}" \
+  -derivedDataPath "$DERIVED" \
+  SWIFT_ACTIVE_COMPILATION_CONDITIONS='$(inherited) LOCAL_BUILD' \
+  -quiet
+
+export SOTTO_ACCEPTANCE_MANIFEST="$MANIFEST"
+export SOTTO_ACCEPTANCE_IR_DIR="$IR_DIR"
+export SOTTO_ACCEPTANCE_DERIVED_DATA="$DERIVED"
+
+status=0
+for feature in "$ROOT"/features/*.feature; do
+  echo "==> mutating $(basename "$feature")"
+  bb --config "$APS_CONFIG" gherkin-mutator \
+    --feature "features/$(basename "$feature")" \
+    --work-dir "$WORK_DIR/$(basename "$feature" .feature)" \
+    --generated-dir "$GENERATED_DIR" \
+    --level "$LEVEL" \
+    --workers "$WORKERS" \
+    --status-interval 30s \
+    --runner-worker "$ROOT/bin/acceptance-runner-worker" || status=1
+done
+exit $status
