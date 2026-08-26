@@ -34,13 +34,17 @@
   (str (fs/path features-dir (str (fs/strip-ext (fs/file-name ir-file)) ".feature"))))
 
 (defn- write-metadata! [out features-dir ir-files generated-hash]
-  (let [dir (fs/path (fs/parent out) "metadata")]
+  (let [dir (fs/path (fs/parent out) "metadata")
+        ;; bin/acceptance passes absolute paths; the metadata is committed, so
+        ;; record them relative to the repo this ran in.
+        repo-root (System/getProperty "user.dir")]
     (fs/create-dirs dir)
     (doseq [ir-file ir-files]
       (let [feature (feature-path features-dir ir-file)]
         (spit (str (fs/path dir (metadata/metadata-name feature)))
               (json/generate-string
-               (metadata/metadata {:feature-path feature
+               (metadata/metadata {:repo-root repo-root
+                                   :feature-path feature
                                    :ir-path ir-file
                                    :generated-files [out]
                                    :implementation-hash generated-hash})

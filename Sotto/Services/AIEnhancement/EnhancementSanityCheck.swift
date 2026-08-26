@@ -57,6 +57,13 @@ enum EnhancementSanityCheck {
         return EditTextNormalizer.normalize(cleaned) == EditTextNormalizer.normalize(trimmed)
     }
 
+    /// Whether the enhance step should call the model at all. The skip is
+    /// opt-in: with `skipWhenClean` off — the shipped default — every
+    /// transcript goes to the model, clean or not.
+    static func shouldCallModel(_ raw: String, skipWhenClean: Bool) -> Bool {
+        !(skipWhenClean && isLikelyClean(raw))
+    }
+
     /// Model-free last-resort cleanup of the raw transcript. Safe and minimal:
     /// trims, collapses whitespace, drops standalone fillers, collapses an
     /// immediate duplicate word, capitalizes the first letter, ensures terminal

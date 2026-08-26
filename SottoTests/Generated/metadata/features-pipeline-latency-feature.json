@@ -1,8 +1,8 @@
 {
   "schema_version" : 1,
   "feature_path" : "features/pipeline_latency.feature",
-  "ir_path" : "/Users/priyanshu/work/sotto/wt/main/.worktrees/architect/tmp/acceptance/ir/pipeline_latency.json",
-  "implementation_hash" : "sha256:4e5f0ed6d1451940364fa4e719d0834ddd180acd3c71447dac20368631cc6e88",
+  "ir_path" : "tmp/acceptance/ir/pipeline_latency.json",
+  "implementation_hash" : "sha256:d55a66dd75b364fefe4822c3c0d097c27cf9f31038d2741bf647d015b063e8e7",
   "hash_scope" : "generated_files",
-  "generated_files" : [ "/Users/priyanshu/work/sotto/wt/main/.worktrees/architect/SottoTests/Generated/GeneratedAcceptanceTests.swift" ]
+  "generated_files" : [ "SottoTests/Generated/GeneratedAcceptanceTests.swift" ]
 }

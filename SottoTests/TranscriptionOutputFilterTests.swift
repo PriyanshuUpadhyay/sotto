@@ -42,6 +42,17 @@ final class TranscriptionOutputFilterTests: XCTestCase {
         XCTAssertEqual(clean("a [one] keep [two] b"), "a keep b")
     }
 
+    /// An engine can break a bracketed aside across lines. The patterns use
+    /// `[\s\S]`, like the tag patterns, so one pass removes it — otherwise the
+    /// whitespace tidy would rejoin the halves and leave the aside behind.
+    func testRemovesABracketedRunThatIsSplitAcrossLines() {
+        XCTAssertEqual(clean("keep [noise \n here] this"), "keep this")
+    }
+
+    func testRemovesEachOfTwoBracketedRunsSeparatedByALineBreak() {
+        XCTAssertEqual(clean("a [one]\nkeep\n[two] b"), "a keep b")
+    }
+
     func testKeepsAnUnclosedBracket() {
         XCTAssertEqual(clean("a [music b"), "a [music b")
     }

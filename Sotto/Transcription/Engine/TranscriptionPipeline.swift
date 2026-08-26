@@ -248,8 +248,7 @@ class TranscriptionPipeline {
                 // clean-looking Parakeet output muted it. Set the key true to
                 // restore the latency-saving skip.
                 let skipWhenClean = UserDefaults.standard.object(forKey: "SkipEnhancementWhenClean") as? Bool ?? false
-                if skipWhenClean,
-                   EnhancementSanityCheck.isLikelyClean(textForAI) {
+                if !EnhancementSanityCheck.shouldCallModel(textForAI, skipWhenClean: skipWhenClean) {
                     logger.notice("🦾 enhance: skipped (raw already clean)")
                 } else {
                     // P3.F: transcribe-complete cue fires "ASR finishes, before

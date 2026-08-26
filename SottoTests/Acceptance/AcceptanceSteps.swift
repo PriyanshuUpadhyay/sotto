@@ -234,6 +234,46 @@ enum AcceptanceSteps {
             try expect(sizeMB < budget, orFail: "app bundle is \(sizeMB) MB, budget is \(budget) MB")
         }),
 
+        // MARK: Enhancement input
+        //
+        // What the enhance step is handed: the transcript after the output
+        // filter has run, and whether the model is called on it at all.
+
+        ("^the transcript (has|lacks) already correct punctuation$", { args, world in
+            world.spokenTranscript = args[0] == "has"
+                ? "The timeout is 60 seconds."
+                : "so um the timeout is thirty seconds"
+        }),
+
+        ("^the transcript reaches the enhancement stage$", { _, world in
+            let spoken = try required(world.spokenTranscript, orFail: "no transcript was set up")
+            world.enhancementInput = TranscriptionOutputFilter.cleaning(
+                spoken,
+                removeFillerWords: true,
+                fillerWords: FillerWordManager.defaultFillerWords
+            )
+        }),
+
+        ("^the enhancement input (omits|keeps) the word (.+)$", { args, world in
+            let input = try required(world.enhancementInput, orFail: "the transcript never reached the enhancement stage")
+            let present = input.range(
+                of: "\\b\(NSRegularExpression.escapedPattern(for: args[1]))\\b",
+                options: [.regularExpression, .caseInsensitive]
+            ) != nil
+            try expect(present == (args[0] == "keeps"),
+                       orFail: "the enhancement input \(present ? "keeps" : "omits") \(args[1]): \(input)")
+        }),
+
+        ("^the model call (happens|is skipped)$", { args, world in
+            let input = try required(world.enhancementInput, orFail: "the transcript never reached the enhancement stage")
+            // The world's own defaults domain, so the scenario reads the
+            // shipped default rather than whatever this developer has set.
+            let skipWhenClean = world.defaults.object(forKey: "SkipEnhancementWhenClean") as? Bool ?? false
+            let called = EnhancementSanityCheck.shouldCallModel(input, skipWhenClean: skipWhenClean)
+            try expect(called == (args[0] == "happens"),
+                       orFail: "the model call \(called ? "happens" : "is skipped") for: \(input)")
+        }),
+
         // MARK: Pipeline latency
 
         // Stage timings come from a real dictation: the trace is filled in as

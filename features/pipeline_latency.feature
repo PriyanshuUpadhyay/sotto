@@ -1,3 +1,7 @@
+# acceptance-mutation-manifest-begin
+# {"version":1,"tested_at":"2026-08-26T12:11:34.136921Z","feature_name":"Pipeline Latency","feature_path":"features/pipeline_latency.feature","background_hash":"61edff38a817d89f1cc2bdada7acb8a53a97f125c4c16f644a0a737e9f3d3fca","implementation_hash":"sha256:d55a66dd75b364fefe4822c3c0d097c27cf9f31038d2741bf647d015b063e8e7","scenarios":[{"index":8,"name":"Pipeline Latency 09","scenario_hash":"34620294c01b41effc33aac356c8c4f90ea677b061e7d6e41d68e8a02d217574","mutation_count":4,"result":{"Total":4,"Killed":4,"Survived":0,"Errors":0},"tested_at":"2026-08-26T12:11:34.136921Z"}]}
+# acceptance-mutation-manifest-end
+
 Feature: Pipeline Latency
 
 Background:

@@ -539,4 +539,22 @@ struct EnhancementSanityCheckTests {
         #expect(v.isSuspect)
         if case let .suspect(reasons) = v { #expect(reasons.contains(.lowGroundedFraction)) }
     }
+
+    // MARK: - Pipeline Latency 09: when the enhance call is skipped
+
+    @Test("the model call happens on a clean transcript unless the skip is on")
+    func cleanTranscriptStillCallsTheModel() {
+        let clean = "The timeout is 60 seconds."
+        #expect(EnhancementSanityCheck.isLikelyClean(clean))
+        #expect(EnhancementSanityCheck.shouldCallModel(clean, skipWhenClean: false))
+        #expect(!EnhancementSanityCheck.shouldCallModel(clean, skipWhenClean: true))
+    }
+
+    @Test("a transcript that still needs work always calls the model")
+    func messyTranscriptAlwaysCallsTheModel() {
+        let messy = "so um the timeout is thirty seconds"
+        #expect(!EnhancementSanityCheck.isLikelyClean(messy))
+        #expect(EnhancementSanityCheck.shouldCallModel(messy, skipWhenClean: false))
+        #expect(EnhancementSanityCheck.shouldCallModel(messy, skipWhenClean: true))
+    }
 }

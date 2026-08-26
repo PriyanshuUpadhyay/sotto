@@ -10,6 +10,14 @@ Before you begin, ensure you have:
 - Swift (latest version recommended)
 - Git (for cloning repositories)
 
+For `make acceptance` only:
+- Babashka (`bb`)
+- A JDK on `PATH`. `acceptance/bb.edn` declares a Maven dependency, and
+  Babashka shells out to `java` to resolve it. macOS ships a `/usr/bin/java`
+  stub that is not a runtime, so a Homebrew JDK needs `PATH` and `JAVA_HOME`
+  set, for example
+  `export JAVA_HOME=/opt/homebrew/opt/openjdk@21 PATH="$JAVA_HOME/bin:$PATH"`.
+
 ## Quick Start with Makefile (Recommended)
 
 The easiest way to build Sotto is using the included Makefile, which automates the entire build process including building and linking the whisper framework.

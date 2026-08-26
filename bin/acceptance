@@ -23,6 +23,12 @@ RELEASE_APP="$ACCEPTANCE_DERIVED_DATA/Build/Products/Release/Sotto.app"
 # Same identity the Makefile uses, so an acceptance run signs like a local build.
 SIGN_IDENTITY="$(bash "$ROOT/scripts/local-sign-identity.sh")"
 
+# acceptance/bb.edn declares deps, which bb resolves through the JVM, and macOS
+# ships no JDK. Find one the same way: use what the environment already set,
+# else ask java_home, else the Homebrew install.
+export JAVA_HOME="${JAVA_HOME:-$(/usr/libexec/java_home 2>/dev/null || echo /opt/homebrew/opt/openjdk)}"
+export PATH="$JAVA_HOME/bin:$PATH"
+
 # Shared by both xcodebuild invocations below. They differ only in
 # configuration, derived data, and what they build or run.
 SIGNING_FLAGS=(

@@ -18,17 +18,28 @@
       (str/replace #"^-+|-+$" "")
       (str ".json")))
 
+(defn repo-relative
+  "Drops `repo-root` from the front of `path`. The shells pass absolute paths,
+  and this file is committed, so recording them verbatim would make the
+  metadata differ per machine and per worktree."
+  [repo-root path]
+  (let [prefix (str repo-root "/")]
+    (if (str/starts-with? path prefix)
+      (subs path (count prefix))
+      path)))
+
 (defn metadata
   "The metadata object for one feature. `implementation-hash` covers only the
-  generated files, which is the scope APS specifies."
-  [{:keys [feature-path ir-path generated-files implementation-hash]}]
+  generated files, which is the scope APS specifies. Every path is recorded
+  relative to `repo-root`."
+  [{:keys [repo-root feature-path ir-path generated-files implementation-hash]}]
   {:schema_version 1
-   :feature_path feature-path
-   :ir_path ir-path
+   :feature_path (repo-relative repo-root feature-path)
+   :ir_path (repo-relative repo-root ir-path)
    :implementation_hash (str "sha256:" implementation-hash)
    :hash_scope "generated_files"
-   :generated_files (vec generated-files)})
+   :generated_files (mapv #(repo-relative repo-root %) generated-files)})
 
 ;; clj-mutate-manifest-begin
-;; {:version 1, :tested-at "2026-08-26T16:56:14.016367+05:30", :module-hash "-2101357853", :forms [{:id "form/0/ns", :kind "ns", :line 1, :end-line nil, :hash "461422444"} {:id "defn/metadata-name", :kind "defn", :line 11, :end-line nil, :hash "-786815352"} {:id "defn/metadata", :kind "defn", :line 21, :end-line nil, :hash "-1171193581"}]}
+;; {:version 1, :tested-at "2026-08-26T17:25:21.596726+05:30", :module-hash "1828720474", :forms [{:id "form/0/ns", :kind "ns", :line 1, :end-line nil, :hash "461422444"} {:id "defn/metadata-name", :kind "defn", :line 11, :end-line nil, :hash "-786815352"} {:id "defn/repo-relative", :kind "defn", :line 21, :end-line nil, :hash "1583563624"} {:id "defn/metadata", :kind "defn", :line 31, :end-line nil, :hash "-51243488"}]}
 ;; clj-mutate-manifest-end

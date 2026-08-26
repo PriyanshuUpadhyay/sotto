@@ -33,6 +33,7 @@ final class AcceptanceWorld {
     // Enhancement
     var enhancementProvider: AIProvider?
     var instructionPrompt: String?
+    var enhancementInput: String?
 
     init(manifest: AcceptanceManifest) {
         self.manifest = manifest
