@@ -32,12 +32,11 @@ Scenario: Mac Platform Conformance 03
   Then VoiceOver announces a non-empty label for that control
 
   Examples:
-    | control_name           |
-    | menu bar item          |
-    | recorder record button |
-    | recorder cancel button |
-    | review paste button    |
-    | dictionary add button  |
+    | control_name          |
+    | menu bar item         |
+    | dictionary add button |
+    | review undo button    |
+    | review copy button    |
 
 # Mac Platform Conformance 04
 Scenario: Mac Platform Conformance 04

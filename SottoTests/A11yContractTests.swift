@@ -59,4 +59,12 @@ final class A11yContractTests: XCTestCase {
         XCTAssertFalse(VocabularyView.addButtonLabel.isEmpty,
                        "dictionary add button must announce a VoiceOver label")
     }
+
+    func testReviewTrayActionsAnnounceDistinctNonEmptyLabels() {
+        let labels = [ReviewTray.undoButtonLabel, ReviewTray.copyButtonLabel]
+        XCTAssertTrue(labels.allSatisfy { !$0.isEmpty },
+                      "each review tray action must announce a VoiceOver label")
+        XCTAssertEqual(Set(labels).count, labels.count,
+                       "the review tray actions must not announce the same label")
+    }
 }

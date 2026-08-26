@@ -294,6 +294,8 @@ enum AcceptanceSteps {
         switch control {
         case "menu bar item":         return MenuBarIconRenderer.accessibilityLabel(for: .idle)
         case "dictionary add button": return VocabularyView.addButtonLabel
+        case "review undo button":    return ReviewTray.undoButtonLabel
+        case "review copy button":    return ReviewTray.copyButtonLabel
         default:                      return nil
         }
     }

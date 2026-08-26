@@ -143,7 +143,7 @@ final class Mac_Platform_ConformanceAcceptanceTests: XCTestCase {
             steps: [
                 "VoiceOver is running",
                 "the app is running",
-                "I move VoiceOver focus to the control recorder record button",
+                "I move VoiceOver focus to the control dictionary add button",
                 "VoiceOver announces a non-empty label for that control"
             ]
         )
@@ -156,7 +156,7 @@ final class Mac_Platform_ConformanceAcceptanceTests: XCTestCase {
             steps: [
                 "VoiceOver is running",
                 "the app is running",
-                "I move VoiceOver focus to the control recorder cancel button",
+                "I move VoiceOver focus to the control review undo button",
                 "VoiceOver announces a non-empty label for that control"
             ]
         )
@@ -169,20 +169,7 @@ final class Mac_Platform_ConformanceAcceptanceTests: XCTestCase {
             steps: [
                 "VoiceOver is running",
                 "the app is running",
-                "I move VoiceOver focus to the control review paste button",
-                "VoiceOver announces a non-empty label for that control"
-            ]
-        )
-    }
-
-    func test_Mac_Platform_Conformance_03_row5() throws {
-        try AcceptanceRuntime.run(
-            feature: "Mac Platform Conformance",
-            scenario: "Mac Platform Conformance 03",
-            steps: [
-                "VoiceOver is running",
-                "the app is running",
-                "I move VoiceOver focus to the control dictionary add button",
+                "I move VoiceOver focus to the control review copy button",
                 "VoiceOver announces a non-empty label for that control"
             ]
         )
