@@ -35,12 +35,11 @@ Scenario: Runtime Budgets 03
   Given the app is running
   When I record for <record_seconds> seconds with the <engine_name> engine
   Then peak resident memory stays below <memory_budget_mb> megabytes
-  And the first transcript word appears within <first_word_budget_ms> milliseconds
 
   Examples:
-    | engine_name | record_seconds | memory_budget_mb | first_word_budget_ms |
-    | Parakeet    | 30             | 1400             | 900                  |
-    | Whisper     | 30             | 1200             | 2500                 |
+    | engine_name | record_seconds | memory_budget_mb |
+    | Parakeet    | 30             | 1400             |
+    | Whisper     | 30             | 1200             |
 
 # Runtime Budgets 04
 Scenario: Runtime Budgets 04

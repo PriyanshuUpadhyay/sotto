@@ -131,4 +131,48 @@ import Testing
         #expect(out.contains("boosting"))
         #expect(out.contains("not attempted"))
     }
+
+    // MARK: - Pipeline Latency 01: every stage reports a duration
+
+    @Test("the trace names exactly the seven pipeline stages")
+    func stagesCoverThePipeline() {
+        let names = TranscriptionTrace.Stage.allCases.map(\.rawValue)
+        #expect(names == ["asr", "boosting", "filter", "wordReplacement",
+                          "acoustic", "phonetic", "enhancement"])
+    }
+
+    @Test("a timed stage reports its duration; an untimed one reports none")
+    func recordsStageDurations() {
+        var t = TranscriptionTrace()
+        #expect(t.duration(for: .asr) == nil)
+        t.record(.asr, seconds: 0.25)
+        #expect(t.duration(for: .asr) == 0.25)
+        #expect(t.duration(for: .filter) == nil)
+    }
+
+    @Test("closing a stamp records the elapsed time")
+    func recordsElapsedSinceStamp() {
+        var t = TranscriptionTrace()
+        let start = TranscriptionTrace.now()
+        t.record(.filter, since: start)
+        #expect((t.duration(for: .filter) ?? -1) >= 0)
+    }
+
+    @Test("re-timing a stage accumulates rather than overwriting")
+    func repeatedStageAccumulates() {
+        var t = TranscriptionTrace()
+        t.record(.acoustic, seconds: 0.1)
+        t.record(.acoustic, seconds: 0.2)
+        #expect(abs((t.duration(for: .acoustic) ?? 0) - 0.3) < 0.0001)
+    }
+
+    @Test("render lists the timed stages and omits the untimed ones")
+    func rendersTimings() {
+        var t = TranscriptionTrace()
+        t.record(.asr, seconds: 1.5)
+        let out = t.render()
+        #expect(out.contains("timings"))
+        #expect(out.contains("asr=1.500s"))
+        #expect(!out.contains("phonetic="))
+    }
 }
