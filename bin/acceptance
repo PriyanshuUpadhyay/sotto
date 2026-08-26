@@ -20,9 +20,20 @@ GENERATED="$ROOT/SottoTests/Generated/GeneratedAcceptanceTests.swift"
 ACCEPTANCE_DERIVED_DATA="$ROOT/.local-build-acceptance"
 RELEASE_APP="$ACCEPTANCE_DERIVED_DATA/Build/Products/Release/Sotto.app"
 
-SIGN_IDENTITY="$(/usr/bin/security find-identity -p codesigning -v 2>/dev/null \
-  | grep -F -e '"sotto-local"' -e '"voiceink-fork-local"' | head -1 | awk '{ print $2 }' \
-  | grep -E '^[A-F0-9]+$' || echo "-")"
+# Same identity the Makefile uses, so an acceptance run signs like a local build.
+SIGN_IDENTITY="$(bash "$ROOT/scripts/local-sign-identity.sh")"
+
+# Shared by both xcodebuild invocations below. They differ only in
+# configuration, derived data, and what they build or run.
+SIGNING_FLAGS=(
+  -project Sotto.xcodeproj -scheme Sotto
+  -xcconfig LocalBuild.xcconfig
+  -skipMacroValidation
+  "CODE_SIGN_IDENTITY=$SIGN_IDENTITY"
+  CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=YES
+  DEVELOPMENT_TEAM="" ENABLE_HARDENED_RUNTIME=NO
+  "CODE_SIGN_ENTITLEMENTS=$ROOT/Sotto/Sotto.local.entitlements"
+)
 
 command -v gherkin-parser >/dev/null 2>&1 || {
   echo "gherkin-parser missing. Run: swarm_tool.sh ensure gherkin-parser" >&2
@@ -41,14 +52,8 @@ done
 # that need the artifact report what they actually measured.
 if [ "${SOTTO_SKIP_RELEASE_BUILD:-0}" != "1" ]; then
   echo "==> building Release app for artifact probes"
-  if xcodebuild -project Sotto.xcodeproj -scheme Sotto -configuration Release \
+  if xcodebuild "${SIGNING_FLAGS[@]}" -configuration Release \
       -derivedDataPath "$ACCEPTANCE_DERIVED_DATA" \
-      -xcconfig LocalBuild.xcconfig \
-      -skipMacroValidation \
-      "CODE_SIGN_IDENTITY=$SIGN_IDENTITY" \
-      CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=YES \
-      DEVELOPMENT_TEAM="" ENABLE_HARDENED_RUNTIME=NO \
-      CODE_SIGN_ENTITLEMENTS="$ROOT/Sotto/Sotto.local.entitlements" \
       build -quiet; then
     [ -d "$RELEASE_APP" ] && export SOTTO_ACCEPTANCE_APP="$RELEASE_APP"
   else
@@ -57,10 +62,11 @@ if [ "${SOTTO_SKIP_RELEASE_BUILD:-0}" != "1" ]; then
 fi
 
 echo "==> building acceptance manifest"
-bb "$ROOT/acceptance/manifest.clj" "$MANIFEST"
+bb --config "$ROOT/acceptance/bb.edn" "$ROOT/acceptance/manifest.clj" "$MANIFEST"
 
 echo "==> generating acceptance tests"
-bb "$ROOT/acceptance/generate.clj" "$GENERATED" "$IR_DIR"/*.json
+bb --config "$ROOT/acceptance/bb.edn" "$ROOT/acceptance/generate.clj" \
+  "$GENERATED" features "$IR_DIR"/*.json
 
 ONLY_TESTING=()
 while IFS= read -r class; do
@@ -76,19 +82,13 @@ set +e
 SOTTO_HEADLESS_TESTS=1 \
 TEST_RUNNER_SOTTO_HEADLESS_TESTS=1 \
 TEST_RUNNER_SOTTO_ACCEPTANCE_MANIFEST="$MANIFEST" \
-xcodebuild test \
-  -project Sotto.xcodeproj -scheme Sotto -configuration Debug \
+TEST_RUNNER_SOTTO_ACCEPTANCE_IR="$IR_DIR" \
+xcodebuild test "${SIGNING_FLAGS[@]}" -configuration Debug \
   -derivedDataPath "$ROOT/.local-build-test" \
-  -xcconfig LocalBuild.xcconfig \
   "${ONLY_TESTING[@]}" \
-  -skipMacroValidation \
-  "CODE_SIGN_IDENTITY=$SIGN_IDENTITY" \
-  CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=YES \
-  DEVELOPMENT_TEAM="" ENABLE_HARDENED_RUNTIME=NO \
-  CODE_SIGN_ENTITLEMENTS="$ROOT/Sotto/Sotto.local.entitlements" \
   SWIFT_ACTIVE_COMPILATION_CONDITIONS='$(inherited) LOCAL_BUILD'
 set -e
 
 RESULT_BUNDLE="$(ls -td "$ROOT"/.local-build-test/Logs/Test/*.xcresult 2>/dev/null | head -1)"
 [ -n "$RESULT_BUNDLE" ] || { echo "no result bundle produced" >&2; exit 1; }
-bb "$ROOT/acceptance/report.clj" "$RESULT_BUNDLE"
+bb --config "$ROOT/acceptance/bb.edn" "$ROOT/acceptance/report.clj" "$RESULT_BUNDLE"

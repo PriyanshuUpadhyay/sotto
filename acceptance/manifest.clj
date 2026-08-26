@@ -1,5 +1,5 @@
 #!/usr/bin/env bb
-;; Acceptance manifest builder.
+;; Acceptance manifest builder (adapter shell).
 ;;
 ;; Collects the project facts and runtime measurements the generated acceptance
 ;; tests assert against, and writes them to one JSON file. Keeping the probing
@@ -7,12 +7,14 @@
 ;; fact that cannot be gathered (no build artifact, app not launchable in this
 ;; environment) is recorded as null so the scenario reports a skip with a
 ;; reason instead of a false pass.
+;;
+;; This file runs the probes; `acceptance.facts` owns reading their output.
 
 (ns manifest
-  (:require [babashka.fs :as fs]
+  (:require [acceptance.facts :as facts]
+            [babashka.fs :as fs]
             [babashka.process :refer [shell]]
-            [cheshire.core :as json]
-            [clojure.string :as str]))
+            [cheshire.core :as json]))
 
 (def repo-root (str (fs/canonicalize (or (System/getenv "SOTTO_REPO") "."))))
 
@@ -28,50 +30,31 @@
 
 ;; ---------------------------------------------------------------- build facts
 
-(defn deployment-target
-  "MACOSX_DEPLOYMENT_TARGET as xcodebuild resolves it for the Sotto target."
-  []
+(defn deployment-target []
   ;; -derivedDataPath keeps the probe's cache inside the worktree; without it
   ;; xcodebuild seeds ~/Library/Developer/Xcode/DerivedData on every run.
-  (some->> (sh-out "xcodebuild" "-project" (path "Sotto.xcodeproj")
-                   "-scheme" "Sotto"
-                   "-derivedDataPath" (path ".local-build-test")
-                   "-showBuildSettings")
-           str/split-lines
-           (keep #(second (re-find #"MACOSX_DEPLOYMENT_TARGET\s*=\s*(\S+)" %)))
-           first))
+  (facts/deployment-target
+   (sh-out "xcodebuild" "-project" (path "Sotto.xcodeproj")
+           "-scheme" "Sotto"
+           "-derivedDataPath" (path ".local-build-test")
+           "-showBuildSettings")))
 
-(defn documented-minimum-macos
-  "The minimum macOS version the user-facing docs promise."
-  []
+(defn documented-minimum-macos []
   (->> ["README.md" "BUILDING.md"]
        (map #(path %))
        (filter fs/exists?)
-       (keep (fn [f]
-               (some->> (slurp f)
-                        (re-find #"(?i)macOS\s+(\d+(?:\.\d+)?)\s+or later")
-                        second)))
-       distinct
-       vec))
+       (map slurp)
+       facts/documented-versions))
 
-(defn declared-swift-types
-  "Every type name declared anywhere under Sotto/."
-  []
+(defn declared-swift-types []
   (->> (fs/glob (path "Sotto") "**/*.swift")
-       (mapcat (fn [f]
-                 (->> (slurp (str f))
-                      str/split-lines
-                      (keep #(second (re-find #"^\s*(?:public\s+|internal\s+|private\s+|fileprivate\s+|final\s+)*(?:struct|class|enum|actor|protocol|typealias)\s+([A-Za-z_][A-Za-z0-9_]*)" %))))))
-       distinct
-       sort
-       vec))
+       (map #(slurp (str %)))
+       facts/all-declared-types))
 
-(defn resolved-packages
-  "Package identities SwiftPM actually resolved for this project."
-  []
+(defn resolved-packages []
   (let [f (path "Sotto.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved")]
     (when (fs/exists? f)
-      (->> (json/parse-string (slurp f) true) :pins (map :identity) sort vec))))
+      (facts/package-identities (json/parse-string (slurp f) true)))))
 
 ;; --------------------------------------------------------------- app artifact
 
@@ -88,15 +71,9 @@
        (filter fs/exists?)
        first))
 
-(defn bundle-resources
-  "Every resource file name inside the app bundle."
-  [app]
+(defn bundle-resources [app]
   (when app
-    (->> (fs/glob app "**")
-         (map #(fs/file-name %))
-         distinct
-         sort
-         vec)))
+    (facts/unique-sorted (map fs/file-name (fs/glob app "**")))))
 
 (defn- mach-o-binaries
   "The app's own executable plus any Sotto dylib beside it. A debug build ships
@@ -114,16 +91,11 @@
   still carry this type\"."
   [app]
   (when app
-    (->> (mach-o-binaries app)
-         (mapcat (fn [bin] (some-> (sh-out "nm" "-U" bin) str/split-lines)))
-         vec)))
+    (facts/symbol-lines (map #(sh-out "nm" "-U" %) (mach-o-binaries app)))))
 
 (defn bundle-size-mb [app]
   (when app
-    (some-> (sh-out "du" "-sm" app)
-            (str/split #"\s+")
-            first
-            parse-long)))
+    (facts/du-megabytes (sh-out "du" "-sm" app))))
 
 ;; ------------------------------------------------------------------- assembly
 

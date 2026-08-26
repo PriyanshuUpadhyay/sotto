@@ -34,10 +34,15 @@ build/
 .local-build/
 .local-build-test/
 .local-build-acceptance/
+.local-build-acceptance-mutation/
 
 ## Agent scratch (parsed IR, manifests, handoff drafts)
 tmp/
 .test-build/
+
+## Clojure tooling output for the acceptance pipeline specs
+acceptance/target/
+acceptance/.cpcache/
 
 # CocoaPods
 #

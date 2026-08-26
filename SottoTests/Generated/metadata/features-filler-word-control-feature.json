@@ -1,0 +1,8 @@
+{
+  "schema_version" : 1,
+  "feature_path" : "features/filler_word_control.feature",
+  "ir_path" : "/Users/priyanshu/work/sotto/wt/main/.worktrees/coder/tmp/acceptance/ir/filler_word_control.json",
+  "implementation_hash" : "sha256:4e5f0ed6d1451940364fa4e719d0834ddd180acd3c71447dac20368631cc6e88",
+  "hash_scope" : "generated_files",
+  "generated_files" : [ "/Users/priyanshu/work/sotto/wt/main/.worktrees/coder/SottoTests/Generated/GeneratedAcceptanceTests.swift" ]
+}

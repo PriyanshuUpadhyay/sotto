@@ -32,10 +32,4 @@ final class EnhancementProviderTests: XCTestCase {
     func test_availabilityDescription_neverNamesMLX() {
         XCTAssertFalse(AFMProvider.availabilityDescription().contains("MLX"))
     }
-
-    private func isolatedDefaults() -> UserDefaults {
-        let suite = "EnhancementProviderTests.\(UUID().uuidString)"
-        addTeardownBlock { UserDefaults.standard.removePersistentDomain(forName: suite) }
-        return UserDefaults(suiteName: suite)!
-    }
 }

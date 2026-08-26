@@ -6,15 +6,38 @@ import SwiftData
 enum StepError: Error, CustomStringConvertible {
     case failed(String)
     case skipped(String)
+    /// No handler matches the step text at all.
     case undefined(String)
+    /// A handler matched, but the step names a value this project does not know.
+    case unknown(String)
 
     var description: String {
         switch self {
-        case .failed(let why):    return why
-        case .skipped(let why):   return "skipped: \(why)"
+        case .failed(let why):     return why
+        case .skipped(let why):    return "skipped: \(why)"
         case .undefined(let text): return "no step handler matches: \(text)"
+        case .unknown(let what):   return "unknown \(what)"
         }
     }
+}
+
+/// Unwraps something an earlier step was supposed to produce. Its absence is a
+/// defect in the scenario's step order, so it fails.
+private func required<T>(_ value: T?, orFail why: String) throws -> T {
+    guard let value else { throw StepError.failed(why) }
+    return value
+}
+
+/// Unwraps a manifest fact the probes may not have been able to gather. Its
+/// absence is missing evidence, so it skips rather than passing.
+private func required<T>(_ value: T?, orSkip why: String) throws -> T {
+    guard let value else { throw StepError.skipped(why) }
+    return value
+}
+
+/// Fails the scenario with `why` unless the asserted condition holds.
+private func expect(_ condition: Bool, orFail why: String) throws {
+    guard condition else { throw StepError.failed(why) }
 }
 
 /// Project step handlers.
@@ -44,12 +67,9 @@ enum AcceptanceSteps {
         }),
 
         ("^the tab shows the control (.+)$", { args, world in
-            guard let tab = world.settingsTab else {
-                throw StepError.failed("no settings tab was opened")
-            }
-            guard try tabShowsControl(tab: tab, control: args[0]) else {
-                throw StepError.failed("the \(tab) tab does not show \(args[0])")
-            }
+            let tab = try required(world.settingsTab, orFail: "no settings tab was opened")
+            try expect(try tabShowsControl(tab: tab, control: args[0]),
+                       orFail: "the \(tab) tab does not show \(args[0])")
         }),
 
         // MARK: Filler words
@@ -67,9 +87,7 @@ enum AcceptanceSteps {
         }),
 
         ("^the transcript is delivered$", { _, world in
-            guard let spoken = world.spokenTranscript else {
-                throw StepError.failed("no dictated audio was set up")
-            }
+            let spoken = try required(world.spokenTranscript, orFail: "no dictated audio was set up")
             world.deliveredTranscript = TranscriptionOutputFilter.removingFillerWords(
                 spoken,
                 enabled: world.fillerRemovalEnabled,
@@ -78,46 +96,33 @@ enum AcceptanceSteps {
         }),
 
         ("^the transcript (omits|keeps) the word (.+)$", { args, world in
-            guard let delivered = world.deliveredTranscript else {
-                throw StepError.failed("no transcript was delivered")
-            }
+            let delivered = try required(world.deliveredTranscript, orFail: "no transcript was delivered")
             let present = delivered.range(of: "\\b\(NSRegularExpression.escapedPattern(for: args[1]))\\b",
                                           options: [.regularExpression, .caseInsensitive]) != nil
-            let shouldKeep = (args[0] == "keeps")
-            guard present == shouldKeep else {
-                throw StepError.failed("expected the transcript to \(args[0]) \"\(args[1])\"; got \"\(delivered)\"")
-            }
+            try expect(present == (args[0] == "keeps"),
+                       orFail: "expected the transcript to \(args[0]) \"\(args[1])\"; got \"\(delivered)\"")
         }),
 
         // MARK: Documented platform
 
         ("^I read the documented minimum macOS version$", { _, world in
             let documented = world.manifest.documentedMinimumMacOS
-            guard documented.count == 1, let only = documented.first else {
-                throw StepError.failed("the docs must state exactly one minimum macOS version; found \(documented)")
-            }
-            world.documentedMinimumMacOS = only
+            try expect(documented.count == 1,
+                       orFail: "the docs must state exactly one minimum macOS version; found \(documented)")
+            world.documentedMinimumMacOS = documented.first
         }),
 
         ("^it equals the build setting MACOSX_DEPLOYMENT_TARGET$", { _, world in
-            guard let documented = world.documentedMinimumMacOS else {
-                throw StepError.failed("the documented minimum macOS version was not read")
-            }
-            guard let target = world.manifest.deploymentTarget else {
-                throw StepError.skipped("xcodebuild did not report MACOSX_DEPLOYMENT_TARGET")
-            }
-            guard documented == target else {
-                throw StepError.failed("docs say \(documented) but MACOSX_DEPLOYMENT_TARGET is \(target)")
-            }
+            let documented = try required(world.documentedMinimumMacOS, orFail: unreadDocumentedVersion)
+            let target = try required(world.manifest.deploymentTarget,
+                                      orSkip: "xcodebuild did not report MACOSX_DEPLOYMENT_TARGET")
+            try expect(documented == target,
+                       orFail: "docs say \(documented) but MACOSX_DEPLOYMENT_TARGET is \(target)")
         }),
 
         ("^it equals (.+)$", { args, world in
-            guard let documented = world.documentedMinimumMacOS else {
-                throw StepError.failed("the documented minimum macOS version was not read")
-            }
-            guard documented == args[0] else {
-                throw StepError.failed("docs say \(documented), expected \(args[0])")
-            }
+            let documented = try required(world.documentedMinimumMacOS, orFail: unreadDocumentedVersion)
+            try expect(documented == args[0], orFail: "docs say \(documented), expected \(args[0])")
         }),
 
         // MARK: Launch gate
@@ -134,13 +139,9 @@ enum AcceptanceSteps {
         }),
 
         ("^the launch result is (.+)$", { args, world in
-            guard let actual = world.launchOutcome else {
-                throw StepError.failed("the app was not launched")
-            }
+            let actual = try required(world.launchOutcome, orFail: "the app was not launched")
             let expected = try launchOutcome(named: args[0])
-            guard actual == expected else {
-                throw StepError.failed("expected \(args[0]); got \(actual)")
-            }
+            try expect(actual == expected, orFail: "expected \(args[0]); got \(actual)")
         }),
 
         // MARK: VoiceOver
@@ -150,15 +151,12 @@ enum AcceptanceSteps {
         }),
 
         ("^VoiceOver announces a non-empty label for that control$", { _, world in
-            guard let control = world.focusedControl else {
-                throw StepError.failed("no control was focused")
-            }
-            guard let label = voiceOverLabel(forControl: control) else {
-                throw StepError.failed("\"\(control)\" is not a reachable control in this app, so VoiceOver has nothing to announce")
-            }
-            guard !label.isEmpty else {
-                throw StepError.failed("\"\(control)\" announces an empty label")
-            }
+            let control = try required(world.focusedControl, orFail: "no control was focused")
+            let label = try required(
+                voiceOverLabel(forControl: control),
+                orFail: "\"\(control)\" is not a reachable control in this app, so VoiceOver has nothing to announce"
+            )
+            try expect(!label.isEmpty, orFail: "\"\(control)\" announces an empty label")
         }),
 
         // MARK: Appearance
@@ -172,61 +170,44 @@ enum AcceptanceSteps {
         }),
 
         ("^I open the Sotto window$", { _, world in
-            guard let system = world.systemAppearance, let preference = world.appearancePreference else {
-                throw StepError.failed("appearance inputs were not set up")
-            }
+            let system = try required(world.systemAppearance, orFail: missingAppearanceInputs)
+            let preference = try required(world.appearancePreference, orFail: missingAppearanceInputs)
             let choice = try appearanceChoice(named: preference)
             world.renderedAppearance = choice.colorScheme.map { $0 == .dark ? "dark" : "light" } ?? system
         }),
 
         ("^the window renders in (.+)$", { args, world in
-            guard let rendered = world.renderedAppearance else {
-                throw StepError.failed("the window was not opened")
-            }
-            guard rendered == args[0] else {
-                throw StepError.failed("expected \(args[0]); rendered \(rendered)")
-            }
+            let rendered = try required(world.renderedAppearance, orFail: "the window was not opened")
+            try expect(rendered == args[0], orFail: "expected \(args[0]); rendered \(rendered)")
         }),
 
         // MARK: Build artifacts
 
         ("^the build completes$", { _, world in
-            guard world.manifest.appBundlePath != nil else {
-                throw StepError.skipped("no built app bundle to inspect")
-            }
+            _ = try required(world.manifest.appBundlePath, orSkip: "no built app bundle to inspect")
         }),
 
         ("^no Swift source file declares the type (.+)$", { args, world in
-            guard !world.manifest.declaredSwiftTypes.contains(args[0]) else {
-                throw StepError.failed("\(args[0]) is still declared in the Swift sources")
-            }
+            try expect(!world.manifest.declaresSwiftType(args[0]),
+                       orFail: "\(args[0]) is still declared in the Swift sources")
         }),
 
         ("^the shipped binary exports no symbol for (.+)$", { args, world in
-            guard let symbols = world.manifest.binarySymbols else {
-                throw StepError.skipped("no shipped binary to inspect")
-            }
-            guard !symbols.contains(where: { $0.contains(args[0]) }) else {
-                throw StepError.failed("the binary still carries a symbol for \(args[0])")
-            }
+            let exported = try required(world.manifest.binaryExportsSymbol(for: args[0]),
+                                        orSkip: "no shipped binary to inspect")
+            try expect(!exported, orFail: "the binary still carries a symbol for \(args[0])")
         }),
 
         ("^the app bundle contains no resource named (.+)$", { args, world in
-            guard let resources = world.manifest.bundleResources else {
-                throw StepError.skipped("no app bundle to inspect")
-            }
-            guard !resources.contains(args[0]) else {
-                throw StepError.failed("the app bundle still ships \(args[0])")
-            }
+            let shipped = try required(world.manifest.bundleShipsResource(named: args[0]),
+                                       orSkip: "no app bundle to inspect")
+            try expect(!shipped, orFail: "the app bundle still ships \(args[0])")
         }),
 
         ("^the build resolves no package dependency named (.+)$", { args, world in
-            guard let packages = world.manifest.resolvedPackages else {
-                throw StepError.skipped("no resolved package list to inspect")
-            }
-            guard !packages.contains(where: { $0.caseInsensitiveCompare(args[0]) == .orderedSame }) else {
-                throw StepError.failed("the build still resolves \(args[0])")
-            }
+            let resolved = try required(world.manifest.buildResolvesPackage(named: args[0]),
+                                        orSkip: "no resolved package list to inspect")
+            try expect(!resolved, orFail: "the build still resolves \(args[0])")
         }),
 
         // MARK: Enhancement provider
@@ -240,27 +221,17 @@ enum AcceptanceSteps {
         }),
 
         ("^the enhancement runs on the (.+) provider$", { args, world in
-            guard let provider = world.enhancementProvider else {
-                throw StepError.failed("no transcript was enhanced")
-            }
+            let provider = try required(world.enhancementProvider, orFail: "no transcript was enhanced")
             let expected = try providerNamed(args[0])
-            guard provider == expected else {
-                throw StepError.failed("expected \(args[0]); ran on \(provider)")
-            }
+            try expect(provider == expected, orFail: "expected \(args[0]); ran on \(provider)")
         }),
 
         // MARK: Runtime budgets
 
         ("^the installed app bundle is smaller than (\\d+) megabytes$", { args, world in
-            guard let sizeMB = world.manifest.appBundleSizeMB else {
-                throw StepError.skipped("no app bundle to measure")
-            }
-            guard let budget = Int(args[0]) else {
-                throw StepError.failed("unreadable budget \(args[0])")
-            }
-            guard sizeMB < budget else {
-                throw StepError.failed("app bundle is \(sizeMB) MB, budget is \(budget) MB")
-            }
+            let sizeMB = try required(world.manifest.appBundleSizeMB, orSkip: "no app bundle to measure")
+            let budget = try required(Int(args[0]), orFail: "unreadable budget \(args[0])")
+            try expect(sizeMB < budget, orFail: "app bundle is \(sizeMB) MB, budget is \(budget) MB")
         }),
 
         // MARK: Pipeline latency
@@ -311,6 +282,13 @@ enum AcceptanceSteps {
          }),
     ]
 
+    // MARK: - Step-order failure reasons
+    //
+    // Named because more than one step reports the same missing precondition.
+
+    private static let unreadDocumentedVersion = "the documented minimum macOS version was not read"
+    private static let missingAppearanceInputs = "appearance inputs were not set up"
+
     // MARK: - Lookups
 
     private static func tabShowsControl(tab: String, control: String) throws -> Bool {
@@ -325,7 +303,7 @@ enum AcceptanceSteps {
         case ("General", "device priority list"):
             return GeneralTab.renderedSections.contains(.audioInput)
         default:
-            throw StepError.undefined("unknown control \"\(control)\" for the \(tab) tab")
+            throw StepError.unknown("control \"\(control)\" for the \(tab) tab")
         }
     }
 
@@ -370,7 +348,7 @@ enum AcceptanceSteps {
         switch text {
         case "opens its menu bar item":          return .opensMenuBarItem
         case "reports an unsupported macOS version": return .unsupportedMacOSVersion
-        default: throw StepError.undefined("unknown launch result \"\(text)\"")
+        default: throw StepError.unknown("launch result \"\(text)\"")
         }
     }
 
@@ -379,14 +357,14 @@ enum AcceptanceSteps {
         case "follow system": return .system
         case "light":         return .light
         case "dark":          return .dark
-        default: throw StepError.undefined("unknown appearance preference \"\(text)\"")
+        default: throw StepError.unknown("appearance preference \"\(text)\"")
         }
     }
 
     private static func providerNamed(_ text: String) throws -> AIProvider {
         switch text {
         case "AppleFoundation": return .foundationModels
-        default: throw StepError.undefined("unknown provider \"\(text)\"")
+        default: throw StepError.unknown("provider \"\(text)\"")
         }
     }
 }

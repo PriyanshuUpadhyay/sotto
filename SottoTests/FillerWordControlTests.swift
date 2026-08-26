@@ -93,9 +93,6 @@ final class FillerWordControlTests: XCTestCase {
 
     /// Isolated defaults domain so list edits never touch the real one.
     private func makeManager(fillerWords: [String]) -> FillerWordManager {
-        let suite = "FillerWordControlTests.\(UUID().uuidString)"
-        let defaults = UserDefaults(suiteName: suite)!
-        addTeardownBlock { UserDefaults.standard.removePersistentDomain(forName: suite) }
-        return FillerWordManager(defaults: defaults, fillerWords: fillerWords)
+        FillerWordManager(defaults: isolatedDefaults(), fillerWords: fillerWords)
     }
 }

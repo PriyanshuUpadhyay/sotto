@@ -1,3 +1,7 @@
+# acceptance-mutation-manifest-begin
+# {"version":1,"tested_at":"2026-08-26T11:23:39.469396Z","feature_name":"Unreachable Code Removal","feature_path":"features/unreachable_code.feature","background_hash":"9a747fa73d5caf245f49179124c484af9e3344264d3e6ceb71f7d7b77714eda2","implementation_hash":"sha256:3ad96575663e30f416bca8094f290071d75caef054895808ea217ba4858d7fc8","scenarios":[{"index":4,"name":"Unreachable Code Removal 05","scenario_hash":"40685d4d577105b3dfce80354438da07fd02adbd2950047e4ad3299762b3a73b","mutation_count":6,"result":{"Total":6,"Killed":6,"Survived":0,"Errors":0},"tested_at":"2026-08-26T11:23:39.469396Z"}]}
+# acceptance-mutation-manifest-end
+
 Feature: Unreachable Code Removal
 
 Background:
