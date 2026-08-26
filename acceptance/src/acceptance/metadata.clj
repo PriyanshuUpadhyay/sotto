@@ -41,5 +41,5 @@
    :generated_files (mapv #(repo-relative repo-root %) generated-files)})
 
 ;; clj-mutate-manifest-begin
-;; {:version 1, :tested-at "2026-08-26T16:56:14.016367+05:30", :module-hash "-2101357853", :forms [{:id "form/0/ns", :kind "ns", :line 1, :end-line nil, :hash "461422444"} {:id "defn/metadata-name", :kind "defn", :line 11, :end-line nil, :hash "-786815352"} {:id "defn/metadata", :kind "defn", :line 21, :end-line nil, :hash "-1171193581"}]}
+;; {:version 1, :tested-at "2026-08-26T17:25:21.596726+05:30", :module-hash "1828720474", :forms [{:id "form/0/ns", :kind "ns", :line 1, :end-line nil, :hash "461422444"} {:id "defn/metadata-name", :kind "defn", :line 11, :end-line nil, :hash "-786815352"} {:id "defn/repo-relative", :kind "defn", :line 21, :end-line nil, :hash "1583563624"} {:id "defn/metadata", :kind "defn", :line 31, :end-line nil, :hash "-51243488"}]}
 ;; clj-mutate-manifest-end

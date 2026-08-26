@@ -4,10 +4,14 @@ import os
 struct TranscriptionOutputFilter {
     private static let logger = Logger(subsystem: OSLogSubsystems.app, category: "TranscriptionOutputFilter")
 
+    // `[\s\S]` rather than `.`: an engine can break a bracketed aside across
+    // lines, and `.` stops at the break. The whitespace tidy that runs after
+    // these would then join the halves back into one line, leaving the aside in
+    // the transcript that this pass was supposed to strip.
     private static let hallucinationPatterns = [
-        #"\[.*?\]"#,     // []
-        #"\(.*?\)"#,     // ()
-        #"\{.*?\}"#      // {}
+        #"\[[\s\S]*?\]"#,     // []
+        #"\([\s\S]*?\)"#,     // ()
+        #"\{[\s\S]*?\}"#      // {}
     ]
 
     /// Strips the engine's hallucinations, drops the filler words, and tidies

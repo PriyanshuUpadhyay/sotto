@@ -1,5 +1,5 @@
 # acceptance-mutation-manifest-begin
-# {"version":1,"tested_at":"2026-08-26T11:18:13.821432Z","feature_name":"Runtime Budgets","feature_path":"features/runtime_budgets.feature","background_hash":"d36dae0ec65c955c3469ee55024654b48fe19c0f38e1006bc7ba43b61f80577f","implementation_hash":"sha256:3ad96575663e30f416bca8094f290071d75caef054895808ea217ba4858d7fc8","scenarios":[]}
+# {"version":1,"tested_at":"2026-08-26T12:12:36.524229Z","feature_name":"Runtime Budgets","feature_path":"features/runtime_budgets.feature","background_hash":"d36dae0ec65c955c3469ee55024654b48fe19c0f38e1006bc7ba43b61f80577f","implementation_hash":"sha256:d55a66dd75b364fefe4822c3c0d097c27cf9f31038d2741bf647d015b063e8e7","scenarios":[]}
 # acceptance-mutation-manifest-end
 
 Feature: Runtime Budgets

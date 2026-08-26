@@ -42,16 +42,15 @@ final class TranscriptionOutputFilterTests: XCTestCase {
         XCTAssertEqual(clean("a [one] keep [two] b"), "a keep b")
     }
 
-    /// Characterizes a gap rather than blessing it: the bracket patterns use
-    /// `.`, which stops at a line break, but the whitespace tidy that runs
-    /// after them collapses a run containing that break into one space. So a
-    /// bracketed run split across lines survives the pass that should have
-    /// removed it, and cleaning the result again removes it. The tag patterns
-    /// use `[\s\S]` and do not have this gap.
-    func testKeepsABracketedRunThatIsSplitAcrossLines() {
-        let once = clean("keep [noise \n here] this")
-        XCTAssertEqual(once, "keep [noise here] this")
-        XCTAssertEqual(clean(once), "keep this", "a second pass removes what the first could not")
+    /// An engine can break a bracketed aside across lines. The patterns use
+    /// `[\s\S]`, like the tag patterns, so one pass removes it — otherwise the
+    /// whitespace tidy would rejoin the halves and leave the aside behind.
+    func testRemovesABracketedRunThatIsSplitAcrossLines() {
+        XCTAssertEqual(clean("keep [noise \n here] this"), "keep this")
+    }
+
+    func testRemovesEachOfTwoBracketedRunsSeparatedByALineBreak() {
+        XCTAssertEqual(clean("a [one]\nkeep\n[two] b"), "a keep b")
     }
 
     func testKeepsAnUnclosedBracket() {

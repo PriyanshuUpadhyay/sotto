@@ -32,20 +32,10 @@ final class EnhancementInputPropertyTests: XCTestCase {
         Case(text: transcripts.generate(&rng), fillerWords: fillerLists.generate(&rng))
     }
 
-    /// The bracket patterns use `.`, which does not cross a line break, while
-    /// the whitespace tidy that runs after them collapses a run containing
-    /// that break into one space. So a bracketed run split across lines
-    /// survives one pass and is stripped by the next, and idempotence only
-    /// holds within one line. `TranscriptionOutputFilterTests` pins that gap.
-    private static let singleLineCases = Gen<Case> { rng in
-        Case(text: transcripts.generate(&rng).replacingOccurrences(of: "\n", with: " "),
-             fillerWords: fillerLists.generate(&rng))
-    }
-
     // MARK: - cleaning
 
-    func test_cleaning_isIdempotentWithinOneLine() {
-        forAll(Self.singleLineCases, "cleaning an already cleaned single-line transcript changes nothing") { testCase in
+    func test_cleaning_isIdempotent() {
+        forAll(Self.cases, "cleaning an already cleaned transcript changes nothing") { testCase in
             let once = TranscriptionOutputFilter.cleaning(
                 testCase.text, removeFillerWords: true, fillerWords: testCase.fillerWords
             )
