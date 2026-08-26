@@ -26,8 +26,8 @@ Scenario: Pipeline Latency 02
 
   Examples:
     | transcript_chars | prompt_budget_chars |
-    | 136              | 1500                |
-    | 1540             | 1500                |
+    | 136              | 5200                |
+    | 1540             | 5200                |
 
 # Pipeline Latency 03
 Scenario: Pipeline Latency 03
