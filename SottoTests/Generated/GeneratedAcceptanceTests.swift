@@ -314,7 +314,7 @@ final class Pipeline_LatencyAcceptanceTests: XCTestCase {
             scenario: "Pipeline Latency 02",
             steps: [
                 "the app enhances a transcript of 136 characters",
-                "the instruction prompt holds at most 1500 characters"
+                "the instruction prompt holds at most 5200 characters"
             ]
         )
     }
@@ -325,7 +325,7 @@ final class Pipeline_LatencyAcceptanceTests: XCTestCase {
             scenario: "Pipeline Latency 02",
             steps: [
                 "the app enhances a transcript of 1540 characters",
-                "the instruction prompt holds at most 1500 characters"
+                "the instruction prompt holds at most 5200 characters"
             ]
         )
     }
