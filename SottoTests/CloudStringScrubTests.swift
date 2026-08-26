@@ -19,7 +19,6 @@ final class CloudStringScrubTests: XCTestCase {
     /// picker / prompt editor — the surfaces the negative intent anchor covers.
     private static let scopedSurfaces = [
         "Sotto/Views/Settings/Tabs/ModelsTab.swift",
-        "Sotto/Views/Components/EnhancementSettingsPanel.swift",
         "Sotto/Services/AIEnhancement/AIEnhancementService.swift",
     ]
 

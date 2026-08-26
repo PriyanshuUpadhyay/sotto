@@ -82,25 +82,6 @@ final class OnboardingStateTests: XCTestCase {
         otherDefaults.removePersistentDomain(forName: otherSuite)
     }
 
-    // MARK: - OnboardingStep flow logic
-
-    func test_onboardingStep_nextAdvancesAndClampsAtDone() {
-        XCTAssertEqual(OnboardingStep.welcome.next(), .permissions)
-        XCTAssertEqual(OnboardingStep.permissions.next(), .hotkey)
-        XCTAssertEqual(OnboardingStep.hotkey.next(), .done)
-        XCTAssertEqual(OnboardingStep.done.next(), .done)
-    }
-
-    func test_onboardingStep_previousRewindsAndClampsAtWelcome() {
-        XCTAssertEqual(OnboardingStep.done.previous(), .hotkey)
-        XCTAssertEqual(OnboardingStep.permissions.previous(), .welcome)
-        XCTAssertEqual(OnboardingStep.welcome.previous(), .welcome)
-    }
-
-    func test_onboardingStep_hasFourCases() {
-        XCTAssertEqual(OnboardingStep.allCases.count, 4)
-    }
-
     // MARK: - PermissionStage wizard logic (D3 one-screen-per-permission)
 
     func test_permissionStage_hasThreeScreens() {

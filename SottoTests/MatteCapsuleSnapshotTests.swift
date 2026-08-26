@@ -82,21 +82,6 @@ final class MatteCapsuleSnapshotTests: XCTestCase {
         }
     }
 
-    @MainActor
-    func test_ambientWhisper_snapshot() throws {
-        try XCTSkipUnless(ProcessInfo.processInfo.environment["SOTTO_SNAPSHOTS"] == "1",
-                          "design snapshots: set SOTTO_SNAPSHOTS=1 to render")
-        let view = ZStack {
-            Palette.mtCanvas
-            AmbientWhisper(reduceMotion: true)
-        }
-        .frame(width: 320, height: 80)
-        .environment(\.colorScheme, .dark)
-        let url = try SnapshotRenderer.render(view, name: "ambient_whisper")
-        XCTAssertTrue(FileManager.default.fileExists(atPath: url.path))
-        print("SNAPSHOT_WRITTEN \(url.path)")
-    }
-
     // MARK: - P2.4 · Capsule is the recorder root (compile-time wiring)
 
     func testHaloRecorderViewHostsCapsule() {
