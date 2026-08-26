@@ -31,8 +31,12 @@
 (defn deployment-target
   "MACOSX_DEPLOYMENT_TARGET as xcodebuild resolves it for the Sotto target."
   []
+  ;; -derivedDataPath keeps the probe's cache inside the worktree; without it
+  ;; xcodebuild seeds ~/Library/Developer/Xcode/DerivedData on every run.
   (some->> (sh-out "xcodebuild" "-project" (path "Sotto.xcodeproj")
-                   "-target" "Sotto" "-showBuildSettings")
+                   "-scheme" "Sotto"
+                   "-derivedDataPath" (path ".local-build-test")
+                   "-showBuildSettings")
            str/split-lines
            (keep #(second (re-find #"MACOSX_DEPLOYMENT_TARGET\s*=\s*(\S+)" %)))
            first))
