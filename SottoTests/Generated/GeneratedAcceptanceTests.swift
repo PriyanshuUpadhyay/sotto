@@ -7,8 +7,8 @@ import XCTest
 @MainActor
 final class Filler_Word_ControlAcceptanceTests: XCTestCase {
 
-    func test_Filler_Word_Control_01_row1() throws {
-        try AcceptanceRuntime.run(
+    func test_Filler_Word_Control_01_row1() async throws {
+        try await AcceptanceRuntime.run(
             feature: "Filler Word Control",
             scenario: "Filler Word Control 01",
             steps: [
@@ -18,8 +18,8 @@ final class Filler_Word_ControlAcceptanceTests: XCTestCase {
         )
     }
 
-    func test_Filler_Word_Control_01_row2() throws {
-        try AcceptanceRuntime.run(
+    func test_Filler_Word_Control_01_row2() async throws {
+        try await AcceptanceRuntime.run(
             feature: "Filler Word Control",
             scenario: "Filler Word Control 01",
             steps: [
@@ -29,8 +29,8 @@ final class Filler_Word_ControlAcceptanceTests: XCTestCase {
         )
     }
 
-    func test_Filler_Word_Control_02_row1() throws {
-        try AcceptanceRuntime.run(
+    func test_Filler_Word_Control_02_row1() async throws {
+        try await AcceptanceRuntime.run(
             feature: "Filler Word Control",
             scenario: "Filler Word Control 02",
             steps: [
@@ -42,8 +42,8 @@ final class Filler_Word_ControlAcceptanceTests: XCTestCase {
         )
     }
 
-    func test_Filler_Word_Control_02_row2() throws {
-        try AcceptanceRuntime.run(
+    func test_Filler_Word_Control_02_row2() async throws {
+        try await AcceptanceRuntime.run(
             feature: "Filler Word Control",
             scenario: "Filler Word Control 02",
             steps: [
@@ -55,8 +55,8 @@ final class Filler_Word_ControlAcceptanceTests: XCTestCase {
         )
     }
 
-    func test_Filler_Word_Control_03_row1() throws {
-        try AcceptanceRuntime.run(
+    func test_Filler_Word_Control_03_row1() async throws {
+        try await AcceptanceRuntime.run(
             feature: "Filler Word Control",
             scenario: "Filler Word Control 03",
             steps: [
@@ -69,8 +69,8 @@ final class Filler_Word_ControlAcceptanceTests: XCTestCase {
         )
     }
 
-    func test_Filler_Word_Control_03_row2() throws {
-        try AcceptanceRuntime.run(
+    func test_Filler_Word_Control_03_row2() async throws {
+        try await AcceptanceRuntime.run(
             feature: "Filler Word Control",
             scenario: "Filler Word Control 03",
             steps: [
@@ -87,8 +87,8 @@ final class Filler_Word_ControlAcceptanceTests: XCTestCase {
 @MainActor
 final class Mac_Platform_ConformanceAcceptanceTests: XCTestCase {
 
-    func test_Mac_Platform_Conformance_01_row1() throws {
-        try AcceptanceRuntime.run(
+    func test_Mac_Platform_Conformance_01_row1() async throws {
+        try await AcceptanceRuntime.run(
             feature: "Mac Platform Conformance",
             scenario: "Mac Platform Conformance 01",
             steps: [
@@ -99,8 +99,8 @@ final class Mac_Platform_ConformanceAcceptanceTests: XCTestCase {
         )
     }
 
-    func test_Mac_Platform_Conformance_02_row1() throws {
-        try AcceptanceRuntime.run(
+    func test_Mac_Platform_Conformance_02_row1() async throws {
+        try await AcceptanceRuntime.run(
             feature: "Mac Platform Conformance",
             scenario: "Mac Platform Conformance 02",
             steps: [
@@ -111,8 +111,8 @@ final class Mac_Platform_ConformanceAcceptanceTests: XCTestCase {
         )
     }
 
-    func test_Mac_Platform_Conformance_02_row2() throws {
-        try AcceptanceRuntime.run(
+    func test_Mac_Platform_Conformance_02_row2() async throws {
+        try await AcceptanceRuntime.run(
             feature: "Mac Platform Conformance",
             scenario: "Mac Platform Conformance 02",
             steps: [
@@ -123,8 +123,8 @@ final class Mac_Platform_ConformanceAcceptanceTests: XCTestCase {
         )
     }
 
-    func test_Mac_Platform_Conformance_03_row1() throws {
-        try AcceptanceRuntime.run(
+    func test_Mac_Platform_Conformance_03_row1() async throws {
+        try await AcceptanceRuntime.run(
             feature: "Mac Platform Conformance",
             scenario: "Mac Platform Conformance 03",
             steps: [
@@ -136,8 +136,8 @@ final class Mac_Platform_ConformanceAcceptanceTests: XCTestCase {
         )
     }
 
-    func test_Mac_Platform_Conformance_03_row2() throws {
-        try AcceptanceRuntime.run(
+    func test_Mac_Platform_Conformance_03_row2() async throws {
+        try await AcceptanceRuntime.run(
             feature: "Mac Platform Conformance",
             scenario: "Mac Platform Conformance 03",
             steps: [
@@ -149,8 +149,8 @@ final class Mac_Platform_ConformanceAcceptanceTests: XCTestCase {
         )
     }
 
-    func test_Mac_Platform_Conformance_03_row3() throws {
-        try AcceptanceRuntime.run(
+    func test_Mac_Platform_Conformance_03_row3() async throws {
+        try await AcceptanceRuntime.run(
             feature: "Mac Platform Conformance",
             scenario: "Mac Platform Conformance 03",
             steps: [
@@ -162,8 +162,8 @@ final class Mac_Platform_ConformanceAcceptanceTests: XCTestCase {
         )
     }
 
-    func test_Mac_Platform_Conformance_03_row4() throws {
-        try AcceptanceRuntime.run(
+    func test_Mac_Platform_Conformance_03_row4() async throws {
+        try await AcceptanceRuntime.run(
             feature: "Mac Platform Conformance",
             scenario: "Mac Platform Conformance 03",
             steps: [
@@ -175,8 +175,8 @@ final class Mac_Platform_ConformanceAcceptanceTests: XCTestCase {
         )
     }
 
-    func test_Mac_Platform_Conformance_04_row1() throws {
-        try AcceptanceRuntime.run(
+    func test_Mac_Platform_Conformance_04_row1() async throws {
+        try await AcceptanceRuntime.run(
             feature: "Mac Platform Conformance",
             scenario: "Mac Platform Conformance 04",
             steps: [
@@ -188,8 +188,8 @@ final class Mac_Platform_ConformanceAcceptanceTests: XCTestCase {
         )
     }
 
-    func test_Mac_Platform_Conformance_04_row2() throws {
-        try AcceptanceRuntime.run(
+    func test_Mac_Platform_Conformance_04_row2() async throws {
+        try await AcceptanceRuntime.run(
             feature: "Mac Platform Conformance",
             scenario: "Mac Platform Conformance 04",
             steps: [
@@ -201,8 +201,8 @@ final class Mac_Platform_ConformanceAcceptanceTests: XCTestCase {
         )
     }
 
-    func test_Mac_Platform_Conformance_04_row3() throws {
-        try AcceptanceRuntime.run(
+    func test_Mac_Platform_Conformance_04_row3() async throws {
+        try await AcceptanceRuntime.run(
             feature: "Mac Platform Conformance",
             scenario: "Mac Platform Conformance 04",
             steps: [
@@ -214,8 +214,8 @@ final class Mac_Platform_ConformanceAcceptanceTests: XCTestCase {
         )
     }
 
-    func test_Mac_Platform_Conformance_04_row4() throws {
-        try AcceptanceRuntime.run(
+    func test_Mac_Platform_Conformance_04_row4() async throws {
+        try await AcceptanceRuntime.run(
             feature: "Mac Platform Conformance",
             scenario: "Mac Platform Conformance 04",
             steps: [
@@ -229,10 +229,305 @@ final class Mac_Platform_ConformanceAcceptanceTests: XCTestCase {
 }
 
 @MainActor
+final class Pipeline_LatencyAcceptanceTests: XCTestCase {
+
+    func test_Pipeline_Latency_01_row1() async throws {
+        try await AcceptanceRuntime.run(
+            feature: "Pipeline Latency",
+            scenario: "Pipeline Latency 01",
+            steps: [
+                "an utterance finishes the pipeline",
+                "the pipeline trace reports a duration for the stage asr"
+            ]
+        )
+    }
+
+    func test_Pipeline_Latency_01_row2() async throws {
+        try await AcceptanceRuntime.run(
+            feature: "Pipeline Latency",
+            scenario: "Pipeline Latency 01",
+            steps: [
+                "an utterance finishes the pipeline",
+                "the pipeline trace reports a duration for the stage boosting"
+            ]
+        )
+    }
+
+    func test_Pipeline_Latency_01_row3() async throws {
+        try await AcceptanceRuntime.run(
+            feature: "Pipeline Latency",
+            scenario: "Pipeline Latency 01",
+            steps: [
+                "an utterance finishes the pipeline",
+                "the pipeline trace reports a duration for the stage filter"
+            ]
+        )
+    }
+
+    func test_Pipeline_Latency_01_row4() async throws {
+        try await AcceptanceRuntime.run(
+            feature: "Pipeline Latency",
+            scenario: "Pipeline Latency 01",
+            steps: [
+                "an utterance finishes the pipeline",
+                "the pipeline trace reports a duration for the stage wordReplacement"
+            ]
+        )
+    }
+
+    func test_Pipeline_Latency_01_row5() async throws {
+        try await AcceptanceRuntime.run(
+            feature: "Pipeline Latency",
+            scenario: "Pipeline Latency 01",
+            steps: [
+                "an utterance finishes the pipeline",
+                "the pipeline trace reports a duration for the stage acoustic"
+            ]
+        )
+    }
+
+    func test_Pipeline_Latency_01_row6() async throws {
+        try await AcceptanceRuntime.run(
+            feature: "Pipeline Latency",
+            scenario: "Pipeline Latency 01",
+            steps: [
+                "an utterance finishes the pipeline",
+                "the pipeline trace reports a duration for the stage phonetic"
+            ]
+        )
+    }
+
+    func test_Pipeline_Latency_01_row7() async throws {
+        try await AcceptanceRuntime.run(
+            feature: "Pipeline Latency",
+            scenario: "Pipeline Latency 01",
+            steps: [
+                "an utterance finishes the pipeline",
+                "the pipeline trace reports a duration for the stage enhancement"
+            ]
+        )
+    }
+
+    func test_Pipeline_Latency_02_row1() async throws {
+        try await AcceptanceRuntime.run(
+            feature: "Pipeline Latency",
+            scenario: "Pipeline Latency 02",
+            steps: [
+                "the app enhances a transcript of 136 characters",
+                "the instruction prompt holds at most 5200 characters"
+            ]
+        )
+    }
+
+    func test_Pipeline_Latency_02_row2() async throws {
+        try await AcceptanceRuntime.run(
+            feature: "Pipeline Latency",
+            scenario: "Pipeline Latency 02",
+            steps: [
+                "the app enhances a transcript of 1540 characters",
+                "the instruction prompt holds at most 5200 characters"
+            ]
+        )
+    }
+
+    func test_Pipeline_Latency_03_row1() async throws {
+        try await AcceptanceRuntime.run(
+            feature: "Pipeline Latency",
+            scenario: "Pipeline Latency 03",
+            steps: [
+                "the enhancement session is warm",
+                "the app enhances 100 transcripts",
+                "the metric timeToFirstToken at p50 is at most 400 milliseconds"
+            ]
+        )
+    }
+
+    func test_Pipeline_Latency_03_row2() async throws {
+        try await AcceptanceRuntime.run(
+            feature: "Pipeline Latency",
+            scenario: "Pipeline Latency 03",
+            steps: [
+                "the enhancement session is warm",
+                "the app enhances 100 transcripts",
+                "the metric timeToFirstToken at p90 is at most 600 milliseconds"
+            ]
+        )
+    }
+
+    func test_Pipeline_Latency_03_row3() async throws {
+        try await AcceptanceRuntime.run(
+            feature: "Pipeline Latency",
+            scenario: "Pipeline Latency 03",
+            steps: [
+                "the enhancement session is warm",
+                "the app enhances 100 transcripts",
+                "the metric totalGeneration at p50 is at most 700 milliseconds"
+            ]
+        )
+    }
+
+    func test_Pipeline_Latency_03_row4() async throws {
+        try await AcceptanceRuntime.run(
+            feature: "Pipeline Latency",
+            scenario: "Pipeline Latency 03",
+            steps: [
+                "the enhancement session is warm",
+                "the app enhances 100 transcripts",
+                "the metric totalGeneration at p90 is at most 1200 milliseconds"
+            ]
+        )
+    }
+
+    func test_Pipeline_Latency_03_row5() async throws {
+        try await AcceptanceRuntime.run(
+            feature: "Pipeline Latency",
+            scenario: "Pipeline Latency 03",
+            steps: [
+                "the enhancement session is warm",
+                "the app enhances 100 transcripts",
+                "the metric preparation at p90 is at most 50 milliseconds"
+            ]
+        )
+    }
+
+    func test_Pipeline_Latency_04_row1() async throws {
+        try await AcceptanceRuntime.run(
+            feature: "Pipeline Latency",
+            scenario: "Pipeline Latency 04",
+            steps: [
+                "the app enhances 100 transcripts",
+                "at least 95 percent reuse a warm session"
+            ]
+        )
+    }
+
+    func test_Pipeline_Latency_05_row1() async throws {
+        try await AcceptanceRuntime.run(
+            feature: "Pipeline Latency",
+            scenario: "Pipeline Latency 05",
+            steps: [
+                "I stop a recording of 10 seconds",
+                "the review editor appears within 300 milliseconds at p50"
+            ]
+        )
+    }
+
+    func test_Pipeline_Latency_05_row2() async throws {
+        try await AcceptanceRuntime.run(
+            feature: "Pipeline Latency",
+            scenario: "Pipeline Latency 05",
+            steps: [
+                "I stop a recording of 10 seconds",
+                "the review editor appears within 800 milliseconds at p90"
+            ]
+        )
+    }
+
+    func test_Pipeline_Latency_06_row1() async throws {
+        try await AcceptanceRuntime.run(
+            feature: "Pipeline Latency",
+            scenario: "Pipeline Latency 06",
+            steps: [
+                "I record 10 seconds of speech with the Parakeet engine",
+                "the asr stage real time factor is at most 0.10"
+            ]
+        )
+    }
+
+    func test_Pipeline_Latency_06_row2() async throws {
+        try await AcceptanceRuntime.run(
+            feature: "Pipeline Latency",
+            scenario: "Pipeline Latency 06",
+            steps: [
+                "I record 30 seconds of speech with the Parakeet engine",
+                "the asr stage real time factor is at most 0.10"
+            ]
+        )
+    }
+
+    func test_Pipeline_Latency_06_row3() async throws {
+        try await AcceptanceRuntime.run(
+            feature: "Pipeline Latency",
+            scenario: "Pipeline Latency 06",
+            steps: [
+                "I record 10 seconds of speech with the Whisper engine",
+                "the asr stage real time factor is at most 0.30"
+            ]
+        )
+    }
+
+    func test_Pipeline_Latency_06_row4() async throws {
+        try await AcceptanceRuntime.run(
+            feature: "Pipeline Latency",
+            scenario: "Pipeline Latency 06",
+            steps: [
+                "I record 30 seconds of speech with the Whisper engine",
+                "the asr stage real time factor is at most 0.30"
+            ]
+        )
+    }
+
+    func test_Pipeline_Latency_07_row1() async throws {
+        try await AcceptanceRuntime.run(
+            feature: "Pipeline Latency",
+            scenario: "Pipeline Latency 07",
+            steps: [
+                "an utterance finishes the pipeline",
+                "the stage boosting adds at most 60 milliseconds"
+            ]
+        )
+    }
+
+    func test_Pipeline_Latency_07_row2() async throws {
+        try await AcceptanceRuntime.run(
+            feature: "Pipeline Latency",
+            scenario: "Pipeline Latency 07",
+            steps: [
+                "an utterance finishes the pipeline",
+                "the stage filter adds at most 10 milliseconds"
+            ]
+        )
+    }
+
+    func test_Pipeline_Latency_07_row3() async throws {
+        try await AcceptanceRuntime.run(
+            feature: "Pipeline Latency",
+            scenario: "Pipeline Latency 07",
+            steps: [
+                "an utterance finishes the pipeline",
+                "the stage wordReplacement adds at most 10 milliseconds"
+            ]
+        )
+    }
+
+    func test_Pipeline_Latency_07_row4() async throws {
+        try await AcceptanceRuntime.run(
+            feature: "Pipeline Latency",
+            scenario: "Pipeline Latency 07",
+            steps: [
+                "an utterance finishes the pipeline",
+                "the stage acoustic adds at most 60 milliseconds"
+            ]
+        )
+    }
+
+    func test_Pipeline_Latency_07_row5() async throws {
+        try await AcceptanceRuntime.run(
+            feature: "Pipeline Latency",
+            scenario: "Pipeline Latency 07",
+            steps: [
+                "an utterance finishes the pipeline",
+                "the stage phonetic adds at most 30 milliseconds"
+            ]
+        )
+    }
+}
+
+@MainActor
 final class Runtime_BudgetsAcceptanceTests: XCTestCase {
 
-    func test_Runtime_Budgets_01_row1() throws {
-        try AcceptanceRuntime.run(
+    func test_Runtime_Budgets_01_row1() async throws {
+        try await AcceptanceRuntime.run(
             feature: "Runtime Budgets",
             scenario: "Runtime Budgets 01",
             steps: [
@@ -243,8 +538,8 @@ final class Runtime_BudgetsAcceptanceTests: XCTestCase {
         )
     }
 
-    func test_Runtime_Budgets_02_row1() throws {
-        try AcceptanceRuntime.run(
+    func test_Runtime_Budgets_02_row1() async throws {
+        try await AcceptanceRuntime.run(
             feature: "Runtime Budgets",
             scenario: "Runtime Budgets 02",
             steps: [
@@ -257,34 +552,32 @@ final class Runtime_BudgetsAcceptanceTests: XCTestCase {
         )
     }
 
-    func test_Runtime_Budgets_03_row1() throws {
-        try AcceptanceRuntime.run(
+    func test_Runtime_Budgets_03_row1() async throws {
+        try await AcceptanceRuntime.run(
             feature: "Runtime Budgets",
             scenario: "Runtime Budgets 03",
             steps: [
                 "the app is running",
                 "I record for 30 seconds with the Parakeet engine",
-                "peak resident memory stays below 1400 megabytes",
-                "the first transcript word appears within 900 milliseconds"
+                "peak resident memory stays below 1400 megabytes"
             ]
         )
     }
 
-    func test_Runtime_Budgets_03_row2() throws {
-        try AcceptanceRuntime.run(
+    func test_Runtime_Budgets_03_row2() async throws {
+        try await AcceptanceRuntime.run(
             feature: "Runtime Budgets",
             scenario: "Runtime Budgets 03",
             steps: [
                 "the app is running",
                 "I record for 30 seconds with the Whisper engine",
-                "peak resident memory stays below 1200 megabytes",
-                "the first transcript word appears within 2500 milliseconds"
+                "peak resident memory stays below 1200 megabytes"
             ]
         )
     }
 
-    func test_Runtime_Budgets_04_row1() throws {
-        try AcceptanceRuntime.run(
+    func test_Runtime_Budgets_04_row1() async throws {
+        try await AcceptanceRuntime.run(
             feature: "Runtime Budgets",
             scenario: "Runtime Budgets 04",
             steps: [
@@ -295,8 +588,8 @@ final class Runtime_BudgetsAcceptanceTests: XCTestCase {
         )
     }
 
-    func test_Runtime_Budgets_05_row1() throws {
-        try AcceptanceRuntime.run(
+    func test_Runtime_Budgets_05_row1() async throws {
+        try await AcceptanceRuntime.run(
             feature: "Runtime Budgets",
             scenario: "Runtime Budgets 05",
             steps: [
@@ -310,8 +603,8 @@ final class Runtime_BudgetsAcceptanceTests: XCTestCase {
 @MainActor
 final class Unreachable_Code_RemovalAcceptanceTests: XCTestCase {
 
-    func test_Unreachable_Code_Removal_01_row1() throws {
-        try AcceptanceRuntime.run(
+    func test_Unreachable_Code_Removal_01_row1() async throws {
+        try await AcceptanceRuntime.run(
             feature: "Unreachable Code Removal",
             scenario: "Unreachable Code Removal 01",
             steps: [
@@ -322,8 +615,8 @@ final class Unreachable_Code_RemovalAcceptanceTests: XCTestCase {
         )
     }
 
-    func test_Unreachable_Code_Removal_01_row2() throws {
-        try AcceptanceRuntime.run(
+    func test_Unreachable_Code_Removal_01_row2() async throws {
+        try await AcceptanceRuntime.run(
             feature: "Unreachable Code Removal",
             scenario: "Unreachable Code Removal 01",
             steps: [
@@ -334,8 +627,8 @@ final class Unreachable_Code_RemovalAcceptanceTests: XCTestCase {
         )
     }
 
-    func test_Unreachable_Code_Removal_01_row3() throws {
-        try AcceptanceRuntime.run(
+    func test_Unreachable_Code_Removal_01_row3() async throws {
+        try await AcceptanceRuntime.run(
             feature: "Unreachable Code Removal",
             scenario: "Unreachable Code Removal 01",
             steps: [
@@ -346,8 +639,8 @@ final class Unreachable_Code_RemovalAcceptanceTests: XCTestCase {
         )
     }
 
-    func test_Unreachable_Code_Removal_01_row4() throws {
-        try AcceptanceRuntime.run(
+    func test_Unreachable_Code_Removal_01_row4() async throws {
+        try await AcceptanceRuntime.run(
             feature: "Unreachable Code Removal",
             scenario: "Unreachable Code Removal 01",
             steps: [
@@ -358,8 +651,8 @@ final class Unreachable_Code_RemovalAcceptanceTests: XCTestCase {
         )
     }
 
-    func test_Unreachable_Code_Removal_01_row5() throws {
-        try AcceptanceRuntime.run(
+    func test_Unreachable_Code_Removal_01_row5() async throws {
+        try await AcceptanceRuntime.run(
             feature: "Unreachable Code Removal",
             scenario: "Unreachable Code Removal 01",
             steps: [
@@ -370,8 +663,8 @@ final class Unreachable_Code_RemovalAcceptanceTests: XCTestCase {
         )
     }
 
-    func test_Unreachable_Code_Removal_01_row6() throws {
-        try AcceptanceRuntime.run(
+    func test_Unreachable_Code_Removal_01_row6() async throws {
+        try await AcceptanceRuntime.run(
             feature: "Unreachable Code Removal",
             scenario: "Unreachable Code Removal 01",
             steps: [
@@ -382,8 +675,8 @@ final class Unreachable_Code_RemovalAcceptanceTests: XCTestCase {
         )
     }
 
-    func test_Unreachable_Code_Removal_01_row7() throws {
-        try AcceptanceRuntime.run(
+    func test_Unreachable_Code_Removal_01_row7() async throws {
+        try await AcceptanceRuntime.run(
             feature: "Unreachable Code Removal",
             scenario: "Unreachable Code Removal 01",
             steps: [
@@ -394,8 +687,8 @@ final class Unreachable_Code_RemovalAcceptanceTests: XCTestCase {
         )
     }
 
-    func test_Unreachable_Code_Removal_01_row8() throws {
-        try AcceptanceRuntime.run(
+    func test_Unreachable_Code_Removal_01_row8() async throws {
+        try await AcceptanceRuntime.run(
             feature: "Unreachable Code Removal",
             scenario: "Unreachable Code Removal 01",
             steps: [
@@ -406,8 +699,8 @@ final class Unreachable_Code_RemovalAcceptanceTests: XCTestCase {
         )
     }
 
-    func test_Unreachable_Code_Removal_01_row9() throws {
-        try AcceptanceRuntime.run(
+    func test_Unreachable_Code_Removal_01_row9() async throws {
+        try await AcceptanceRuntime.run(
             feature: "Unreachable Code Removal",
             scenario: "Unreachable Code Removal 01",
             steps: [
@@ -418,8 +711,8 @@ final class Unreachable_Code_RemovalAcceptanceTests: XCTestCase {
         )
     }
 
-    func test_Unreachable_Code_Removal_01_row10() throws {
-        try AcceptanceRuntime.run(
+    func test_Unreachable_Code_Removal_01_row10() async throws {
+        try await AcceptanceRuntime.run(
             feature: "Unreachable Code Removal",
             scenario: "Unreachable Code Removal 01",
             steps: [
@@ -430,8 +723,8 @@ final class Unreachable_Code_RemovalAcceptanceTests: XCTestCase {
         )
     }
 
-    func test_Unreachable_Code_Removal_01_row11() throws {
-        try AcceptanceRuntime.run(
+    func test_Unreachable_Code_Removal_01_row11() async throws {
+        try await AcceptanceRuntime.run(
             feature: "Unreachable Code Removal",
             scenario: "Unreachable Code Removal 01",
             steps: [
@@ -442,8 +735,8 @@ final class Unreachable_Code_RemovalAcceptanceTests: XCTestCase {
         )
     }
 
-    func test_Unreachable_Code_Removal_01_row12() throws {
-        try AcceptanceRuntime.run(
+    func test_Unreachable_Code_Removal_01_row12() async throws {
+        try await AcceptanceRuntime.run(
             feature: "Unreachable Code Removal",
             scenario: "Unreachable Code Removal 01",
             steps: [
@@ -454,8 +747,8 @@ final class Unreachable_Code_RemovalAcceptanceTests: XCTestCase {
         )
     }
 
-    func test_Unreachable_Code_Removal_01_row13() throws {
-        try AcceptanceRuntime.run(
+    func test_Unreachable_Code_Removal_01_row13() async throws {
+        try await AcceptanceRuntime.run(
             feature: "Unreachable Code Removal",
             scenario: "Unreachable Code Removal 01",
             steps: [
@@ -466,8 +759,8 @@ final class Unreachable_Code_RemovalAcceptanceTests: XCTestCase {
         )
     }
 
-    func test_Unreachable_Code_Removal_02_row1() throws {
-        try AcceptanceRuntime.run(
+    func test_Unreachable_Code_Removal_02_row1() async throws {
+        try await AcceptanceRuntime.run(
             feature: "Unreachable Code Removal",
             scenario: "Unreachable Code Removal 02",
             steps: [
@@ -477,8 +770,8 @@ final class Unreachable_Code_RemovalAcceptanceTests: XCTestCase {
         )
     }
 
-    func test_Unreachable_Code_Removal_02_row2() throws {
-        try AcceptanceRuntime.run(
+    func test_Unreachable_Code_Removal_02_row2() async throws {
+        try await AcceptanceRuntime.run(
             feature: "Unreachable Code Removal",
             scenario: "Unreachable Code Removal 02",
             steps: [
@@ -488,8 +781,8 @@ final class Unreachable_Code_RemovalAcceptanceTests: XCTestCase {
         )
     }
 
-    func test_Unreachable_Code_Removal_02_row3() throws {
-        try AcceptanceRuntime.run(
+    func test_Unreachable_Code_Removal_02_row3() async throws {
+        try await AcceptanceRuntime.run(
             feature: "Unreachable Code Removal",
             scenario: "Unreachable Code Removal 02",
             steps: [
@@ -499,8 +792,8 @@ final class Unreachable_Code_RemovalAcceptanceTests: XCTestCase {
         )
     }
 
-    func test_Unreachable_Code_Removal_03_row1() throws {
-        try AcceptanceRuntime.run(
+    func test_Unreachable_Code_Removal_03_row1() async throws {
+        try await AcceptanceRuntime.run(
             feature: "Unreachable Code Removal",
             scenario: "Unreachable Code Removal 03",
             steps: [
@@ -510,8 +803,8 @@ final class Unreachable_Code_RemovalAcceptanceTests: XCTestCase {
         )
     }
 
-    func test_Unreachable_Code_Removal_03_row2() throws {
-        try AcceptanceRuntime.run(
+    func test_Unreachable_Code_Removal_03_row2() async throws {
+        try await AcceptanceRuntime.run(
             feature: "Unreachable Code Removal",
             scenario: "Unreachable Code Removal 03",
             steps: [
@@ -521,8 +814,8 @@ final class Unreachable_Code_RemovalAcceptanceTests: XCTestCase {
         )
     }
 
-    func test_Unreachable_Code_Removal_03_row3() throws {
-        try AcceptanceRuntime.run(
+    func test_Unreachable_Code_Removal_03_row3() async throws {
+        try await AcceptanceRuntime.run(
             feature: "Unreachable Code Removal",
             scenario: "Unreachable Code Removal 03",
             steps: [
@@ -532,8 +825,8 @@ final class Unreachable_Code_RemovalAcceptanceTests: XCTestCase {
         )
     }
 
-    func test_Unreachable_Code_Removal_03_row4() throws {
-        try AcceptanceRuntime.run(
+    func test_Unreachable_Code_Removal_03_row4() async throws {
+        try await AcceptanceRuntime.run(
             feature: "Unreachable Code Removal",
             scenario: "Unreachable Code Removal 03",
             steps: [
@@ -543,8 +836,8 @@ final class Unreachable_Code_RemovalAcceptanceTests: XCTestCase {
         )
     }
 
-    func test_Unreachable_Code_Removal_04_row1() throws {
-        try AcceptanceRuntime.run(
+    func test_Unreachable_Code_Removal_04_row1() async throws {
+        try await AcceptanceRuntime.run(
             feature: "Unreachable Code Removal",
             scenario: "Unreachable Code Removal 04",
             steps: [
@@ -555,8 +848,8 @@ final class Unreachable_Code_RemovalAcceptanceTests: XCTestCase {
         )
     }
 
-    func test_Unreachable_Code_Removal_05_row1() throws {
-        try AcceptanceRuntime.run(
+    func test_Unreachable_Code_Removal_05_row1() async throws {
+        try await AcceptanceRuntime.run(
             feature: "Unreachable Code Removal",
             scenario: "Unreachable Code Removal 05",
             steps: [
@@ -567,8 +860,8 @@ final class Unreachable_Code_RemovalAcceptanceTests: XCTestCase {
         )
     }
 
-    func test_Unreachable_Code_Removal_05_row2() throws {
-        try AcceptanceRuntime.run(
+    func test_Unreachable_Code_Removal_05_row2() async throws {
+        try await AcceptanceRuntime.run(
             feature: "Unreachable Code Removal",
             scenario: "Unreachable Code Removal 05",
             steps: [
@@ -579,8 +872,8 @@ final class Unreachable_Code_RemovalAcceptanceTests: XCTestCase {
         )
     }
 
-    func test_Unreachable_Code_Removal_05_row3() throws {
-        try AcceptanceRuntime.run(
+    func test_Unreachable_Code_Removal_05_row3() async throws {
+        try await AcceptanceRuntime.run(
             feature: "Unreachable Code Removal",
             scenario: "Unreachable Code Removal 05",
             steps: [

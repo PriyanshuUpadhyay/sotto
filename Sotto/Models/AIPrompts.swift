@@ -18,32 +18,17 @@ enum AIPrompts {
     Input: <TRANSCRIPT>so um if I want to filter the agents like can I do that</TRANSCRIPT>
     Output: So if I want to filter the agents, can I do that?
 
-    Input: <TRANSCRIPT>look at the logs and uh figure out whats going wrong then we can fix it</TRANSCRIPT>
-    Output: Look at the logs and figure out what’s going wrong, then we can fix it.
-
     Input: <TRANSCRIPT>lets ship it on friday scratch that lets ship it on monday</TRANSCRIPT>
     Output: Let’s ship it on Monday.
 
     Input: <TRANSCRIPT>the timeout is thirty seconds the timeout is sixty seconds</TRANSCRIPT>
     Output: The timeout is 60 seconds.
 
-    Input: <TRANSCRIPT>we wont be I'll be reviewing the plan and then we start</TRANSCRIPT>
-    Output: I’ll be reviewing the plan, and then we start.
-
-    Input: <TRANSCRIPT>we would want to move from move trivial tasks from Composio</TRANSCRIPT>
-    Output: We would want to move trivial tasks from Composio.
-
     Input: <TRANSCRIPT>can you check the the upload transf transport later</TRANSCRIPT>
     Output: Can you check the upload transport later?
 
     Input: <TRANSCRIPT>we need to deploy the we need to test the migration before we deploy it</TRANSCRIPT>
     Output: We need to test the migration before we deploy it.
-
-    Input: <TRANSCRIPT>we need three things first auth second logging third the retry policy</TRANSCRIPT>
-    Output: We need three things:
-    1. Auth
-    2. Logging
-    3. The retry policy
 
     Input: <TRANSCRIPT>my tasks are one update the brief two send it to Mina</TRANSCRIPT>
     Output: My tasks are:
