@@ -11,8 +11,8 @@ import XCTest
 @MainActor
 final class Filler_Word_ControlAcceptanceTests: XCTestCase {
 
-    func test_Filler_Word_Control_01_row1() throws {
-        try AcceptanceRuntime.run(
+    func test_Filler_Word_Control_01_row1() async throws {
+        try await AcceptanceRuntime.run(
             feature: "Filler Word Control",
             scenario: "Filler Word Control 01",
             scenarioIndex: 0,
@@ -20,8 +20,8 @@ final class Filler_Word_ControlAcceptanceTests: XCTestCase {
         )
     }
 
-    func test_Filler_Word_Control_01_row2() throws {
-        try AcceptanceRuntime.run(
+    func test_Filler_Word_Control_01_row2() async throws {
+        try await AcceptanceRuntime.run(
             feature: "Filler Word Control",
             scenario: "Filler Word Control 01",
             scenarioIndex: 0,
@@ -29,8 +29,8 @@ final class Filler_Word_ControlAcceptanceTests: XCTestCase {
         )
     }
 
-    func test_Filler_Word_Control_02_row1() throws {
-        try AcceptanceRuntime.run(
+    func test_Filler_Word_Control_02_row1() async throws {
+        try await AcceptanceRuntime.run(
             feature: "Filler Word Control",
             scenario: "Filler Word Control 02",
             scenarioIndex: 1,
@@ -38,8 +38,8 @@ final class Filler_Word_ControlAcceptanceTests: XCTestCase {
         )
     }
 
-    func test_Filler_Word_Control_02_row2() throws {
-        try AcceptanceRuntime.run(
+    func test_Filler_Word_Control_02_row2() async throws {
+        try await AcceptanceRuntime.run(
             feature: "Filler Word Control",
             scenario: "Filler Word Control 02",
             scenarioIndex: 1,
@@ -47,8 +47,8 @@ final class Filler_Word_ControlAcceptanceTests: XCTestCase {
         )
     }
 
-    func test_Filler_Word_Control_03_row1() throws {
-        try AcceptanceRuntime.run(
+    func test_Filler_Word_Control_03_row1() async throws {
+        try await AcceptanceRuntime.run(
             feature: "Filler Word Control",
             scenario: "Filler Word Control 03",
             scenarioIndex: 2,
@@ -56,8 +56,8 @@ final class Filler_Word_ControlAcceptanceTests: XCTestCase {
         )
     }
 
-    func test_Filler_Word_Control_03_row2() throws {
-        try AcceptanceRuntime.run(
+    func test_Filler_Word_Control_03_row2() async throws {
+        try await AcceptanceRuntime.run(
             feature: "Filler Word Control",
             scenario: "Filler Word Control 03",
             scenarioIndex: 2,
@@ -69,8 +69,8 @@ final class Filler_Word_ControlAcceptanceTests: XCTestCase {
 @MainActor
 final class Mac_Platform_ConformanceAcceptanceTests: XCTestCase {
 
-    func test_Mac_Platform_Conformance_01_row1() throws {
-        try AcceptanceRuntime.run(
+    func test_Mac_Platform_Conformance_01_row1() async throws {
+        try await AcceptanceRuntime.run(
             feature: "Mac Platform Conformance",
             scenario: "Mac Platform Conformance 01",
             scenarioIndex: 0,
@@ -78,8 +78,8 @@ final class Mac_Platform_ConformanceAcceptanceTests: XCTestCase {
         )
     }
 
-    func test_Mac_Platform_Conformance_02_row1() throws {
-        try AcceptanceRuntime.run(
+    func test_Mac_Platform_Conformance_02_row1() async throws {
+        try await AcceptanceRuntime.run(
             feature: "Mac Platform Conformance",
             scenario: "Mac Platform Conformance 02",
             scenarioIndex: 1,
@@ -87,8 +87,8 @@ final class Mac_Platform_ConformanceAcceptanceTests: XCTestCase {
         )
     }
 
-    func test_Mac_Platform_Conformance_02_row2() throws {
-        try AcceptanceRuntime.run(
+    func test_Mac_Platform_Conformance_02_row2() async throws {
+        try await AcceptanceRuntime.run(
             feature: "Mac Platform Conformance",
             scenario: "Mac Platform Conformance 02",
             scenarioIndex: 1,
@@ -96,8 +96,8 @@ final class Mac_Platform_ConformanceAcceptanceTests: XCTestCase {
         )
     }
 
-    func test_Mac_Platform_Conformance_03_row1() throws {
-        try AcceptanceRuntime.run(
+    func test_Mac_Platform_Conformance_03_row1() async throws {
+        try await AcceptanceRuntime.run(
             feature: "Mac Platform Conformance",
             scenario: "Mac Platform Conformance 03",
             scenarioIndex: 2,
@@ -105,8 +105,8 @@ final class Mac_Platform_ConformanceAcceptanceTests: XCTestCase {
         )
     }
 
-    func test_Mac_Platform_Conformance_03_row2() throws {
-        try AcceptanceRuntime.run(
+    func test_Mac_Platform_Conformance_03_row2() async throws {
+        try await AcceptanceRuntime.run(
             feature: "Mac Platform Conformance",
             scenario: "Mac Platform Conformance 03",
             scenarioIndex: 2,
@@ -114,8 +114,8 @@ final class Mac_Platform_ConformanceAcceptanceTests: XCTestCase {
         )
     }
 
-    func test_Mac_Platform_Conformance_03_row3() throws {
-        try AcceptanceRuntime.run(
+    func test_Mac_Platform_Conformance_03_row3() async throws {
+        try await AcceptanceRuntime.run(
             feature: "Mac Platform Conformance",
             scenario: "Mac Platform Conformance 03",
             scenarioIndex: 2,
@@ -123,8 +123,8 @@ final class Mac_Platform_ConformanceAcceptanceTests: XCTestCase {
         )
     }
 
-    func test_Mac_Platform_Conformance_03_row4() throws {
-        try AcceptanceRuntime.run(
+    func test_Mac_Platform_Conformance_03_row4() async throws {
+        try await AcceptanceRuntime.run(
             feature: "Mac Platform Conformance",
             scenario: "Mac Platform Conformance 03",
             scenarioIndex: 2,
@@ -132,8 +132,8 @@ final class Mac_Platform_ConformanceAcceptanceTests: XCTestCase {
         )
     }
 
-    func test_Mac_Platform_Conformance_04_row1() throws {
-        try AcceptanceRuntime.run(
+    func test_Mac_Platform_Conformance_04_row1() async throws {
+        try await AcceptanceRuntime.run(
             feature: "Mac Platform Conformance",
             scenario: "Mac Platform Conformance 04",
             scenarioIndex: 3,
@@ -141,8 +141,8 @@ final class Mac_Platform_ConformanceAcceptanceTests: XCTestCase {
         )
     }
 
-    func test_Mac_Platform_Conformance_04_row2() throws {
-        try AcceptanceRuntime.run(
+    func test_Mac_Platform_Conformance_04_row2() async throws {
+        try await AcceptanceRuntime.run(
             feature: "Mac Platform Conformance",
             scenario: "Mac Platform Conformance 04",
             scenarioIndex: 3,
@@ -150,8 +150,8 @@ final class Mac_Platform_ConformanceAcceptanceTests: XCTestCase {
         )
     }
 
-    func test_Mac_Platform_Conformance_04_row3() throws {
-        try AcceptanceRuntime.run(
+    func test_Mac_Platform_Conformance_04_row3() async throws {
+        try await AcceptanceRuntime.run(
             feature: "Mac Platform Conformance",
             scenario: "Mac Platform Conformance 04",
             scenarioIndex: 3,
@@ -159,8 +159,8 @@ final class Mac_Platform_ConformanceAcceptanceTests: XCTestCase {
         )
     }
 
-    func test_Mac_Platform_Conformance_04_row4() throws {
-        try AcceptanceRuntime.run(
+    func test_Mac_Platform_Conformance_04_row4() async throws {
+        try await AcceptanceRuntime.run(
             feature: "Mac Platform Conformance",
             scenario: "Mac Platform Conformance 04",
             scenarioIndex: 3,
@@ -170,10 +170,248 @@ final class Mac_Platform_ConformanceAcceptanceTests: XCTestCase {
 }
 
 @MainActor
+final class Pipeline_LatencyAcceptanceTests: XCTestCase {
+
+    func test_Pipeline_Latency_01_row1() async throws {
+        try await AcceptanceRuntime.run(
+            feature: "Pipeline Latency",
+            scenario: "Pipeline Latency 01",
+            scenarioIndex: 0,
+            exampleIndex: 0
+        )
+    }
+
+    func test_Pipeline_Latency_01_row2() async throws {
+        try await AcceptanceRuntime.run(
+            feature: "Pipeline Latency",
+            scenario: "Pipeline Latency 01",
+            scenarioIndex: 0,
+            exampleIndex: 1
+        )
+    }
+
+    func test_Pipeline_Latency_01_row3() async throws {
+        try await AcceptanceRuntime.run(
+            feature: "Pipeline Latency",
+            scenario: "Pipeline Latency 01",
+            scenarioIndex: 0,
+            exampleIndex: 2
+        )
+    }
+
+    func test_Pipeline_Latency_01_row4() async throws {
+        try await AcceptanceRuntime.run(
+            feature: "Pipeline Latency",
+            scenario: "Pipeline Latency 01",
+            scenarioIndex: 0,
+            exampleIndex: 3
+        )
+    }
+
+    func test_Pipeline_Latency_01_row5() async throws {
+        try await AcceptanceRuntime.run(
+            feature: "Pipeline Latency",
+            scenario: "Pipeline Latency 01",
+            scenarioIndex: 0,
+            exampleIndex: 4
+        )
+    }
+
+    func test_Pipeline_Latency_01_row6() async throws {
+        try await AcceptanceRuntime.run(
+            feature: "Pipeline Latency",
+            scenario: "Pipeline Latency 01",
+            scenarioIndex: 0,
+            exampleIndex: 5
+        )
+    }
+
+    func test_Pipeline_Latency_01_row7() async throws {
+        try await AcceptanceRuntime.run(
+            feature: "Pipeline Latency",
+            scenario: "Pipeline Latency 01",
+            scenarioIndex: 0,
+            exampleIndex: 6
+        )
+    }
+
+    func test_Pipeline_Latency_02_row1() async throws {
+        try await AcceptanceRuntime.run(
+            feature: "Pipeline Latency",
+            scenario: "Pipeline Latency 02",
+            scenarioIndex: 1,
+            exampleIndex: 0
+        )
+    }
+
+    func test_Pipeline_Latency_02_row2() async throws {
+        try await AcceptanceRuntime.run(
+            feature: "Pipeline Latency",
+            scenario: "Pipeline Latency 02",
+            scenarioIndex: 1,
+            exampleIndex: 1
+        )
+    }
+
+    func test_Pipeline_Latency_03_row1() async throws {
+        try await AcceptanceRuntime.run(
+            feature: "Pipeline Latency",
+            scenario: "Pipeline Latency 03",
+            scenarioIndex: 2,
+            exampleIndex: 0
+        )
+    }
+
+    func test_Pipeline_Latency_03_row2() async throws {
+        try await AcceptanceRuntime.run(
+            feature: "Pipeline Latency",
+            scenario: "Pipeline Latency 03",
+            scenarioIndex: 2,
+            exampleIndex: 1
+        )
+    }
+
+    func test_Pipeline_Latency_03_row3() async throws {
+        try await AcceptanceRuntime.run(
+            feature: "Pipeline Latency",
+            scenario: "Pipeline Latency 03",
+            scenarioIndex: 2,
+            exampleIndex: 2
+        )
+    }
+
+    func test_Pipeline_Latency_03_row4() async throws {
+        try await AcceptanceRuntime.run(
+            feature: "Pipeline Latency",
+            scenario: "Pipeline Latency 03",
+            scenarioIndex: 2,
+            exampleIndex: 3
+        )
+    }
+
+    func test_Pipeline_Latency_03_row5() async throws {
+        try await AcceptanceRuntime.run(
+            feature: "Pipeline Latency",
+            scenario: "Pipeline Latency 03",
+            scenarioIndex: 2,
+            exampleIndex: 4
+        )
+    }
+
+    func test_Pipeline_Latency_04_row1() async throws {
+        try await AcceptanceRuntime.run(
+            feature: "Pipeline Latency",
+            scenario: "Pipeline Latency 04",
+            scenarioIndex: 3,
+            exampleIndex: 0
+        )
+    }
+
+    func test_Pipeline_Latency_05_row1() async throws {
+        try await AcceptanceRuntime.run(
+            feature: "Pipeline Latency",
+            scenario: "Pipeline Latency 05",
+            scenarioIndex: 4,
+            exampleIndex: 0
+        )
+    }
+
+    func test_Pipeline_Latency_05_row2() async throws {
+        try await AcceptanceRuntime.run(
+            feature: "Pipeline Latency",
+            scenario: "Pipeline Latency 05",
+            scenarioIndex: 4,
+            exampleIndex: 1
+        )
+    }
+
+    func test_Pipeline_Latency_06_row1() async throws {
+        try await AcceptanceRuntime.run(
+            feature: "Pipeline Latency",
+            scenario: "Pipeline Latency 06",
+            scenarioIndex: 5,
+            exampleIndex: 0
+        )
+    }
+
+    func test_Pipeline_Latency_06_row2() async throws {
+        try await AcceptanceRuntime.run(
+            feature: "Pipeline Latency",
+            scenario: "Pipeline Latency 06",
+            scenarioIndex: 5,
+            exampleIndex: 1
+        )
+    }
+
+    func test_Pipeline_Latency_06_row3() async throws {
+        try await AcceptanceRuntime.run(
+            feature: "Pipeline Latency",
+            scenario: "Pipeline Latency 06",
+            scenarioIndex: 5,
+            exampleIndex: 2
+        )
+    }
+
+    func test_Pipeline_Latency_06_row4() async throws {
+        try await AcceptanceRuntime.run(
+            feature: "Pipeline Latency",
+            scenario: "Pipeline Latency 06",
+            scenarioIndex: 5,
+            exampleIndex: 3
+        )
+    }
+
+    func test_Pipeline_Latency_07_row1() async throws {
+        try await AcceptanceRuntime.run(
+            feature: "Pipeline Latency",
+            scenario: "Pipeline Latency 07",
+            scenarioIndex: 6,
+            exampleIndex: 0
+        )
+    }
+
+    func test_Pipeline_Latency_07_row2() async throws {
+        try await AcceptanceRuntime.run(
+            feature: "Pipeline Latency",
+            scenario: "Pipeline Latency 07",
+            scenarioIndex: 6,
+            exampleIndex: 1
+        )
+    }
+
+    func test_Pipeline_Latency_07_row3() async throws {
+        try await AcceptanceRuntime.run(
+            feature: "Pipeline Latency",
+            scenario: "Pipeline Latency 07",
+            scenarioIndex: 6,
+            exampleIndex: 2
+        )
+    }
+
+    func test_Pipeline_Latency_07_row4() async throws {
+        try await AcceptanceRuntime.run(
+            feature: "Pipeline Latency",
+            scenario: "Pipeline Latency 07",
+            scenarioIndex: 6,
+            exampleIndex: 3
+        )
+    }
+
+    func test_Pipeline_Latency_07_row5() async throws {
+        try await AcceptanceRuntime.run(
+            feature: "Pipeline Latency",
+            scenario: "Pipeline Latency 07",
+            scenarioIndex: 6,
+            exampleIndex: 4
+        )
+    }
+}
+
+@MainActor
 final class Runtime_BudgetsAcceptanceTests: XCTestCase {
 
-    func test_Runtime_Budgets_01_row1() throws {
-        try AcceptanceRuntime.run(
+    func test_Runtime_Budgets_01_row1() async throws {
+        try await AcceptanceRuntime.run(
             feature: "Runtime Budgets",
             scenario: "Runtime Budgets 01",
             scenarioIndex: 0,
@@ -181,8 +419,8 @@ final class Runtime_BudgetsAcceptanceTests: XCTestCase {
         )
     }
 
-    func test_Runtime_Budgets_02_row1() throws {
-        try AcceptanceRuntime.run(
+    func test_Runtime_Budgets_02_row1() async throws {
+        try await AcceptanceRuntime.run(
             feature: "Runtime Budgets",
             scenario: "Runtime Budgets 02",
             scenarioIndex: 1,
@@ -190,8 +428,8 @@ final class Runtime_BudgetsAcceptanceTests: XCTestCase {
         )
     }
 
-    func test_Runtime_Budgets_03_row1() throws {
-        try AcceptanceRuntime.run(
+    func test_Runtime_Budgets_03_row1() async throws {
+        try await AcceptanceRuntime.run(
             feature: "Runtime Budgets",
             scenario: "Runtime Budgets 03",
             scenarioIndex: 2,
@@ -199,8 +437,8 @@ final class Runtime_BudgetsAcceptanceTests: XCTestCase {
         )
     }
 
-    func test_Runtime_Budgets_03_row2() throws {
-        try AcceptanceRuntime.run(
+    func test_Runtime_Budgets_03_row2() async throws {
+        try await AcceptanceRuntime.run(
             feature: "Runtime Budgets",
             scenario: "Runtime Budgets 03",
             scenarioIndex: 2,
@@ -208,8 +446,8 @@ final class Runtime_BudgetsAcceptanceTests: XCTestCase {
         )
     }
 
-    func test_Runtime_Budgets_04_row1() throws {
-        try AcceptanceRuntime.run(
+    func test_Runtime_Budgets_04_row1() async throws {
+        try await AcceptanceRuntime.run(
             feature: "Runtime Budgets",
             scenario: "Runtime Budgets 04",
             scenarioIndex: 3,
@@ -217,8 +455,8 @@ final class Runtime_BudgetsAcceptanceTests: XCTestCase {
         )
     }
 
-    func test_Runtime_Budgets_05_row1() throws {
-        try AcceptanceRuntime.run(
+    func test_Runtime_Budgets_05_row1() async throws {
+        try await AcceptanceRuntime.run(
             feature: "Runtime Budgets",
             scenario: "Runtime Budgets 05",
             scenarioIndex: 4,
@@ -230,8 +468,8 @@ final class Runtime_BudgetsAcceptanceTests: XCTestCase {
 @MainActor
 final class Unreachable_Code_RemovalAcceptanceTests: XCTestCase {
 
-    func test_Unreachable_Code_Removal_01_row1() throws {
-        try AcceptanceRuntime.run(
+    func test_Unreachable_Code_Removal_01_row1() async throws {
+        try await AcceptanceRuntime.run(
             feature: "Unreachable Code Removal",
             scenario: "Unreachable Code Removal 01",
             scenarioIndex: 0,
@@ -239,8 +477,8 @@ final class Unreachable_Code_RemovalAcceptanceTests: XCTestCase {
         )
     }
 
-    func test_Unreachable_Code_Removal_01_row2() throws {
-        try AcceptanceRuntime.run(
+    func test_Unreachable_Code_Removal_01_row2() async throws {
+        try await AcceptanceRuntime.run(
             feature: "Unreachable Code Removal",
             scenario: "Unreachable Code Removal 01",
             scenarioIndex: 0,
@@ -248,8 +486,8 @@ final class Unreachable_Code_RemovalAcceptanceTests: XCTestCase {
         )
     }
 
-    func test_Unreachable_Code_Removal_01_row3() throws {
-        try AcceptanceRuntime.run(
+    func test_Unreachable_Code_Removal_01_row3() async throws {
+        try await AcceptanceRuntime.run(
             feature: "Unreachable Code Removal",
             scenario: "Unreachable Code Removal 01",
             scenarioIndex: 0,
@@ -257,8 +495,8 @@ final class Unreachable_Code_RemovalAcceptanceTests: XCTestCase {
         )
     }
 
-    func test_Unreachable_Code_Removal_01_row4() throws {
-        try AcceptanceRuntime.run(
+    func test_Unreachable_Code_Removal_01_row4() async throws {
+        try await AcceptanceRuntime.run(
             feature: "Unreachable Code Removal",
             scenario: "Unreachable Code Removal 01",
             scenarioIndex: 0,
@@ -266,8 +504,8 @@ final class Unreachable_Code_RemovalAcceptanceTests: XCTestCase {
         )
     }
 
-    func test_Unreachable_Code_Removal_01_row5() throws {
-        try AcceptanceRuntime.run(
+    func test_Unreachable_Code_Removal_01_row5() async throws {
+        try await AcceptanceRuntime.run(
             feature: "Unreachable Code Removal",
             scenario: "Unreachable Code Removal 01",
             scenarioIndex: 0,
@@ -275,8 +513,8 @@ final class Unreachable_Code_RemovalAcceptanceTests: XCTestCase {
         )
     }
 
-    func test_Unreachable_Code_Removal_01_row6() throws {
-        try AcceptanceRuntime.run(
+    func test_Unreachable_Code_Removal_01_row6() async throws {
+        try await AcceptanceRuntime.run(
             feature: "Unreachable Code Removal",
             scenario: "Unreachable Code Removal 01",
             scenarioIndex: 0,
@@ -284,8 +522,8 @@ final class Unreachable_Code_RemovalAcceptanceTests: XCTestCase {
         )
     }
 
-    func test_Unreachable_Code_Removal_01_row7() throws {
-        try AcceptanceRuntime.run(
+    func test_Unreachable_Code_Removal_01_row7() async throws {
+        try await AcceptanceRuntime.run(
             feature: "Unreachable Code Removal",
             scenario: "Unreachable Code Removal 01",
             scenarioIndex: 0,
@@ -293,8 +531,8 @@ final class Unreachable_Code_RemovalAcceptanceTests: XCTestCase {
         )
     }
 
-    func test_Unreachable_Code_Removal_01_row8() throws {
-        try AcceptanceRuntime.run(
+    func test_Unreachable_Code_Removal_01_row8() async throws {
+        try await AcceptanceRuntime.run(
             feature: "Unreachable Code Removal",
             scenario: "Unreachable Code Removal 01",
             scenarioIndex: 0,
@@ -302,8 +540,8 @@ final class Unreachable_Code_RemovalAcceptanceTests: XCTestCase {
         )
     }
 
-    func test_Unreachable_Code_Removal_01_row9() throws {
-        try AcceptanceRuntime.run(
+    func test_Unreachable_Code_Removal_01_row9() async throws {
+        try await AcceptanceRuntime.run(
             feature: "Unreachable Code Removal",
             scenario: "Unreachable Code Removal 01",
             scenarioIndex: 0,
@@ -311,8 +549,8 @@ final class Unreachable_Code_RemovalAcceptanceTests: XCTestCase {
         )
     }
 
-    func test_Unreachable_Code_Removal_01_row10() throws {
-        try AcceptanceRuntime.run(
+    func test_Unreachable_Code_Removal_01_row10() async throws {
+        try await AcceptanceRuntime.run(
             feature: "Unreachable Code Removal",
             scenario: "Unreachable Code Removal 01",
             scenarioIndex: 0,
@@ -320,8 +558,8 @@ final class Unreachable_Code_RemovalAcceptanceTests: XCTestCase {
         )
     }
 
-    func test_Unreachable_Code_Removal_01_row11() throws {
-        try AcceptanceRuntime.run(
+    func test_Unreachable_Code_Removal_01_row11() async throws {
+        try await AcceptanceRuntime.run(
             feature: "Unreachable Code Removal",
             scenario: "Unreachable Code Removal 01",
             scenarioIndex: 0,
@@ -329,8 +567,8 @@ final class Unreachable_Code_RemovalAcceptanceTests: XCTestCase {
         )
     }
 
-    func test_Unreachable_Code_Removal_01_row12() throws {
-        try AcceptanceRuntime.run(
+    func test_Unreachable_Code_Removal_01_row12() async throws {
+        try await AcceptanceRuntime.run(
             feature: "Unreachable Code Removal",
             scenario: "Unreachable Code Removal 01",
             scenarioIndex: 0,
@@ -338,8 +576,8 @@ final class Unreachable_Code_RemovalAcceptanceTests: XCTestCase {
         )
     }
 
-    func test_Unreachable_Code_Removal_01_row13() throws {
-        try AcceptanceRuntime.run(
+    func test_Unreachable_Code_Removal_01_row13() async throws {
+        try await AcceptanceRuntime.run(
             feature: "Unreachable Code Removal",
             scenario: "Unreachable Code Removal 01",
             scenarioIndex: 0,
@@ -347,8 +585,8 @@ final class Unreachable_Code_RemovalAcceptanceTests: XCTestCase {
         )
     }
 
-    func test_Unreachable_Code_Removal_02_row1() throws {
-        try AcceptanceRuntime.run(
+    func test_Unreachable_Code_Removal_02_row1() async throws {
+        try await AcceptanceRuntime.run(
             feature: "Unreachable Code Removal",
             scenario: "Unreachable Code Removal 02",
             scenarioIndex: 1,
@@ -356,8 +594,8 @@ final class Unreachable_Code_RemovalAcceptanceTests: XCTestCase {
         )
     }
 
-    func test_Unreachable_Code_Removal_02_row2() throws {
-        try AcceptanceRuntime.run(
+    func test_Unreachable_Code_Removal_02_row2() async throws {
+        try await AcceptanceRuntime.run(
             feature: "Unreachable Code Removal",
             scenario: "Unreachable Code Removal 02",
             scenarioIndex: 1,
@@ -365,8 +603,8 @@ final class Unreachable_Code_RemovalAcceptanceTests: XCTestCase {
         )
     }
 
-    func test_Unreachable_Code_Removal_02_row3() throws {
-        try AcceptanceRuntime.run(
+    func test_Unreachable_Code_Removal_02_row3() async throws {
+        try await AcceptanceRuntime.run(
             feature: "Unreachable Code Removal",
             scenario: "Unreachable Code Removal 02",
             scenarioIndex: 1,
@@ -374,8 +612,8 @@ final class Unreachable_Code_RemovalAcceptanceTests: XCTestCase {
         )
     }
 
-    func test_Unreachable_Code_Removal_03_row1() throws {
-        try AcceptanceRuntime.run(
+    func test_Unreachable_Code_Removal_03_row1() async throws {
+        try await AcceptanceRuntime.run(
             feature: "Unreachable Code Removal",
             scenario: "Unreachable Code Removal 03",
             scenarioIndex: 2,
@@ -383,8 +621,8 @@ final class Unreachable_Code_RemovalAcceptanceTests: XCTestCase {
         )
     }
 
-    func test_Unreachable_Code_Removal_03_row2() throws {
-        try AcceptanceRuntime.run(
+    func test_Unreachable_Code_Removal_03_row2() async throws {
+        try await AcceptanceRuntime.run(
             feature: "Unreachable Code Removal",
             scenario: "Unreachable Code Removal 03",
             scenarioIndex: 2,
@@ -392,8 +630,8 @@ final class Unreachable_Code_RemovalAcceptanceTests: XCTestCase {
         )
     }
 
-    func test_Unreachable_Code_Removal_03_row3() throws {
-        try AcceptanceRuntime.run(
+    func test_Unreachable_Code_Removal_03_row3() async throws {
+        try await AcceptanceRuntime.run(
             feature: "Unreachable Code Removal",
             scenario: "Unreachable Code Removal 03",
             scenarioIndex: 2,
@@ -401,8 +639,8 @@ final class Unreachable_Code_RemovalAcceptanceTests: XCTestCase {
         )
     }
 
-    func test_Unreachable_Code_Removal_03_row4() throws {
-        try AcceptanceRuntime.run(
+    func test_Unreachable_Code_Removal_03_row4() async throws {
+        try await AcceptanceRuntime.run(
             feature: "Unreachable Code Removal",
             scenario: "Unreachable Code Removal 03",
             scenarioIndex: 2,
@@ -410,8 +648,8 @@ final class Unreachable_Code_RemovalAcceptanceTests: XCTestCase {
         )
     }
 
-    func test_Unreachable_Code_Removal_04_row1() throws {
-        try AcceptanceRuntime.run(
+    func test_Unreachable_Code_Removal_04_row1() async throws {
+        try await AcceptanceRuntime.run(
             feature: "Unreachable Code Removal",
             scenario: "Unreachable Code Removal 04",
             scenarioIndex: 3,
@@ -419,8 +657,8 @@ final class Unreachable_Code_RemovalAcceptanceTests: XCTestCase {
         )
     }
 
-    func test_Unreachable_Code_Removal_05_row1() throws {
-        try AcceptanceRuntime.run(
+    func test_Unreachable_Code_Removal_05_row1() async throws {
+        try await AcceptanceRuntime.run(
             feature: "Unreachable Code Removal",
             scenario: "Unreachable Code Removal 05",
             scenarioIndex: 4,
@@ -428,8 +666,8 @@ final class Unreachable_Code_RemovalAcceptanceTests: XCTestCase {
         )
     }
 
-    func test_Unreachable_Code_Removal_05_row2() throws {
-        try AcceptanceRuntime.run(
+    func test_Unreachable_Code_Removal_05_row2() async throws {
+        try await AcceptanceRuntime.run(
             feature: "Unreachable Code Removal",
             scenario: "Unreachable Code Removal 05",
             scenarioIndex: 4,
@@ -437,8 +675,8 @@ final class Unreachable_Code_RemovalAcceptanceTests: XCTestCase {
         )
     }
 
-    func test_Unreachable_Code_Removal_05_row3() throws {
-        try AcceptanceRuntime.run(
+    func test_Unreachable_Code_Removal_05_row3() async throws {
+        try await AcceptanceRuntime.run(
             feature: "Unreachable Code Removal",
             scenario: "Unreachable Code Removal 05",
             scenarioIndex: 4,

@@ -29,8 +29,8 @@
     (map-indexed (fn [index _] {:index (inc index) :example-index index}) examples)))
 
 (defn method [feature scenario-index scenario row]
-  (str "    func test_" (identifier (:name scenario)) "_row" (:index row) "() throws {\n"
-       "        try AcceptanceRuntime.run(\n"
+  (str "    func test_" (identifier (:name scenario)) "_row" (:index row) "() async throws {\n"
+       "        try await AcceptanceRuntime.run(\n"
        "            feature: " (swift-string (:name feature)) ",\n"
        "            scenario: " (swift-string (:name scenario)) ",\n"
        "            scenarioIndex: " scenario-index ",\n"

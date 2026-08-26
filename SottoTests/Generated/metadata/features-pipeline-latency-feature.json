@@ -1,7 +1,7 @@
 {
   "schema_version" : 1,
-  "feature_path" : "features/mac_platform_conformance.feature",
-  "ir_path" : "/Users/priyanshu/work/sotto/wt/main/.worktrees/architect/tmp/acceptance/ir/mac_platform_conformance.json",
+  "feature_path" : "features/pipeline_latency.feature",
+  "ir_path" : "/Users/priyanshu/work/sotto/wt/main/.worktrees/architect/tmp/acceptance/ir/pipeline_latency.json",
   "implementation_hash" : "sha256:4e5f0ed6d1451940364fa4e719d0834ddd180acd3c71447dac20368631cc6e88",
   "hash_scope" : "generated_files",
   "generated_files" : [ "/Users/priyanshu/work/sotto/wt/main/.worktrees/architect/SottoTests/Generated/GeneratedAcceptanceTests.swift" ]

@@ -1,5 +1,6 @@
 import Foundation
 import SwiftUI
+import SwiftData
 @testable import Sotto
 
 enum StepError: Error, CustomStringConvertible {
@@ -47,7 +48,7 @@ private func expect(_ condition: Bool, orFail why: String) throws {
 @MainActor
 enum AcceptanceSteps {
 
-    typealias Handler = (_ args: [String], _ world: AcceptanceWorld) throws -> Void
+    typealias Handler = (_ args: [String], _ world: AcceptanceWorld) async throws -> Void
 
     static let registry: [(pattern: String, handler: Handler)] = [
 
@@ -56,7 +57,7 @@ enum AcceptanceSteps {
         // Preconditions that describe the environment the whole feature runs
         // in. They carry no assertion of their own; the steps that follow read
         // the manifest that recorded that environment.
-        ("^(?:a release build of Sotto(?: on Apple Silicon)?|the app is (?:not )?running|VoiceOver is running|no recording is active|no transcription model download is in progress)$",
+        ("^(?:a release build of Sotto(?: on Apple Silicon)?|the app is (?:not )?running|VoiceOver is running|no recording is active|no transcription model download is in progress|a warm transcription model)$",
          { _, _ in }),
 
         // MARK: Settings composition
@@ -233,6 +234,37 @@ enum AcceptanceSteps {
             try expect(sizeMB < budget, orFail: "app bundle is \(sizeMB) MB, budget is \(budget) MB")
         }),
 
+        // MARK: Pipeline latency
+
+        // Stage timings come from a real dictation: the trace is filled in as
+        // `TranscriptionPipeline.run` walks the stages, and every stage needs
+        // its service (ASR model, CTC spotter, AFM session) to have actually
+        // run. `TranscriptionTraceTests` covers the trace contract itself.
+        ("^an utterance finishes the pipeline$", { _, _ in
+            throw StepError.skipped("needs a live dictation through the ASR pipeline; not measurable in the headless suite")
+        }),
+
+        ("^the app enhances a transcript of (\\d+) characters$", { args, world in
+            let count = try required(Int(args[0]), orFail: "unreadable transcript length \(args[0])")
+            world.instructionPrompt = await instructionPrompt(forTranscriptOf: count)
+        }),
+
+        ("^the instruction prompt holds at most (\\d+) characters$", { args, world in
+            let prompt = try required(world.instructionPrompt, orFail: "no transcript was enhanced")
+            let budget = try required(Int(args[0]), orFail: "unreadable budget \(args[0])")
+            try expect(prompt.count <= budget,
+                       orFail: "the instruction prompt is \(prompt.count) characters, budget is \(budget)")
+        }),
+
+        // Percentile latency, warm-session reuse, preview latency and the ASR
+        // real time factor all need a warm on-device model and a real
+        // dictation loop, so they report a skip rather than a pass on no
+        // evidence.
+        ("^(?:the enhancement session is warm|the app enhances \\d+ transcripts|I stop a recording of \\d+ seconds|I record \\d+ seconds of speech with the .+ engine|the metric .+ at \\w+ is at most \\d+ milliseconds|at least \\d+ percent reuse a warm session|the review editor appears within \\d+ milliseconds at \\w+|the asr stage real time factor is at most [\\d.]+|the stage \\w+ adds at most \\d+ milliseconds)$",
+         { _, _ in
+            throw StepError.skipped("needs a warm on-device model and a real dictation; not measurable in the headless suite")
+         }),
+
         // Live-process budgets. Measuring these means launching the app,
         // sampling it, and driving a real dictation through a transcription
         // engine — none of which this headless suite can do. They report a
@@ -266,6 +298,21 @@ enum AcceptanceSteps {
         default:
             throw StepError.unknown("control \"\(control)\" for the \(tab) tab")
         }
+    }
+
+    /// The system instructions the enhancement service would send for a
+    /// transcript of `characters`. Per the warm-key invariant the instructions
+    /// do not carry the transcript, so length is what the budget is about.
+    private static func instructionPrompt(forTranscriptOf characters: Int) async -> String {
+        let schema = Schema([
+            Transcription.self, VocabularyWord.self, WordReplacement.self,
+            Snippet.self, ScratchpadDocument.self, ScratchpadVersion.self
+        ])
+        let config = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
+        let container = try! ModelContainer(for: schema, configurations: [config])
+        let service = AIEnhancementService(modelContext: container.mainContext)
+        service.lastCapturedClipboard = String(repeating: "a", count: characters)
+        return await service.getSystemInstructions()
     }
 
     private static func voiceOverLabel(forControl control: String) -> String? {
