@@ -245,22 +245,15 @@ enum AcceptanceSteps {
         }),
 
         ("^the app enhances a transcript of (\\d+) characters$", { args, world in
-            guard let count = Int(args[0]) else {
-                throw StepError.failed("unreadable transcript length \(args[0])")
-            }
+            let count = try required(Int(args[0]), orFail: "unreadable transcript length \(args[0])")
             world.instructionPrompt = await instructionPrompt(forTranscriptOf: count)
         }),
 
         ("^the instruction prompt holds at most (\\d+) characters$", { args, world in
-            guard let prompt = world.instructionPrompt else {
-                throw StepError.failed("no transcript was enhanced")
-            }
-            guard let budget = Int(args[0]) else {
-                throw StepError.failed("unreadable budget \(args[0])")
-            }
-            guard prompt.count <= budget else {
-                throw StepError.failed("the instruction prompt is \(prompt.count) characters, budget is \(budget)")
-            }
+            let prompt = try required(world.instructionPrompt, orFail: "no transcript was enhanced")
+            let budget = try required(Int(args[0]), orFail: "unreadable budget \(args[0])")
+            try expect(prompt.count <= budget,
+                       orFail: "the instruction prompt is \(prompt.count) characters, budget is \(budget)")
         }),
 
         // Percentile latency, warm-session reuse, preview latency and the ASR
