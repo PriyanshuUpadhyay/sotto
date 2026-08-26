@@ -43,8 +43,8 @@
 (defn- method [feature scenario row]
   (let [name (str "test_" (identifier (:name scenario)) "_row" (:index row))
         steps (->> (:steps row) (map swift-string) (str/join ",\n                "))]
-    (str "    func " name "() throws {\n"
-         "        try AcceptanceRuntime.run(\n"
+    (str "    func " name "() async throws {\n"
+         "        try await AcceptanceRuntime.run(\n"
          "            feature: " (swift-string (:name feature)) ",\n"
          "            scenario: " (swift-string (:name scenario)) ",\n"
          "            steps: [\n                " steps "\n            ]\n"

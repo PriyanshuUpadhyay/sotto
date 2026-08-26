@@ -22,7 +22,7 @@ enum AcceptanceRuntime {
         steps: [String],
         file: StaticString = #filePath,
         line: UInt = #line
-    ) throws {
+    ) async throws {
         let manifest: AcceptanceManifest
         do {
             manifest = try AcceptanceManifest.load()
@@ -35,7 +35,7 @@ enum AcceptanceRuntime {
 
         for step in steps {
             do {
-                try dispatch(step, world: world)
+                try await dispatch(step, world: world)
             } catch StepError.skipped(let why) {
                 throw XCTSkip("\(feature) / \(scenario): \(step) — \(why)")
             } catch let error as StepError {
@@ -45,7 +45,7 @@ enum AcceptanceRuntime {
         }
     }
 
-    private static func dispatch(_ step: String, world: AcceptanceWorld) throws {
+    private static func dispatch(_ step: String, world: AcceptanceWorld) async throws {
         let range = NSRange(step.startIndex..., in: step)
         for (regex, handler) in compiled {
             guard let match = regex.firstMatch(in: step, range: range) else { continue }
@@ -53,7 +53,7 @@ enum AcceptanceRuntime {
                 guard let r = Range(match.range(at: index), in: step) else { return nil }
                 return String(step[r])
             }
-            try handler(args, world)
+            try await handler(args, world)
             return
         }
         throw StepError.undefined(step)

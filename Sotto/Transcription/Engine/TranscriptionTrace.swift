@@ -28,6 +28,15 @@ struct TranscriptionTrace {
         var attempted: Bool { if case .notAttempted = outcome { return false }; return true }
     }
 
+    /// The pipeline stages `TranscriptionPipeline.run` walks, in order.
+    enum Stage: String, CaseIterable {
+        case asr, boosting, filter, wordReplacement, acoustic, phonetic, enhancement
+    }
+
+    /// Wall-clock cost per stage. A stage that did not run has no entry, so a
+    /// missing duration and a zero duration stay distinguishable.
+    private(set) var stageDurations: [Stage: TimeInterval] = [:]
+
     var audioDurationSeconds: Double? = nil
     var audioSampleCount: Int? = nil
     var sessionType = ""
@@ -39,6 +48,24 @@ struct TranscriptionTrace {
     var acoustic: [AcousticDetection] = []
     var phonetic: [PhoneticCorrection] = [];  var afterPhonetic = ""
     var afmModel = "";  var afmEdits: [WordEdit] = [];  var afterEnhance = ""
+
+    func duration(for stage: Stage) -> TimeInterval? { stageDurations[stage] }
+
+    /// Adds to the stage's running total. A stage that runs more than once per
+    /// utterance reports the sum of its parts, not just the last one.
+    mutating func record(_ stage: Stage, seconds: TimeInterval) {
+        stageDurations[stage, default: 0] += seconds
+    }
+
+    /// Monotonic stamp taken before a stage starts; close it with
+    /// `record(_:since:)`. A stamp rather than a closure because most stages
+    /// also write to the trace, and a closure capturing it would overlap
+    /// exclusive access.
+    static func now() -> UInt64 { DispatchTime.now().uptimeNanoseconds }
+
+    mutating func record(_ stage: Stage, since start: UInt64) {
+        record(stage, seconds: Double(Self.now() &- start) / 1_000_000_000)
+    }
 
     /// Pure, multi-line readable render. Sections appear only when non-empty.
     func render() -> String {
@@ -94,6 +121,11 @@ struct TranscriptionTrace {
             for e in afmEdits { lines.append("  \(e.from) → \(e.to)") }
             if !afterEnhance.isEmpty { lines.append("  after: \(afterEnhance)") }
         }
+        let timed = Stage.allCases.compactMap { stage -> String? in
+            guard let seconds = stageDurations[stage] else { return nil }
+            return "\(stage.rawValue)=\(String(format: "%.3fs", seconds))"
+        }
+        if !timed.isEmpty { lines.append("timings: " + timed.joined(separator: " ")) }
         return lines.joined(separator: "\n")
     }
 }
