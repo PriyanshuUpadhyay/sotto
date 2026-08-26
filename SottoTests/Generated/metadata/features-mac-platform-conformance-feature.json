@@ -1,0 +1,8 @@
+{
+  "schema_version" : 1,
+  "feature_path" : "features/mac_platform_conformance.feature",
+  "ir_path" : "/Users/priyanshu/work/sotto/wt/main/.worktrees/architect/tmp/acceptance/ir/mac_platform_conformance.json",
+  "implementation_hash" : "sha256:3ad96575663e30f416bca8094f290071d75caef054895808ea217ba4858d7fc8",
+  "hash_scope" : "generated_files",
+  "generated_files" : [ "/Users/priyanshu/work/sotto/wt/main/.worktrees/architect/SottoTests/Generated/GeneratedAcceptanceTests.swift" ]
+}

@@ -1,11 +1,12 @@
 import Foundation
 import XCTest
 
-/// Runs one scenario's steps against the project step handlers.
+/// Runs one scenario example row against the project step handlers.
 ///
-/// Steps arrive fully substituted — the generator has already replaced each
-/// `<placeholder>` with its example value — so the runtime's only job is to
-/// match each step to a handler and stop at the first one that fails.
+/// The generated test names the scenario and row; the step text, the background
+/// steps, and the row's values all come from the IR this run was pointed at. So
+/// the same built test bundle runs any mutated IR, which is what lets acceptance
+/// mutation reuse one build instead of regenerating per mutation.
 @MainActor
 enum AcceptanceRuntime {
 
@@ -19,13 +20,18 @@ enum AcceptanceRuntime {
     static func run(
         feature: String,
         scenario: String,
-        steps: [String],
+        scenarioIndex: Int,
+        exampleIndex: Int,
         file: StaticString = #filePath,
         line: UInt = #line
     ) throws {
         let manifest: AcceptanceManifest
+        let steps: [String]
         do {
             manifest = try AcceptanceManifest.load()
+            steps = try AcceptanceIRSet.load()
+                .feature(named: feature)
+                .steps(scenarioIndex: scenarioIndex, exampleIndex: exampleIndex)
         } catch {
             throw XCTSkip("\(error)")
         }

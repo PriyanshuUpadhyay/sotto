@@ -39,17 +39,6 @@
                 :steps (gen/vector (gen/hash-map :text gen-step-text) 0 4)
                 :examples (gen/vector gen-example 0 4)))
 
-(describe "generator/substitute"
-  (it "leaves the text alone when there is nothing to substitute (identity)"
-    (should (holds (prop/for-all [text gen/string]
-                     (= text (generator/substitute text {}))))))
-
-  (it "leaves no substituted placeholder behind (idempotence over one pass)"
-    (should (holds (prop/for-all [example gen-example]
-                     (let [text (str/join " " (map #(str "<" (name %) ">") (keys example)))
-                           once (generator/substitute text example)]
-                       (= once (generator/substitute once example))))))))
-
 (describe "generator/identifier"
   (it "emits only Swift-safe characters, never at the edges (invariant)"
     (should (holds (prop/for-all [text gen/string]
@@ -81,9 +70,9 @@
                      (let [indexes (map :index (generator/rows scenario))]
                        (= indexes (range 1 (inc (count indexes)))))))))
 
-  (it "keeps every step of the scenario in every row (conservation)"
+  (it "addresses each row by its zero-based position in the IR (invariant)"
     (should (holds (prop/for-all [scenario gen-scenario]
-                     (every? #(= (count (:steps scenario)) (count (:steps %)))
+                     (every? #(= (:example-index %) (dec (:index %)))
                              (generator/rows scenario)))))))
 
 (describe "facts/unique-sorted"

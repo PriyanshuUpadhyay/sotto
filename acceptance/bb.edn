@@ -1,3 +1,14 @@
-;; Classpath for the acceptance shells: `bb --config acceptance/bb.edn <script>`
-;; so `acceptance/*.clj` can require the pure namespaces under src/.
-{:paths ["src"]}
+;; Babashka entry point for the acceptance pipeline.
+;;
+;; `bb --config acceptance/bb.edn <script>` puts the pure namespaces under src/
+;; on the classpath for the three adapter shells that bin/acceptance runs.
+;;
+;; The `spec` task runs the unit specs. clj-mutate copies this file into each
+;; mutation worker and runs `bb spec` there, so the specs have to be reachable
+;; from this config alone — a worker gets no deps.edn.
+{:paths ["src" "spec"]
+ :deps {speclj/speclj {:mvn/version "3.13.0"}}
+ :tasks
+ {spec {:doc "Run the acceptance pipeline unit specs"
+        :requires ([speclj.main :as speclj])
+        :task (speclj/-main "-c" "spec")}}}

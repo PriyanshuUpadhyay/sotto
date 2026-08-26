@@ -68,6 +68,12 @@
   (it "names each skipped scenario without a reason, which the skip text carries"
     (should-contain "  test_C_row1()" (sut/report-lines (sut/summary tree))))
 
+  (it "prints only the name of a skipped scenario, never its recorded reason"
+    (should= ["" "--- skipped ---" "  test_S_row1()"]
+             (->> (sut/report-lines
+                    (sut/summary [(case-node "test_S_row1()" "Skipped" "needs a live app process")]))
+                  (drop 5))))
+
   (it "spells out why each failed scenario failed"
     (should-contain "    expected 26.0; got 15.0" (sut/report-lines (sut/summary tree))))
 
