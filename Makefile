@@ -37,7 +37,7 @@ LOCAL_XCODE_FLAGS = -project Sotto.xcodeproj -scheme Sotto -configuration Debug 
 	CODE_SIGN_ENTITLEMENTS=$(CURDIR)/Sotto/Sotto.local.entitlements \
 	SWIFT_ACTIVE_COMPILATION_CONDITIONS='$$(inherited) LOCAL_BUILD'
 
-.PHONY: all clean whisper vad-model setup build local check healthcheck help dev run reload test acceptance acceptance-mutate property dmg release
+.PHONY: all clean whisper vad-model setup build local check healthcheck help dev run reload test acceptance acceptance-mutate property dmg release publish
 
 # Default target
 all: check build
@@ -163,11 +163,10 @@ release: local
 		echo "  $(RELEASE_DIR)/Sotto-$$V.dmg"; \
 		echo "  docs/appcast.xml"; \
 		echo ""; \
-		echo "To publish:"; \
-		echo "  gh release create v$$V \"$(RELEASE_DIR)/Sotto-$$V.dmg\" --title v$$V --notes-file <notes>"; \
-		echo "  git add docs/appcast.xml && git commit -m \"Publish $$V\" && git push"; \
+		echo "SHA-256 (paste into the release notes):"; \
+		shasum -a 256 "$(RELEASE_DIR)/Sotto-$$V.dmg" | awk '{ print "  " $$1 }'; \
 		echo ""; \
-		echo "Order matters: create the release first, or the appcast points at a missing asset."
+		echo "To publish:  make publish NOTES=path/to/notes.md"
 
 # Reload: build, kill the running instance, relaunch. Use this during dev so you
 # don't have to manually quit + reopen. Incremental build is ~5-15s after first.
@@ -215,6 +214,30 @@ test: check setup
 		$(ACCEPTANCE_SKIPS) \
 		$(PROPERTY_SKIPS) \
 		-quiet
+
+# Publish what `make release` prepared. Kept separate so a build never ships
+# by accident, and so the ordering is enforced rather than remembered: the
+# release asset must exist before the appcast pointing at it reaches the feed,
+# or an updater polling in between downloads a 404.
+publish:
+	@set -e; \
+		[ -n "$(NOTES)" ] || { echo "usage: make publish NOTES=path/to/notes.md"; exit 1; }; \
+		test -f "$(NOTES)" || { echo "notes file not found: $(NOTES)"; exit 1; }; \
+		DMG=$$(ls "$(RELEASE_DIR)"/Sotto-*.dmg 2>/dev/null | head -1); \
+		[ -n "$$DMG" ] || { echo "no DMG in $(RELEASE_DIR) - run make release first"; exit 1; }; \
+		V=$$(basename "$$DMG" .dmg | sed "s/^Sotto-//"); \
+		grep -q "releases/download/v$$V/" docs/appcast.xml \
+			|| { echo "docs/appcast.xml does not name v$$V - re-run make release"; exit 1; }; \
+		gh release view "v$$V" --repo $(GITHUB_REPO) >/dev/null 2>&1 \
+			&& { echo "release v$$V already exists - bump the version first"; exit 1; }; \
+		echo "Creating release v$$V with $$DMG..."; \
+		gh release create "v$$V" "$$DMG" --repo $(GITHUB_REPO) --title "v$$V" --notes-file "$(NOTES)"; \
+		echo "Asset is live. Publishing the appcast..."; \
+		git add docs/appcast.xml; \
+		git diff --cached --quiet || git commit -m "Publish $$V"; \
+		git push; \
+		echo ""; \
+		echo "Published v$$V. The feed updates when GitHub Pages redeploys (~15s)."
 
 # Run the Gherkin acceptance pipeline: parse features, snapshot project facts,
 # generate the executable tests, run only those.
