@@ -93,14 +93,16 @@ final class PhoneticCorrectionService {
 
         // Already an exact vocab term → not a candidate.
         if entries.contains(where: { $0.lower == coreLower }) { return (token, nil) }
-        // OOV gate: only correct what the OS flags as misspelled. Check the
-        // lowercased core: ASR often emits short domain terms ALL-CAPS ("CMAX"),
-        // and NSSpellChecker treats all-caps tokens as acronyms and never flags
-        // them — so the raw-case token would slip past this gate.
-        // Without acoustic confirmation, an OOV core is the ONLY candidate.
-        // With confirmation, a valid (non-OOV) word may also be rewritten — but
-        // only toward an acoustically-confirmed term (filtered in the loop below).
-        if confirmed == nil, !isMisspelled(coreLower) { return (token, nil) }
+        // OOV gate: check the lowercased core, since ASR often emits short
+        // domain terms ALL-CAPS ("CMAX") and NSSpellChecker treats all-caps
+        // tokens as acronyms and never flags them.
+        //
+        // A valid (non-OOV) word is still a candidate, but only through the
+        // much stricter `homophoneGatePasses` below. The most common mishear
+        // of a vocabulary term is an ordinary English word that sounds like it
+        // ("Herdr" heard as "herder", "codex" as "codecs"), so an OOV-only
+        // gate misses exactly the cases the vocabulary exists to fix.
+        let isOOV = isMisspelled(coreLower)
 
         let coreKey = DoubleMetaphone.encode(core).primary
         guard !coreKey.isEmpty else { return (token, nil) }
@@ -116,10 +118,20 @@ final class PhoneticCorrectionService {
             // When `confirmed` is non-nil, every entry that reaches here is
             // confirmed (the filter above drops the rest), so the wider gate
             // applies only to acoustically-anchored corrections.
-            let gate = (confirmed != nil)
-                ? max(2, entry.term.count / 2)
-                : max(1, entry.term.count / 4)
+            let gate: Int
+            if confirmed != nil {
+                gate = max(2, entry.term.count / 2)
+            } else if isOOV {
+                gate = max(1, entry.term.count / 4)
+            } else {
+                // The homophone gate below carries the safety here, so the
+                // surface distance only has to admit a one- or two-character
+                // mishear ("codecs"/"codex" is 2).
+                gate = 2
+            }
             guard dist <= gate else { continue }
+            if confirmed == nil, !isOOV,
+               !Self.homophoneGatePasses(key: coreKey, heard: coreLower, term: entry.lower) { continue }
             if best == nil || dist < best!.dist
                 || (dist == best!.dist && entry.term.count < best!.term.count) {
                 best = (entry.term, dist)
@@ -134,12 +146,30 @@ final class PhoneticCorrectionService {
         } else {
             replacement = best.term
         }
-        // A valid (non-OOV) word reaches here only on the confirmed path — that's
-        // the homophone unlock; an OOV core is the ordinary correction.
-        let reason = (confirmed != nil && !isMisspelled(coreLower)) ? "homophone-unlock" : "oov"
+        let reason = isOOV ? "oov" : "homophone-unlock"
         let correction = TranscriptionTrace.PhoneticCorrection(
             token: token, from: core, to: replacement, reason: reason, distance: best.dist)
         return (lead + replacement + trail, correction)
+    }
+
+    /// Whether a valid English word may be rewritten to a vocabulary term that
+    /// shares its phonetic key. Equal keys alone are far too weak: `to`/`TUI`
+    /// and `then`/`Thine` collide, and rewriting those is what forced the
+    /// earlier acoustic unlock off. Two extra conditions separate a real
+    /// mishear from a collision, and both are needed:
+    ///
+    /// - a distinctive key (≥ 3 characters), which drops the `T` and `0N`
+    ///   collisions that pull in the shortest, most common words;
+    /// - a long shared prefix (≥ 4 characters), which drops `cloud`/`Claude`
+    ///   (shares only `cl`) while keeping `codecs`/`codex` and `herder`/`Herdr`
+    ///   (both share 4).
+    static func homophoneGatePasses(key: String, heard: String, term: String) -> Bool {
+        guard key.count >= 3 else { return false }
+        return sharedPrefixLength(heard, term) >= 4
+    }
+
+    private static func sharedPrefixLength(_ a: String, _ b: String) -> Int {
+        zip(a, b).prefix { $0 == $1 }.count
     }
 
     private func osIsMisspelled(_ word: String) -> Bool {
