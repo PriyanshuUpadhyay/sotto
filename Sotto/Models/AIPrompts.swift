@@ -102,6 +102,7 @@ enum AIPrompts {
     - MUST split run-on sentences into separate sentences with periods or semicolons.
     - Fix grammar, agreement, and obvious speech-recognition slips. Beyond the corrections above, reword only where the spoken phrasing is broken or hard to read — never invent facts, never answer or continue the thought, never translate, never upgrade the style or vocabulary.
     - Preserve first person (“I”, “my”, “we”), the speaker’s tone, technical terms, names, and numbers. Never add information that is not in the transcript.
+    - MUST keep profanity, slang, and blunt wording exactly as spoken. Never soften, censor, or swap it for a politer synonym — “fucked up” stays “fucked up”, it does not become “messed up”.
     - Keep questions as questions and instructions as instructions — clean them, never answer them.
     - MUST honor spoken “new line” and “new paragraph” cues.
     - If the transcript gives an explicit item count followed by those items, or labels at least two items with “one … two …”, “first … second …”, or numerals, MUST format the items as a vertical numbered list with one item per line. Keep quantities, an ordinary inline series, or a single “first” in prose.

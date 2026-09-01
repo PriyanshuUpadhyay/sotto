@@ -456,7 +456,8 @@ class AIEnhancementService: ObservableObject {
         do {
             let result = try await aiService.enhanceWithAFM(systemPrompt: systemMessage, userPrompt: formattedText, transcriptChars: text.count, callKind: callKind, generation: generation)
             await MainActor.run { self.lastEnhancementModelUsed = AIProvider.resolved().modelIdentifier }
-            return AIEnhancementOutputFilter.filter(Self.stripPreamble(result))
+            let cleaned = AIEnhancementOutputFilter.filter(Self.stripPreamble(result))
+            return VerbatimWordGuard.restore(raw: text, output: cleaned)
         } catch is CancellationError {
             throw CancellationError()
         } catch {
