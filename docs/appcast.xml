@@ -1,9 +1,16 @@
-<?xml version="1.0" encoding="utf-8"?>
-<rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle">
+<?xml version="1.0" standalone="yes"?>
+<rss xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" version="2.0">
     <channel>
         <title>Sotto</title>
-        <link>https://priyanshuupadhyay.github.io/sotto/appcast.xml</link>
-        <description>Sotto update feed</description>
-        <language>en</language>
+        <item>
+            <title>0.1.0</title>
+            <pubDate>Tue, 01 Sep 2026 13:58:38 +0530</pubDate>
+            <link>https://github.com/PriyanshuUpadhyay/sotto</link>
+            <sparkle:version>1</sparkle:version>
+            <sparkle:shortVersionString>0.1.0</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>26.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <enclosure url="https://github.com/PriyanshuUpadhyay/sotto/releases/download/v0.1.0/Sotto-0.1.0.dmg" length="15405569" type="application/octet-stream" sparkle:edSignature="TfNW9Q4/UVonW0IXaabGT4dz0mwOptvNKBhhskKB+MVsp98O1YYWLGrFhRQqX787f5Uj6C7Iv38mXNMMEYMyBg=="/>
+        </item>
     </channel>
 </rss>

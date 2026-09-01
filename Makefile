@@ -124,7 +124,7 @@ local: check setup
 		echo ""; \
 		echo "Limitations of local builds:"; \
 		echo "  - No iCloud dictionary sync"; \
-		echo "  - No automatic updates (pull new code and rebuild to update)"; \
+		echo "  - Not notarized: a recipient clears quarantine once (see scripts/make-dmg.sh)"; \
 	else \
 		echo "Error: Could not find built Sotto.app at $$APP_PATH"; \
 		exit 1; \
