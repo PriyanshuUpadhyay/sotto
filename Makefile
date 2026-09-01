@@ -4,6 +4,13 @@ WHISPER_CPP_DIR := $(DEPS_DIR)/whisper.cpp
 FRAMEWORK_PATH := $(WHISPER_CPP_DIR)/build-apple/whisper.xcframework
 LOCAL_DERIVED_DATA := $(CURDIR)/.local-build
 
+# Silero VAD model: third-party MIT weights, fetched instead of vendored.
+# Xcode synchronized folders bundle whatever is on disk, so an absent file
+# builds an app with VAD silently off. The checksum gate makes that loud.
+VAD_MODEL := $(CURDIR)/Sotto/Resources/models/ggml-silero-v5.1.2.bin
+VAD_MODEL_URL := https://huggingface.co/ggml-org/whisper-vad/resolve/main/ggml-silero-v5.1.2.bin
+VAD_MODEL_SHA := 29940d98d42b91fbd05ce489f3ecf7c72f0a42f027e4875919a28fb4c04ea2cf
+
 # Local-build signing identity. scripts/local-sign-identity.sh explains the
 # cert and how to create it; bin/acceptance reads the identity from there too,
 # so every local invocation signs the same way.
@@ -23,7 +30,7 @@ LOCAL_XCODE_FLAGS = -project Sotto.xcodeproj -scheme Sotto -configuration Debug 
 	CODE_SIGN_ENTITLEMENTS=$(CURDIR)/Sotto/Sotto.local.entitlements \
 	SWIFT_ACTIVE_COMPILATION_CONDITIONS='$$(inherited) LOCAL_BUILD'
 
-.PHONY: all clean whisper setup build local check healthcheck help dev run reload test acceptance acceptance-mutate property dmg
+.PHONY: all clean whisper vad-model setup build local check healthcheck help dev run reload test acceptance acceptance-mutate property dmg
 
 # Default target
 all: check build
@@ -56,7 +63,27 @@ whisper:
 		echo "whisper.xcframework already built in $(DEPS_DIR), skipping build"; \
 	fi
 
-setup: whisper
+vad-model:
+	@if [ -f "$(VAD_MODEL)" ] && [ "$$(shasum -a 256 "$(VAD_MODEL)" | awk '{print $$1}')" = "$(VAD_MODEL_SHA)" ]; then \
+		echo "VAD model present"; \
+	else \
+		echo "Fetching Silero VAD model..."; \
+		mkdir -p "$(dir $(VAD_MODEL))"; \
+		curl -fL --retry 3 --connect-timeout 20 -o "$(VAD_MODEL).tmp" "$(VAD_MODEL_URL)" \
+			|| { rm -f "$(VAD_MODEL).tmp"; echo "VAD model download failed: $(VAD_MODEL_URL)"; exit 1; }; \
+		got=$$(shasum -a 256 "$(VAD_MODEL).tmp" | awk '{print $$1}'); \
+		if [ "$$got" != "$(VAD_MODEL_SHA)" ]; then \
+			rm -f "$(VAD_MODEL).tmp"; \
+			echo "VAD model checksum mismatch"; \
+			echo "  expected $(VAD_MODEL_SHA)"; \
+			echo "  got      $$got"; \
+			exit 1; \
+		fi; \
+		mv "$(VAD_MODEL).tmp" "$(VAD_MODEL)"; \
+		echo "VAD model ready"; \
+	fi
+
+setup: whisper vad-model
 	@echo "Whisper framework is ready at $(FRAMEWORK_PATH)"
 	@echo "Please ensure your Xcode project references the framework from this new location."
 

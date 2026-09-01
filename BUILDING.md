@@ -40,7 +40,8 @@ make dev
 
 - `make check` or `make healthcheck` - Verify all required tools are installed
 - `make whisper` - Clone and build whisper.cpp XCFramework automatically
-- `make setup` - Prepare the whisper framework for linking
+- `make vad-model` - Fetch and checksum the Silero VAD model
+- `make setup` - Prepare the whisper framework and fetch the VAD model
 - `make build` - Build the Sotto Xcode project
 - `make local` - Build for local use (no Apple Developer certificate needed)
 - `make run` - Launch the built Sotto app
@@ -56,11 +57,27 @@ make dev
 The Makefile automatically:
 1. **Manages Dependencies**: Creates a dedicated `~/Sotto-Dependencies` directory for all external frameworks
 2. **Builds Whisper Framework**: Clones whisper.cpp and builds the XCFramework with the correct configuration
-3. **Handles Framework Linking**: Sets up the whisper.xcframework in the proper location for Xcode to find
-4. **Verifies Prerequisites**: Checks that git, xcodebuild, and swift are installed before building
-5. **Streamlines Development**: Provides convenient shortcuts for common development tasks
+3. **Fetches the VAD Model**: Downloads the Silero VAD weights and verifies the SHA-256 before the build
+4. **Handles Framework Linking**: Sets up the whisper.xcframework in the proper location for Xcode to find
+5. **Verifies Prerequisites**: Checks that git, xcodebuild, and swift are installed before building
+6. **Streamlines Development**: Provides convenient shortcuts for common development tasks
 
 This approach ensures consistent builds across different machines and eliminates manual framework setup errors.
+
+## Silero VAD Model
+
+The voice-activity-detection weights are not in git. `make setup` fetches them:
+
+| | |
+|---|---|
+| Path | `Sotto/Resources/models/ggml-silero-v5.1.2.bin` |
+| Source | `https://huggingface.co/ggml-org/whisper-vad/resolve/main/ggml-silero-v5.1.2.bin` |
+| SHA-256 | `29940d98d42b91fbd05ce489f3ecf7c72f0a42f027e4875919a28fb4c04ea2cf` |
+| License | MIT (Silero Team) |
+
+The target fails the build if the download fails or the checksum does not match.
+This matters because Xcode synchronized folders bundle whatever is on disk: an
+absent file produces an app that runs with VAD silently disabled, with no error.
 
 ---
 

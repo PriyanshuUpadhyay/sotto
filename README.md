@@ -74,6 +74,7 @@ Also new, with no VoiceInk counterpart: the Gherkin acceptance pipeline (`featur
 ## Acknowledgments
 
 - [whisper.cpp](https://github.com/ggerganov/whisper.cpp) — high-performance inference of OpenAI's Whisper model
+- [Silero VAD](https://github.com/snakers4/silero-vad) (MIT) — voice-activity detection weights, fetched at build time
 - [FluidAudio](https://github.com/FluidInference/FluidAudio) — Parakeet model implementation
 - [KeyboardShortcuts](https://github.com/sindresorhus/KeyboardShortcuts) — user-customizable keyboard shortcuts
 - [LaunchAtLogin](https://github.com/sindresorhus/LaunchAtLogin) — launch-at-login support

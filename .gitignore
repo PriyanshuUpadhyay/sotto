@@ -127,3 +127,6 @@ dist/
 scripts/dmg/background.png
 scripts/dmg/background@2x.png
 scripts/dmg/background.tiff
+
+# Silero VAD model — fetched by `make setup` (see BUILDING.md), MIT, not vendored
+Sotto/Resources/models/*.bin
