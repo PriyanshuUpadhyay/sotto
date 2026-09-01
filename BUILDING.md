@@ -26,7 +26,7 @@ The easiest way to build Sotto is using the included Makefile, which automates t
 
 ```bash
 # Clone the repository and enter it
-git clone <your-fork-url> sotto
+git clone https://github.com/PriyanshuUpadhyay/sotto.git
 cd sotto
 
 # Build everything (recommended for first-time setup)
@@ -86,7 +86,7 @@ absent file produces an app that runs with VAD silently disabled, with no error.
 If you don't have an Apple Developer certificate, use `make local`:
 
 ```bash
-git clone <your-fork-url> sotto
+git clone https://github.com/PriyanshuUpadhyay/sotto.git
 cd sotto
 make local
 open -a Sotto
