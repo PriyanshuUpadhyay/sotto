@@ -11,6 +11,13 @@ VAD_MODEL := $(CURDIR)/Sotto/Resources/models/ggml-silero-v5.1.2.bin
 VAD_MODEL_URL := https://huggingface.co/ggml-org/whisper-vad/resolve/main/ggml-silero-v5.1.2.bin
 VAD_MODEL_SHA := 29940d98d42b91fbd05ce489f3ecf7c72f0a42f027e4875919a28fb4c04ea2cf
 
+# Release packaging. The EdDSA signature, not an Apple certificate, is what an
+# installed copy checks before it accepts an update, so the private key in the
+# login keychain is the only credential `make release` needs.
+SPARKLE_BIN := $(LOCAL_DERIVED_DATA)/SourcePackages/artifacts/sparkle/Sparkle/bin
+RELEASE_DIR := $(CURDIR)/dist/releases
+GITHUB_REPO := PriyanshuUpadhyay/sotto
+
 # Local-build signing identity. scripts/local-sign-identity.sh explains the
 # cert and how to create it; bin/acceptance reads the identity from there too,
 # so every local invocation signs the same way.
@@ -30,7 +37,7 @@ LOCAL_XCODE_FLAGS = -project Sotto.xcodeproj -scheme Sotto -configuration Debug 
 	CODE_SIGN_ENTITLEMENTS=$(CURDIR)/Sotto/Sotto.local.entitlements \
 	SWIFT_ACTIVE_COMPILATION_CONDITIONS='$$(inherited) LOCAL_BUILD'
 
-.PHONY: all clean whisper vad-model setup build local check healthcheck help dev run reload test acceptance acceptance-mutate property dmg
+.PHONY: all clean whisper vad-model setup build local check healthcheck help dev run reload test acceptance acceptance-mutate property dmg release
 
 # Default target
 all: check build
@@ -129,6 +136,38 @@ local: check setup
 # Output: dist/Sotto.dmg
 dmg: local
 	@bash scripts/make-dmg.sh
+
+# Build a signed, publishable release from the `make local` app. Prepares
+# artifacts only — publishing stays an explicit act, printed at the end.
+#
+# RELEASE_DIR is emptied each run so the generated appcast holds exactly one
+# item. Sparkle only needs the newest one, and a stale item would otherwise
+# carry this run's download-url-prefix and point at the wrong tag.
+release: local
+	@set -e; \
+		APP="$(LOCAL_DERIVED_DATA)/Build/Products/Debug/Sotto.app"; \
+		V=$$(/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" "$$APP/Contents/Info.plist"); \
+		[ -n "$$V" ] || { echo "could not read CFBundleShortVersionString"; exit 1; }; \
+		rm -rf "$(RELEASE_DIR)"; mkdir -p "$(RELEASE_DIR)"; \
+		OUT_DIR="$(RELEASE_DIR)" bash scripts/make-dmg.sh >/dev/null; \
+		mv "$(RELEASE_DIR)/Sotto.dmg" "$(RELEASE_DIR)/Sotto-$$V.dmg"; \
+		"$(SPARKLE_BIN)/generate_appcast" \
+			--download-url-prefix "https://github.com/$(GITHUB_REPO)/releases/download/v$$V/" \
+			--link "https://github.com/$(GITHUB_REPO)" \
+			"$(RELEASE_DIR)"; \
+		grep -q "sparkle:edSignature" "$(RELEASE_DIR)/appcast.xml" \
+			|| { echo "appcast is UNSIGNED — is the EdDSA key in the login keychain?"; exit 1; }; \
+		cp "$(RELEASE_DIR)/appcast.xml" docs/appcast.xml; \
+		echo ""; \
+		echo "Release $$V prepared and signed:"; \
+		echo "  $(RELEASE_DIR)/Sotto-$$V.dmg"; \
+		echo "  docs/appcast.xml"; \
+		echo ""; \
+		echo "To publish:"; \
+		echo "  gh release create v$$V \"$(RELEASE_DIR)/Sotto-$$V.dmg\" --title v$$V --notes-file <notes>"; \
+		echo "  git add docs/appcast.xml && git commit -m \"Publish $$V\" && git push"; \
+		echo ""; \
+		echo "Order matters: create the release first, or the appcast points at a missing asset."
 
 # Reload: build, kill the running instance, relaunch. Use this during dev so you
 # don't have to manually quit + reopen. Incremental build is ~5-15s after first.
