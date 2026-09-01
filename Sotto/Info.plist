@@ -8,6 +8,10 @@
 	<string>Sotto</string>
 	<key>SUEnableInstallerLauncherService</key>
 	<true/>
+	<key>SUFeedURL</key>
+	<string>https://priyanshuupadhyay.github.io/sotto/appcast.xml</string>
+	<key>SUPublicEDKey</key>
+	<string>UO82VVy3Gw6gfcOPkiyPxd1bs03gAt6YMyctaXBCG+Q=</string>
 	<key>LSUIElement</key>
 	<false/>
 	<key>SUEnableAutomaticChecks</key>

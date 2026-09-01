@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle">
+    <channel>
+        <title>Sotto</title>
+        <link>https://priyanshuupadhyay.github.io/sotto/appcast.xml</link>
+        <description>Sotto update feed</description>
+        <language>en</language>
+    </channel>
+</rss>
