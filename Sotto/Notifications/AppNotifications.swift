@@ -19,8 +19,8 @@ extension Notification.Name {
     static let aiProviderKeyChanged = Notification.Name("aiProviderKeyChanged")
     static let navigateToDestination = Notification.Name("navigateToDestination")
     static let selectSettingsTab = Notification.Name("selectSettingsTab")
-    /// Posted by the Settings rail when a tab is chosen while a search query is
-    /// active. `userInfo["tab"]` carries the target `SettingsTab`;
+    /// Posted by the window sidebar when a row is chosen while a search query
+    /// is active. `userInfo["tab"]` carries the target `SettingsTab`;
     /// `userInfo["label"]` carries the matching section's `searchLabel`. The
     /// destination tab scrolls that section to the top and briefly highlights it.
     static let selectSettingsSection = Notification.Name("selectSettingsSection")
