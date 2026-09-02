@@ -390,6 +390,15 @@ struct ComposeReviewView: View {
                     Button("", action: manager.cancel)
                         .keyboardShortcut(.escape, modifiers: [])
                 }
+                // Comparing ENHANCED against RAW is the panel's core decision;
+                // bound only while the toggle is actually on screen, so ⌘1/⌘2
+                // never select a version the header does not offer.
+                if versionToggleVisible {
+                    Button("", action: { manager.selectVersion(.enhanced) })
+                        .keyboardShortcut("1", modifiers: .command)
+                    Button("", action: { manager.selectVersion(.raw) })
+                        .keyboardShortcut("2", modifiers: .command)
+                }
             }
             .opacity(0)
             .accessibilityHidden(true)
@@ -412,7 +421,7 @@ struct ComposeReviewView: View {
             Spacer(minLength: 0)
             if manager.isEnhancing {
                 enhancingLabel
-            } else if manager.enhancedText != nil {
+            } else if versionToggleVisible {
                 versionToggle
             }
         }
@@ -433,6 +442,12 @@ struct ComposeReviewView: View {
                 }
             }
             .onDisappear { enhancingPulse = false }
+    }
+
+    /// The version segments are on screen — the ⌘1/⌘2 accelerators and the
+    /// hint chip follow it exactly.
+    private var versionToggleVisible: Bool {
+        !manager.isEnhancing && manager.enhancedText != nil
     }
 
     private var versionToggle: some View {
@@ -598,21 +613,37 @@ struct ComposeReviewView: View {
     }
 
     private var hint: some View {
-        HStack(spacing: 4) {
-            Text("\u{2318}\u{21A9}")
-                .foregroundColor(Palette.phosphor)
-            Text(manager.isEnhancing ? "paste raw now" : "paste")
-                .foregroundColor(Palette.inkSecondary)
-            Text("\u{00B7}")
-                .foregroundColor(Palette.inkTertiary)
-            Text("esc")
-                .foregroundColor(Palette.inkSecondary)
-            Text("cancel")
-                .foregroundColor(Palette.inkSecondary)
+        HStack(spacing: 6) {
+            hintChip("\u{2318}\u{21A9}", manager.isEnhancing ? "paste raw now" : "paste")
+            hintChip("esc", "cancel")
+            hintChip("\u{2318}D", "multi-edit")
+            if versionToggleVisible {
+                hintChip("\u{2318}1/2", "version")
+            }
             Spacer(minLength: 0)
         }
         .font(.microlabel(9))
         .tracking(0.8)
+    }
+
+    /// Keycap + label pair (mockup 03 `.keycap`) — the same chip recipe as
+    /// `MatteCapsuleView.retryChip`, so a key hint reads as a key hint.
+    private func hintChip(_ key: String, _ label: String) -> some View {
+        HStack(spacing: 4) {
+            Text(key).foregroundColor(Palette.phosphor)
+            Text(label).foregroundColor(Palette.inkSecondary)
+        }
+        .fixedSize()
+        .padding(.horizontal, 6)
+        .padding(.vertical, 3)
+        .background(
+            RoundedRectangle(cornerRadius: Radius.control, style: .continuous)
+                .fill(Palette.mtRaise2)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: Radius.control, style: .continuous)
+                .strokeBorder(Palette.mtLine, lineWidth: 1)
+        )
     }
 
     private var sizeReader: some View {

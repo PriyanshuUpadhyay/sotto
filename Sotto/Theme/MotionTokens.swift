@@ -61,6 +61,12 @@ enum MotionTokens {
     /// Committed-state hold before fade-out (1.5s).
     static let committedHold: TimeInterval = 1.5
 
+    /// Post-paste ping hold before the fade-out. Long enough to read the
+    /// caption AND find Undo — restoring the clipboard the paste overwrote is
+    /// the only reversal Sotto offers, so it must be discoverable without a
+    /// hover. Stays below `reviewWindowHold` so the panel outlives the tray.
+    static let trayHold: TimeInterval = 4.0
+
     /// Post-paste review-window hold: how long the recorder panel lingers on
     /// screen after a successful paste so the ReviewTray (auto-fades at 5s) is
     /// actually usable. Slightly longer than the tray's fade so the window

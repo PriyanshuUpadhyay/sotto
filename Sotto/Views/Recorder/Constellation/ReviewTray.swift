@@ -37,8 +37,12 @@ struct ReviewTray: View {
     /// Trailing mask inset that hides the actions when collapsed: measured
     /// actions width + the pill's 8pt gap (mockup 03's `--clip`).
     @State private var actionsClip: CGFloat = 0
+    /// The discovery window has passed, so the pill may collapse to the
+    /// caption. Undo is the only reversal Sotto offers — it starts revealed
+    /// rather than waiting for a pointer that may never arrive.
+    @State private var discoveryElapsed = false
 
-    private var revealed: Bool { hovered || manager.isPanelKey }
+    private var revealed: Bool { hovered || manager.isPanelKey || !discoveryElapsed }
 
     var body: some View {
         pill
@@ -46,6 +50,12 @@ struct ReviewTray: View {
                 guard let event else { return }
                 appName = event.appName
                 hovered = false
+            }
+            .task(id: manager.currentEvent) {
+                discoveryElapsed = false
+                try? await Task.sleep(for: .seconds(MotionTokens.committedHold))
+                guard !Task.isCancelled else { return }
+                discoveryElapsed = true
             }
     }
 

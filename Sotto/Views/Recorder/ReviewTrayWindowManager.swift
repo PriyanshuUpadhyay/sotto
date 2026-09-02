@@ -131,7 +131,7 @@ final class ReviewTrayWindowManager: NSObject, ObservableObject {
         panel?.orderFrontRegardless()
         fade(to: 1, duration: MotionTokens.stateEnterDuration, curve: .easeOut)
         installClickMonitors()
-        holdRemaining = MotionTokens.committedHold
+        holdRemaining = MotionTokens.trayHold
         scheduleAutoDismiss()
         logger.notice("present – app=\(event.appName, privacy: .public)")
     }
