@@ -39,7 +39,11 @@ class WindowManager: NSObject {
         window.level = .normal
         window.isOpaque = false
         window.isMovableByWindowBackground = false
-        window.minSize = NSSize(width: 0, height: 0)
+        // configureWindow runs after `.windowResizability(.contentSize)` has
+        // derived a floor, so a zero size let the user collapse the window until
+        // the search field, list and selection bar overlapped — and the size is
+        // persisted by setFrameAutosaveName.
+        window.minSize = NSSize(width: 720, height: 480)
         window.setFrameAutosaveName(Self.mainWindowAutosaveName)
         applyInitialPlacementIfNeeded(to: window)
         registerMainWindowIfNeeded(window)

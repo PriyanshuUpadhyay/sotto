@@ -128,7 +128,9 @@ class AudioPlayerManager: ObservableObject {
     }
     
     private func startTimer() {
-        timer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in
+        // 30 Hz on `.common` so the playhead neither strobes nor stalls while a
+        // menu is open or the list is being scrolled.
+        let timer = Timer(timeInterval: 1.0 / 30.0, repeats: true) { [weak self] _ in
             guard let self = self else { return }
             self.currentTime = self.audioPlayer?.currentTime ?? 0
             if self.currentTime >= self.duration {
@@ -136,6 +138,8 @@ class AudioPlayerManager: ObservableObject {
                 self.seek(to: 0)
             }
         }
+        RunLoop.main.add(timer, forMode: .common)
+        self.timer = timer
     }
 
     private func stopTimer() {
@@ -188,6 +192,7 @@ struct WaveformView: View {
                     HStack(spacing: 0.5) {
                         ForEach(0..<samples.count, id: \.self) { index in
                             WaveformBar(
+                                index: index,
                                 sample: samples[index],
                                 isPlayed: CGFloat(index) / CGFloat(samples.count) <= CGFloat(currentTime / duration),
                                 totalBars: samples.count,
@@ -259,6 +264,7 @@ struct WaveformView: View {
 }
 
 struct WaveformBar: View {
+    let index: Int
     let sample: Float
     let isPlayed: Bool
     let totalBars: Int
@@ -267,7 +273,9 @@ struct WaveformBar: View {
     let hoverProgress: CGFloat
     
     private var isNearHover: Bool {
-        let barPosition = geometryWidth / CGFloat(totalBars)
+        // The bar's own centre — the previous expression was the bar WIDTH, the
+        // same for every bar, so the whole waveform bulged at once.
+        let barPosition = (CGFloat(index) + 0.5) * (geometryWidth / CGFloat(totalBars))
         let hoverPosition = hoverProgress * geometryWidth
         return abs(barPosition - hoverPosition) < 20
     }

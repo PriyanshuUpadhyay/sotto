@@ -96,10 +96,6 @@ struct WordReplacementView: View {
         UserDefaults.standard.set(sortMode.rawValue, forKey: "wordReplacementSortMode")
     }
 
-    private var shouldShowAddButton: Bool {
-        !originalWord.isEmpty || !replacementWord.isEmpty
-    }
-
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
             HStack(alignment: .top, spacing: 10) {
@@ -138,19 +134,20 @@ struct WordReplacementView: View {
 
                 matteField("Replacement text", text: $replacementWord, onSubmit: addReplacement)
 
-                if shouldShowAddButton {
-                    Button(action: addReplacement) {
-                        Image(systemName: "plus.circle.fill")
-                            .symbolRenderingMode(.hierarchical)
-                            .foregroundStyle(Palette.phosphor)
-                            .font(.system(size: 16, weight: .semibold))
-                    }
-                    .buttonStyle(.borderless)
-                    .disabled(originalWord.isEmpty || replacementWord.isEmpty)
-                    .help("Add word replacement")
+                // Present at all times: inserting the button on the first
+                // keystroke resized the fields under the caret mid-typing.
+                Button(action: addReplacement) {
+                    Image(systemName: "plus.circle.fill")
+                        .symbolRenderingMode(.hierarchical)
+                        .foregroundStyle(Palette.phosphor)
+                        .font(.system(size: 16, weight: .semibold))
                 }
+                .buttonStyle(.borderless)
+                .disabled(originalWord.isEmpty || replacementWord.isEmpty)
+                .opacity(originalWord.isEmpty || replacementWord.isEmpty ? 0.35 : 1)
+                .help("Add word replacement")
+                .accessibilityLabel("Add word replacement")
             }
-            .animation(Animation.haloPhaseCrossfade, value: shouldShowAddButton)
 
             if !wordReplacements.isEmpty {
                 sortHeader

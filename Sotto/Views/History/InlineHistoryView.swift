@@ -834,8 +834,11 @@ private struct HistoryCardRow: View {
                             .foregroundStyle(Palette.inkSecondary)
 
                         if !isExpanded {
+                            // The user's own words — `Font.transcript` is the
+                            // token for history transcript bodies.
                             Text(transcription.enhancedText ?? transcription.text)
-                                .font(.system(size: 13))
+                                .font(.transcript(15))
+                                .lineSpacing(3)
                                 .lineLimit(2)
                                 .foregroundStyle(Palette.inkPrimary)
                         }
@@ -910,7 +913,8 @@ private struct HistoryCardRow: View {
 
             ScrollView {
                 Text(displayText)
-                    .font(.body)
+                    .font(.transcript(15))
+                    .lineSpacing(3)
                     .foregroundColor(.primary)
                     .textSelection(.enabled)
                     .frame(maxWidth: .infinity, alignment: .leading)
