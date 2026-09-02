@@ -134,6 +134,22 @@ final class OnboardingFlowTests: XCTestCase {
         }
     }
 
+    /// Anchor 2 in the code, not just in the enum: the launch path must not
+    /// re-open the Accessibility or Screen Recording dialogs, or "Skip for now"
+    /// on their onboarding steps means nothing. Source-scanned because
+    /// `applicationDidFinishLaunching` has no headless behaviour to assert.
+    func test_appDelegate_doesNotPromptOptionalPermissionsAtLaunch() {
+        let here = URL(fileURLWithPath: #filePath)
+        let root = here.deletingLastPathComponent().deletingLastPathComponent()
+        let src = (try? String(contentsOf: root.appendingPathComponent("Sotto/AppDelegate.swift"),
+                               encoding: .utf8)) ?? ""
+        XCTAssertFalse(src.isEmpty, "AppDelegate.swift not found")
+        XCTAssertFalse(src.contains("AXIsProcessTrustedWithOptions"),
+                       "launch must not prompt Accessibility")
+        XCTAssertFalse(src.contains("CGRequestScreenCaptureAccess"),
+                       "launch must not prompt Screen Recording")
+    }
+
     func test_constructingFlow_requestsNoPermission() {
         let log = PermissionRequestLog()
         _ = OnboardingFlow(onFinish: {}, requestPermission: { log.record($0) })
