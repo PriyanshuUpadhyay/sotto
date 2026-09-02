@@ -338,7 +338,6 @@ final class ComposeReviewWindowManager: NSObject, ObservableObject {
 struct ComposeReviewView: View {
     @ObservedObject var manager: ComposeReviewWindowManager
 
-    @Environment(\.colorSchemeContrast) private var contrast
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     /// Auto-grows with content between `minEditorHeight` and `maxEditorHeight`;
     /// scrolls beyond the max.
@@ -370,10 +369,6 @@ struct ComposeReviewView: View {
         .frame(width: Self.panelWidth, alignment: .leading)
         // The capsule's glass, one step thicker (mockup 01 lane B `.b-review`).
         .sottoGlass(.panel, in: RoundedRectangle(cornerRadius: Radius.panel, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: Radius.panel, style: .continuous)
-                .strokeBorder(A11y.borderColor(increaseContrast: contrast == .increased), lineWidth: 1)
-        )
         .sottoGlassGlow(Palette.phosphor, level: .panel)
         .background(sizeReader)
         // Hidden accelerators: ⌘↵ (Return alone inserts a newline in the
@@ -461,8 +456,10 @@ struct ComposeReviewView: View {
             segButton("RAW", .raw)
         }
         .padding(2)
-        .sottoGlass(.chip, in: RoundedRectangle(cornerRadius: Self.segmentTrackRadius,
-                                                style: .continuous))
+        // The track is the recess and the selected segment is the lift, so the
+        // selection reads without a border around it.
+        .sottoGlass(.scrim, in: RoundedRectangle(cornerRadius: Self.segmentTrackRadius,
+                                                 style: .continuous))
     }
 
     /// True when the active face shows the editable draft; false = the face
@@ -485,13 +482,10 @@ struct ComposeReviewView: View {
                 .foregroundColor(selected ? Palette.inkPrimary : Palette.inkSecondary)
                 .padding(.horizontal, 7)
                 .padding(.vertical, 3)
+                .glassInkShadow()
                 .background(
                     RoundedRectangle(cornerRadius: Self.segmentRadius, style: .continuous)
                         .fill(selected ? Palette.glassChipFill : .clear)
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: Self.segmentRadius, style: .continuous)
-                        .strokeBorder(selected ? Palette.mtLine : .clear, lineWidth: 1)
                 )
                 .contentShape(Rectangle())
         }
@@ -524,9 +518,10 @@ struct ComposeReviewView: View {
             }
         }
         .padding(8)
-        // The frosted band: the transcript is the one thing here the user
-        // actually reads, so it never sits on bare glass.
-        .sottoGlass(.band, in: RoundedRectangle(cornerRadius: Self.nestRadius, style: .continuous))
+        // The transcript is the one thing here the user actually reads and it
+        // runs to many lines, so it gets a soft recess to settle on. A recess,
+        // not a frost: the glass already dims what is behind it.
+        .sottoGlass(.scrim, in: RoundedRectangle(cornerRadius: Self.nestRadius, style: .continuous))
         // Enhancing halo — accent breathes behind the nest (mock state 02);
         // rides the same pulse as the header label.
         .background(

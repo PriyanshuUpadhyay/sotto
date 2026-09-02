@@ -180,10 +180,6 @@ struct DictionaryQuickAddView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .sottoGlass(.panel, in: RoundedRectangle(cornerRadius: Radius.panel, style: .continuous))
         .clipShape(RoundedRectangle(cornerRadius: Radius.panel, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: Radius.panel, style: .continuous)
-                .strokeBorder(Palette.mtLine, lineWidth: 1)
-        )
         .onKeyPress(.escape) {
             onDismiss()
             return .handled
@@ -231,7 +227,7 @@ struct DictionaryQuickAddView: View {
                     .padding(.vertical, 5)
                     .background(
                         Capsule()
-                            .fill(mode == m ? Palette.mtRaise2 : Color.clear)
+                            .fill(mode == m ? Palette.glassChipFill : Color.clear)
                     )
                 }
                 .buttonStyle(.plain)
@@ -295,14 +291,8 @@ struct DictionaryQuickAddView: View {
             .onSubmit(onSubmit)
             .padding(.horizontal, 10)
             .padding(.vertical, 8)
-            .background(
-                RoundedRectangle(cornerRadius: Radius.control, style: .continuous)
-                    .fill(Palette.mtRaise2)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: Radius.control, style: .continuous)
-                            .strokeBorder(Palette.mtLine, lineWidth: 1)
-                    )
-            )
+            .sottoGlass(.scrim,
+                        in: RoundedRectangle(cornerRadius: Radius.control, style: .continuous))
     }
 
     // MARK: - Hint Bar
@@ -387,13 +377,7 @@ private struct KeyHint: View {
             .foregroundStyle(Palette.inkSecondary)
             .padding(.horizontal, 5)
             .padding(.vertical, 2)
-            .background(
-                RoundedRectangle(cornerRadius: 6, style: .continuous)
-                    .fill(Palette.mtRaise2)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 6, style: .continuous)
-                            .strokeBorder(Palette.mtLine, lineWidth: 1)
-                    )
-            )
+            .glassInkShadow()
+            .sottoGlass(.chip, in: RoundedRectangle(cornerRadius: 6, style: .continuous))
     }
 }

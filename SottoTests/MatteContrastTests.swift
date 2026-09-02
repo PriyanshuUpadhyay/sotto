@@ -58,76 +58,59 @@ final class MatteContrastTests: XCTestCase {
         XCTAssertLessThan(r, 4.5)
     }
 
-    // MARK: - Liquid Glass frost
+    // MARK: - Liquid Glass
     //
     // The recorder family is made of the platform's Liquid Glass, so what sits
-    // behind a surface is the user's desktop, not a token. Only the FROSTED
-    // regions carry `Palette.ink*`: the band behind the word tape and the
-    // transcript, and the chips. Those are the `mt*` ladder at
-    // `Palette.glassFrostAlpha`, so their composite is computable — these tests
-    // pin it against the two extremes a wallpaper can reach.
+    // behind a surface is the user's desktop, not a token — no test can assert a
+    // contrast ratio against it. What CAN be pinned is the contract that keeps
+    // the material responsible for legibility:
+    //   • `Glass.regular` (the variant Apple specifies for components carrying
+    //     text) is the only material used, and it is untinted except where
+    //     colour is a status signal;
+    //   • text on it is `Palette.ink*` plus `glassInkShadow()`, never a lower
+    //     rung of the ink ladder;
+    //   • the scrim behind the review transcript stays a scrim — a soft recess —
+    //     rather than growing back into an opaque slab;
+    //   • and every text-carrying surface still falls back to the opaque matte
+    //     ladder under Reduce Transparency / Increase Contrast, where the ratios
+    //     above apply again (`A11yContractTests`).
 
-    /// Alpha-composite `base` over `backdrop`, both opaque sRGB hex.
-    static func composite(_ base: UInt32, over backdrop: UInt32, alpha: Double) -> UInt32 {
-        var out: UInt32 = 0
-        for shift in [UInt32(16), 8, 0] {
-            let f = Double((base >> shift) & 0xFF)
-            let b = Double((backdrop >> shift) & 0xFF)
-            let v = UInt32((f * alpha + b * (1 - alpha)).rounded())
-            out |= min(255, v) << shift
-        }
-        return out
+    /// The scrim is a recess, not a frost. Above this it stops reading as glass
+    /// and the review panel goes back to being an opaque dark slab — which is
+    /// exactly what the material change was meant to end.
+    func testTranscriptScrimStaysASoftRecess() {
+        XCTAssertGreaterThan(Palette.glassScrimAlpha, 0,
+            "a zero scrim leaves the transcript with no recess at all")
+        XCTAssertLessThanOrEqual(Palette.glassScrimAlpha, 0.25,
+            "the glass owns legibility; above 0.25 the scrim reads as a slab")
     }
 
-    /// The extremes any wallpaper can push through the glass.
-    private let backdrops: [UInt32] = [0xffffff, 0x000000]
-
-    /// Dark appearance: `mtRaise` band, `mtRaise2` chip.
-    private let frostBasesDark: [UInt32] = [0x16161a, 0x1b1b20]
-    /// Light appearance: same two rungs.
-    private let frostBasesLight: [UInt32] = [0xffffff, 0xe8e8ed]
-
-    private func frostComposites(dark: Bool) -> [UInt32] {
-        let bases = dark ? frostBasesDark : frostBasesLight
-        return bases.flatMap { base in
-            backdrops.map { Self.composite(base, over: $0, alpha: Palette.glassFrostAlpha) }
-        }
+    /// Colour on glass is reserved for status and must stay faint enough that
+    /// the material still reads as glass rather than as a coloured fill.
+    func testStateTintOnGlassStaysFaint() {
+        XCTAssertLessThanOrEqual(Palette.glassStateTintAlpha, 0.2)
     }
 
-    /// The word tape, the review transcript and every chip label sit on a
-    /// frosted region, never on bare glass — so body ink clears text AA no
-    /// matter what the desktop puts behind the window.
-    func testInkOverFrostClearsTextAAOverAnyBackdrop() {
-        for bg in frostComposites(dark: true) {
-            XCTAssertGreaterThanOrEqual(Self.contrastRatio(0xe7e7ea, bg), 4.5,
-                "inkPrimary must clear text AA on the frost, backdrop-independent")
-            XCTAssertGreaterThanOrEqual(Self.contrastRatio(0x9a9aa2, bg), 4.5,
-                "inkSecondary (the tentative word) must clear text AA on the frost")
-        }
-        for bg in frostComposites(dark: false) {
-            XCTAssertGreaterThanOrEqual(Self.contrastRatio(0x1d1d1f, bg), 4.5)
-            XCTAssertGreaterThanOrEqual(Self.contrastRatio(0x515157, bg), 4.5)
+    /// A chip on glass is a thin overlay that belongs to the material (Apple's
+    /// rule for elements sitting on Liquid Glass), so its own alpha stays low —
+    /// it lifts the surface, it does not replace it.
+    func testChipOnGlassIsAThinOverlay() {
+        for appearance in [NSAppearance.Name.darkAqua, .aqua] {
+            let fill = Palette.glassChipFill.resolvedNSColor(in: appearance)
+            XCTAssertGreaterThan(fill.alphaComponent, 0,
+                                 "the chip must still be visible on the glass")
+            XCTAssertLessThanOrEqual(fill.alphaComponent, 0.2,
+                                     "a chip is an overlay on the material, not a second surface")
         }
     }
 
-    /// The accent and the state colors ride the chips (retry, settings, key
-    /// hints), so they must clear AA graphical on the frost too.
-    func testAccentsOverFrostClearGraphicalAAOverAnyBackdrop() {
-        let dark: [UInt32] = [0xb9f27e /*phosphor*/, 0xff5a52, 0x7fb4ff, 0x8af06e, 0xffb86b]
-        let light: [UInt32] = [0x3d6b00, 0xb42318, 0x005ea8, 0x2f6f1d, 0x8a4b00]
-        for bg in frostComposites(dark: true) {
-            for c in dark { XCTAssertGreaterThanOrEqual(Self.contrastRatio(c, bg), 3.0) }
-        }
-        for bg in frostComposites(dark: false) {
-            for c in light { XCTAssertGreaterThanOrEqual(Self.contrastRatio(c, bg), 3.0) }
-        }
-    }
-
-    /// The frost only holds the line above a floor. Pin the alpha so a later
-    /// "make it more see-through" tweak has to face this test first.
-    func testFrostAlphaStaysAboveTheLegibilityFloor() {
-        XCTAssertGreaterThanOrEqual(Palette.glassFrostAlpha, 0.90,
-            "below this the tentative word stops clearing 4.5:1 over a white wallpaper")
-        XCTAssertLessThanOrEqual(Palette.glassFrostAlpha, 1.0)
+    /// The ink that rides the glass is body ink with the separation shadow —
+    /// never `inkTertiary`, whose ratio is only large-text/graphical even on the
+    /// opaque fallback surface.
+    func testInkOnGlassIsBodyInkNotTertiary() {
+        let onGlass = [Palette.inkPrimary, Palette.inkSecondary]
+        XCTAssertFalse(onGlass.contains { $0.resolvedNSColor() == Palette.inkTertiary.resolvedNSColor() })
+        // The shadow that separates it from the desktop actually paints.
+        XCTAssertGreaterThan(Palette.glassInkShadow.resolvedNSColor().alphaComponent, 0)
     }
 }

@@ -44,20 +44,21 @@ final class A11yContractTests: XCTestCase {
         // the matte ladder the capsule used before the glass — the code path
         // stays alive, it is not merely a lighter tint.
         let opaque = [Palette.mtRaise.resolvedNSColor(), Palette.mtRaise2.resolvedNSColor()]
-        for level in [SottoGlassLevel.capsule, .panel, .chip, .band] {
+        for level in [SottoGlassLevel.capsule, .panel, .chip, .scrim] {
             XCTAssertTrue(opaque.contains(level.opaqueFill.resolvedNSColor()),
                           "\(level) must fall back to an opaque matte surface")
         }
     }
 
-    func testOnlyFrostedLevelsCarryInk() {
-        // The contract `MatteContrastTests` depends on: `Palette.ink*` only ever
-        // sits on a frosted level, never on live glass whose composite depends
-        // on the wallpaper behind the window.
-        XCTAssertTrue(SottoGlassLevel.band.isFrost)
-        XCTAssertTrue(SottoGlassLevel.chip.isFrost)
-        XCTAssertFalse(SottoGlassLevel.capsule.isFrost)
-        XCTAssertFalse(SottoGlassLevel.panel.isFrost)
+    func testNothingIsLayeredGlassOnGlass() {
+        // Apple's rule for elements sitting on Liquid Glass: use fills,
+        // transparency and vibrancy so they read as a thin overlay that is part
+        // of the material — never a second sheet of glass. Only the two surface
+        // levels are the material; everything that rides on one is a fill.
+        XCTAssertTrue(SottoGlassLevel.chip.isOverlay)
+        XCTAssertTrue(SottoGlassLevel.scrim.isOverlay)
+        XCTAssertFalse(SottoGlassLevel.capsule.isOverlay)
+        XCTAssertFalse(SottoGlassLevel.panel.isOverlay)
     }
 
     func testMotionTokensCollapseUnderReduceMotion() {

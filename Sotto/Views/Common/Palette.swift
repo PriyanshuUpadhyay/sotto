@@ -29,6 +29,23 @@ enum Palette {
         }))
     }
 
+    /// Adaptive colour whose ALPHA also differs by appearance — an overlay that
+    /// should read as the same lift needs a different alpha over a light and a
+    /// dark surface.
+    static func adaptive(light: UInt32, lightAlpha: Double,
+                         dark: UInt32, darkAlpha: Double) -> Color {
+        Color(nsColor: NSColor(name: nil, dynamicProvider: { appearance in
+            let isDark = appearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
+            let value = isDark ? dark : light
+            return NSColor(
+                srgbRed: CGFloat((value >> 16) & 0xff) / 255,
+                green: CGFloat((value >> 8) & 0xff) / 255,
+                blue: CGFloat(value & 0xff) / 255,
+                alpha: isDark ? darkAlpha : lightAlpha
+            )
+        }))
+    }
+
     /// Completion signal. Dark keeps #30D158; Light uses a contrast-safe green.
     static let success = adaptive(light: 0x2f6f1d, dark: 0x30d158)
 
@@ -133,38 +150,35 @@ enum Palette {
     // MARK: - Liquid Glass (floating recorder family)
     //
     // The capsule, the ping, the review editor, the palette and the quick-add
-    // panel are made of the PLATFORM material (macOS 26 `.glassEffect`). These
-    // tokens tint it; they never stand in for it. Consumed only by
-    // `.sottoGlass(_:in:)` — see `SottoGlass.swift`.
+    // panel are made of the PLATFORM material (macOS 26 `.glassEffect`). The
+    // material itself is UNTINTED — Liquid Glass has no inherent colour and
+    // takes it from the content behind it. These tokens only describe what
+    // rides ON the material. Consumed only by `.sottoGlass(_:in:)` — see
+    // `SottoGlass.swift`.
 
-    /// Body tint for the thinnest glass (capsule, ping). A barely-there wash so
-    /// the desktop's colour stays luminous through the surface.
-    static let glassTint = adaptive(light: 0xffffff, dark: 0x141022).opacity(0.16)
+    /// A control riding on glass (esc hint, retry, key cap, version segment).
+    /// A light lift, not a second sheet of glass: white on dark glass, black on
+    /// light glass, both low enough to stay part of the material. The dark side
+    /// needs the higher alpha because glass already runs bright there.
+    static let glassChipFill = adaptive(light: 0x000000, lightAlpha: 0.06,
+                                        dark: 0xffffff, darkAlpha: 0.12)
 
-    /// Body tint one step thicker (review editor, palette, quick-add card).
-    static let glassTintThick = adaptive(light: 0xffffff, dark: 0x120e20).opacity(0.22)
+    /// Alpha of the transcript scrim. Capped well below an opaque frost: the
+    /// glass owns legibility, the scrim only settles a long stretch of text.
+    static let glassScrimAlpha: Double = 0.22
 
-    /// Alpha of every frosted region. High on purpose: a frost carries
-    /// `Palette.ink*` text, so its composite over an arbitrary wallpaper must be
-    /// computable rather than hoped for (`MatteContrastTests`).
-    static let glassFrostAlpha: Double = 0.90
+    /// A soft recess behind a long stretch of transcript text — pushes the
+    /// backdrop toward the appearance's own ground so the ink settles on it.
+    static let glassScrim = adaptive(light: 0xffffff, dark: 0x000000)
+        .opacity(glassScrimAlpha)
 
-    /// The legibility band directly behind transcript text.
-    static let glassBand = mtRaise.opacity(glassFrostAlpha)
+    /// Alpha of the stained-glass tint on a terminal capsule state. Colour on
+    /// glass is reserved for status, and stays faint enough that the material
+    /// still reads as glass rather than as a coloured slab.
+    static let glassStateTintAlpha: Double = 0.16
 
-    /// A chip riding on glass (esc hint, retry, key hint, version segment).
-    static let glassChipFill = mtRaise2.opacity(glassFrostAlpha)
-
-    /// White α 0.55 — the bright top edge where light enters the glass. Hotter
-    /// than `innerHi`, which sits on an opaque matte fill rather than on glass.
-    static let glassEdgeHi = Color.white.opacity(0.55)
-
-    /// Black α 0.22 — soft inner shadow along the bottom of a glass surface,
-    /// reading as the material's own thickness.
-    static let glassInnerShadow = Color.black.opacity(0.22)
-
-    /// Legibility shadow for short ink sitting directly on glass. Opposes the
-    /// ink, so it separates the glyphs from the desktop in either appearance.
+    /// Legibility shadow for ink sitting directly on glass. Opposes the ink, so
+    /// it separates the glyphs from the desktop in either appearance.
     static let glassInkShadow = adaptive(light: 0xffffff, dark: 0x000000).opacity(0.5)
 
     // MARK: - Ink ladder

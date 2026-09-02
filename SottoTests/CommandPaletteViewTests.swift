@@ -22,13 +22,17 @@ final class CommandPaletteViewTests: XCTestCase {
     func test_paletteView_usesMatteTokens_notRawColors() {
         let src = paletteSource("CommandPalette.swift")
         XCTAssertFalse(src.isEmpty, "CommandPalette.swift not found")
-        // Graphite-Matte semantic tokens (P4 restyle) — card/selection surfaces,
-        // hairline, and the phosphor signal, all via `Palette.*` not raw literals.
-        XCTAssertTrue(src.contains("Palette.mtRaise"))
-        XCTAssertTrue(src.contains("Palette.mtRaise2"))
+        // Semantic tokens — surfaces, hairline and the phosphor signal all via
+        // `Palette.*`, never raw literals. The card is Liquid Glass now, so its
+        // surfaces are the glass tokens: the selected row is a lift on the
+        // material and the footer a recess, in place of the matte slabs, and the
+        // card's border is drawn by the material (and, in the opaque
+        // accessibility branch, by `.sottoGlass`) rather than by this file.
+        XCTAssertTrue(src.contains("sottoGlass(.panel"))
+        XCTAssertTrue(src.contains("Palette.glassChipFill"))
+        XCTAssertTrue(src.contains("Palette.glassScrim"))
         XCTAssertTrue(src.contains("Palette.mtLine"))
         XCTAssertTrue(src.contains("Palette.phosphor"))
-        XCTAssertTrue(src.contains("A11y.borderColor"))
         // No NavigationSplitView / .searchable (crash-guard rule for search surfaces).
         XCTAssertFalse(src.contains("NavigationSplitView"))
         XCTAssertFalse(src.contains(".searchable"))

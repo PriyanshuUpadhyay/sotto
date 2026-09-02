@@ -20,14 +20,9 @@ struct CommandPalette: View {
     @State private var query: String = ""
     @State private var expanded: Set<String> = []
     @FocusState private var searchFocused: Bool
-    @Environment(\.colorSchemeContrast) private var contrast
     @Environment(\.colorScheme) private var colorScheme
 
     private let card = RoundedRectangle(cornerRadius: Radius.panel, style: .continuous)
-
-    private var borderColor: Color {
-        A11y.borderColor(increaseContrast: contrast == .increased)
-    }
 
     /// The card floats, so it keeps a drop shadow — but the dark-tuned opacity
     /// reads as a grey smudge under the light `mtRaise`.
@@ -46,7 +41,6 @@ struct CommandPalette: View {
         // Same glass as the review editor — the palette is part of the same
         // floating HUD family, not a windowed surface.
         .sottoGlass(.panel, in: card)
-        .overlay(card.stroke(borderColor, lineWidth: 1))
         .shadow(color: cardShadow, radius: 30, y: 14)
         .onAppear { searchFocused = true }
     }
@@ -157,11 +151,9 @@ struct CommandPalette: View {
             }
         }
         .padding(.horizontal, 12)
-        .background(rowShape.fill(selected ? Palette.mtRaise2 : Color.clear))
-        .overlay(
-            // Inset hairline on the selected row (matches the rail/list grammar).
-            rowShape.inset(by: 0.5).stroke(selected ? Palette.mtLine2 : Color.clear, lineWidth: 1)
-        )
+        // Selection is a lift on the glass, not a bordered slab — the material
+        // draws every edge on this card.
+        .background(rowShape.fill(selected ? Palette.glassChipFill : Color.clear))
     }
 
     private func toggleExpanded(_ id: String) {
@@ -175,7 +167,7 @@ struct CommandPalette: View {
         }
         .padding(.horizontal, 16)
         .frame(height: 34)
-        .background(Palette.mtRaise2.opacity(0.6))
+        .background(Palette.glassScrim)
         .overlay(Divider().overlay(Palette.mtLine), alignment: .top)
     }
 

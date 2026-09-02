@@ -67,8 +67,8 @@ final class MatteCapsuleSnapshotTests: XCTestCase {
     /// The capsule is Liquid Glass now, so what sits BEHIND it decides whether
     /// it reads — one shot per state over a bright and a dark wallpaper tone, in
     /// both appearances. `ImageRenderer` does not composite the live material
-    /// (see `SnapshotRenderer`), so these shots judge the frosted band, the
-    /// chips, layout and type — never the glass itself.
+    /// (see `SnapshotRenderer`), so these shots judge the chips, the reveal
+    /// span, layout and type — never the glass itself.
     @MainActor
     func test_capsule_perState_snapshots() throws {
         try XCTSkipUnless(ProcessInfo.processInfo.environment["SOTTO_SNAPSHOTS"] == "1",

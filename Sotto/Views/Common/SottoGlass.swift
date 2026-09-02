@@ -4,55 +4,58 @@ import SwiftUI
 //
 // ONE material for the floating recorder family — the recording capsule, the
 // post-paste ping, the review editor, the command palette and the dictionary
-// quick-add panel. It is the PLATFORM material (macOS 26 `.glassEffect`),
-// tinted for Sotto's identity; it is never a hand-rolled blur stack.
+// quick-add panel. It is the PLATFORM material (macOS 26 `.glassEffect`); it is
+// never a hand-rolled blur stack, and it never gets a hand-drawn rim: Liquid
+// Glass lenses the backdrop and lights its own silhouette, so an added stroke
+// only reads as a hard edge the material does not have.
 //
-// The levels differ only in how thick the glass reads (mockup 01 lane B: the
-// review box is "the same glass, one step thicker"). `.chip` and `.band` are
-// deliberately NOT live glass: both carry `Palette.ink*` text, and text must
-// never sit on bare glass whose composite depends on the wallpaper behind the
-// window. They are a semi-opaque frost from the same `mt*` ladder, so the
-// composite over ANY backdrop is computable — which is what keeps
-// `MatteContrastTests` a real assertion instead of a guess.
+// `Glass.regular` is used everywhere. Apple's rule: regular blurs AND adjusts
+// the luminosity of the background so foreground text stays legible, and is the
+// variant for components carrying a significant amount of text; `Glass.clear`
+// is only for elements floating over media and needs its own dimming layer.
+// Every Sotto surface here carries text, so regular owns the legibility and no
+// frost is painted behind it.
+//
+// The glass is left UNTINTED by default — Liquid Glass has no inherent colour
+// and takes its colour from what is behind it, which is what makes it read as
+// glass rather than as a dark slab. A tint is passed only where colour is a
+// status signal (the capsule's terminal states).
+//
+// `.chip` and `.scrim` are NOT glass. Apple forbids glass on glass: elements
+// sitting on a glass surface use fills, transparency and vibrancy so they read
+// as a thin overlay that is part of the material. So a chip is a light lift and
+// a scrim is a soft recess — both low-alpha fills, both borderless.
 //
 // Accessibility branches once, at the top of `body`:
 //   • Reduce Transparency → the pre-glass opaque matte body (kept alive).
 //   • Increase Contrast   → solid fill + `A11y.borderColor(increaseContrast:)`.
-//   • Reduce Motion       → `.glassEffectTransition(.identity)`; no morph.
 
 enum SottoGlassLevel {
     /// The recording capsule and the post-paste ping — the thinnest glass.
     case capsule
     /// The review editor / palette / quick-add card — one step thicker.
     case panel
-    /// A chip riding ON another surface (esc hint, retry, key hint, version
-    /// segment). Frosted, not glass: it carries small ink.
+    /// A control riding ON a glass surface (esc hint, retry, key cap, version
+    /// segment). A light lift, not a second sheet of glass.
     case chip
-    /// The legibility band directly behind transcript text. Frosted, not glass.
-    case band
+    /// A soft recess behind a long stretch of transcript text. Not glass.
+    case scrim
 }
 
 extension SottoGlassLevel {
-    var isFrost: Bool {
+    /// True for the levels that are a fill on top of glass rather than glass.
+    var isOverlay: Bool {
         switch self {
-        case .chip, .band: return true
+        case .chip, .scrim: return true
         case .capsule, .panel: return false
         }
     }
 
-    /// Live-glass body tint. Unused by the frost levels.
-    var tint: Color {
-        switch self {
-        case .panel: return Palette.glassTintThick
-        default:     return Palette.glassTint
-        }
-    }
-
-    /// Semi-opaque frost fill. Unused by the glass levels.
-    var frostFill: Color {
+    /// Fill for the overlay levels. Unused by the glass levels.
+    var overlayFill: Color {
         switch self {
         case .chip: return Palette.glassChipFill
-        default:    return Palette.glassBand
+        default:    return Palette.glassScrim
         }
     }
 
@@ -60,7 +63,7 @@ extension SottoGlassLevel {
     /// matte ladder, unchanged.
     var opaqueFill: Color {
         switch self {
-        case .chip, .band: return Palette.mtRaise2
+        case .chip, .scrim: return Palette.mtRaise2
         case .capsule, .panel: return Palette.mtRaise
         }
     }
@@ -87,56 +90,27 @@ extension SottoGlassLevel {
 struct SottoGlassBackground<S: InsettableShape>: ViewModifier {
     let level: SottoGlassLevel
     let shape: S
-    /// Pressable surfaces get interactive glass so a press deforms the material.
-    let interactive: Bool
-    /// Morph identity — adjacent glass in the same `GlassEffectContainer` blends
-    /// and a phase change morphs instead of swapping.
-    let glassID: String?
-    let namespace: Namespace.ID?
+    /// Stained-glass tint. Apple reserves colour on glass for elements that
+    /// truly benefit from emphasis — status indicators and primary actions —
+    /// so this stays nil on everything except a terminal capsule state.
+    let tint: Color?
 
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.colorSchemeContrast) private var contrast
 
-    func body(content: Content) -> some View {
-        content.background(backdrop)
-    }
-
     @ViewBuilder
-    private var backdrop: some View {
+    func body(content: Content) -> some View {
         if reduceTransparency || contrast == .increased {
-            opaqueBody
-        } else if level.isFrost {
-            frostBody
+            content.background(opaqueBody)
+        } else if level.isOverlay {
+            content.background(shape.fill(level.overlayFill))
         } else {
-            glassBody
+            // The content is the glass view's OWN content, never a sibling
+            // layer over a `Color.clear` lens: `glassEffect` captures what it
+            // is attached to, and a `.background` lens blurred the capsule's
+            // own words on device.
+            content.glassEffect(glass, in: shape)
         }
-    }
-
-    // MARK: Substrates
-
-    private var glassBody: some View {
-        let substrate = Color.clear.glassEffect(glass, in: shape)
-        return Group {
-            // A morph identity only exists where the caller has a phase change
-            // to express; without one the surface stays out of every union.
-            if let glassID, let namespace {
-                substrate.glassEffectID(glassID, in: namespace)
-            } else {
-                substrate
-            }
-        }
-        .glassEffectTransition(reduceMotion ? .identity : .matchedGeometry)
-        .overlay(edgeHighlight)
-        .overlay(innerShadow)
-    }
-
-    /// A frosted region: the same `mt*` ladder at `Palette.glassFrostAlpha`, so
-    /// ink over it clears AA against ANY wallpaper (`MatteContrastTests`).
-    private var frostBody: some View {
-        shape.fill(level.frostFill)
-            .overlay(shape.strokeBorder(Palette.hairlineSoft, lineWidth: 1))
-            .overlay(edgeHighlight)
     }
 
     private var opaqueBody: some View {
@@ -149,33 +123,10 @@ struct SottoGlassBackground<S: InsettableShape>: ViewModifier {
             )
     }
 
-    // MARK: Layers
-
-    /// The bright top edge — light entering the material.
-    private var edgeHighlight: some View {
-        shape.strokeBorder(
-            LinearGradient(colors: [Palette.glassEdgeHi, .clear],
-                           startPoint: .top, endPoint: .center),
-            lineWidth: 1
-        )
-        .blendMode(.plusLighter)
-        .allowsHitTesting(false)
-    }
-
-    /// The material's own thickness, read as a soft darkening along the bottom.
-    private var innerShadow: some View {
-        shape.fill(
-            LinearGradient(colors: [.clear, Palette.glassInnerShadow],
-                           startPoint: .center, endPoint: .bottom)
-        )
-        .allowsHitTesting(false)
-    }
-
     private var glass: Glass {
-        let base = Glass.regular.tint(level.tint)
-        return interactive ? base.interactive() : base
+        guard let tint else { return .regular }
+        return Glass.regular.tint(tint)
     }
-
 }
 
 // MARK: - Accent glow
@@ -202,12 +153,11 @@ struct SottoGlassGlow: ViewModifier {
     }
 }
 
-// MARK: - Ink on bare glass
+// MARK: - Ink on glass
 //
-// Short ink that rides the glass itself rather than a band (the capsule's timer,
-// the ping's caption, the review header) gets the mockup's own answer: a soft
-// shadow that separates the glyphs from whatever the desktop puts behind them.
-// Transcript text never relies on this — it gets a band.
+// Regular glass adjusts the luminosity behind it to keep foreground text
+// legible, so ink sits on the material directly. This adds the last bit of
+// separation for small ink over a busy desktop.
 
 struct GlassInkShadow: ViewModifier {
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
@@ -225,8 +175,7 @@ struct GlassInkShadow: ViewModifier {
 }
 
 extension View {
-    /// Separates short ink from the desktop behind the glass. Use a frosted
-    /// band instead wherever the user reads a transcript.
+    /// Separates ink from the desktop behind the glass.
     func glassInkShadow() -> some View { modifier(GlassInkShadow()) }
 
     /// Paints the shared Sotto glass behind this view. See `SottoGlassLevel`
@@ -234,13 +183,9 @@ extension View {
     func sottoGlass<S: InsettableShape>(
         _ level: SottoGlassLevel,
         in shape: S,
-        interactive: Bool = false,
-        id: String? = nil,
-        namespace: Namespace.ID? = nil
+        tint: Color? = nil
     ) -> some View {
-        modifier(SottoGlassBackground(level: level, shape: shape,
-                                      interactive: interactive,
-                                      glassID: id, namespace: namespace))
+        modifier(SottoGlassBackground(level: level, shape: shape, tint: tint))
     }
 
     /// Bleeds the state colour through the glass as a glow. Apply OUTSIDE any

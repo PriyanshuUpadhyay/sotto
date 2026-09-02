@@ -30,7 +30,6 @@ struct ReviewTray: View {
     let modelContext: ModelContext
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @Environment(\.colorSchemeContrast) private var contrast
 
     @State private var appName = ""
     @State private var hovered = false
@@ -77,12 +76,9 @@ struct ReviewTray: View {
         .padding(.horizontal, 16)
         .frame(height: Self.pillHeight)
         // Same glass as the capsule — the ping is the capsule's sibling, not a
-        // different kind of object. Material, top edge and inner shadow all
-        // live in `.sottoGlass`.
+        // different kind of object. The material lights its own edge; the only
+        // drawn border is the one `.sottoGlass` adds in the opaque a11y branch.
         .sottoGlass(.capsule, in: shape)
-        .overlay(
-            shape.strokeBorder(A11y.borderColor(increaseContrast: contrast == .increased), lineWidth: 1)
-        )
         .compositingGroup()
         .mask(alignment: .leading) {
             shape.padding(.trailing, revealed ? 0 : actionsClip)
