@@ -84,6 +84,31 @@ final class MatteCapsuleSnapshotTests: XCTestCase {
 
     // MARK: - P2.4 · Capsule is the recorder root (compile-time wiring)
 
+    // MARK: - Panel hit-testing scope
+
+    func testOnlyTheFailedPhaseTakesMouseEvents() {
+        // The full-width strip must not swallow clicks in phases that render
+        // no control — the retry / settings chip is the capsule's only target.
+        XCTAssertTrue(RecorderUIManager.isInteractive(.failed))
+        for phase in [HaloPhase.hidden, .armed, .recording, .liveText, .transcribing,
+                      .enhancing, .done] {
+            XCTAssertFalse(RecorderUIManager.isInteractive(phase),
+                           "\(phase) renders no control — the strip must stay click-through")
+        }
+    }
+
+    // MARK: - ⌘R binding scope
+
+    func testRetryShortcutIsBoundOnlyForARetryableFailure() {
+        XCTAssertTrue(MiniRecorderShortcutManager.retryShortcutActive(phase: .failed, code: .network))
+        XCTAssertTrue(MiniRecorderShortcutManager.retryShortcutActive(phase: .failed, code: nil))
+        // No model installed — the capsule offers Settings, so ⌘R must not be
+        // bound (and must not shadow Reload in the frontmost app).
+        XCTAssertFalse(MiniRecorderShortcutManager.retryShortcutActive(phase: .failed, code: .noModel))
+        XCTAssertFalse(MiniRecorderShortcutManager.retryShortcutActive(phase: .recording, code: nil))
+        XCTAssertFalse(MiniRecorderShortcutManager.retryShortcutActive(phase: .hidden, code: .network))
+    }
+
     func testHaloRecorderViewHostsCapsule() {
         // Compile-time: this file imports the modified HaloRecorderView (which
         // now hosts MatteCapsuleContainer → MatteCapsuleView). A green build is

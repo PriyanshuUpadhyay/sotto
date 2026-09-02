@@ -83,7 +83,7 @@ class MiniRecorderShortcutManager: ObservableObject {
                 recorderUIManager.$phase,
                 recorderUIManager.$currentErrorCode
             )
-            .map { phase, code in phase == .failed && (code?.isRetryable ?? true) }
+            .map(Self.retryShortcutActive)
             .removeDuplicates()
 
             for await active in retryable.values {
@@ -94,6 +94,13 @@ class MiniRecorderShortcutManager: ObservableObject {
                 }
             }
         }
+    }
+
+    /// ⌘R exists only while the fail capsule actually offers it: the `.failed`
+    /// phase with a cause a retry can clear. `ERR · NO_MODEL` shows a Settings
+    /// chip instead, so ⌘R stays unbound there.
+    nonisolated static func retryShortcutActive(phase: HaloPhase, code: RecorderUIManager.FailureCode?) -> Bool {
+        phase == .failed && (code?.isRetryable ?? true)
     }
 
     // Setup retry handler once

@@ -169,8 +169,11 @@ class RecorderUIManager: ObservableObject {
     /// Phases whose chips carry tappable controls (RETRY / OPEN SETTINGS) or
     /// otherwise warrant hit-testing. Outside these the panel stays
     /// click-through so menu-bar / app clicks fall through the full-width strip.
-    private static func isInteractive(_ phase: HaloPhase) -> Bool {
-        phase == .recording || phase == .liveText || phase == .done || phase == .failed
+    /// `.recording` / `.liveText` / `.done` render no control — the post-paste
+    /// actions live on the independent `ReviewTrayWindowManager` panel — so the
+    /// strip must not opt a screen-wide region into hit testing for them.
+    nonisolated static func isInteractive(_ phase: HaloPhase) -> Bool {
+        phase == .failed
     }
 
     private func mapEngineState(_ state: RecordingState, engine: SottoEngine) {

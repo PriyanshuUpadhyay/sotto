@@ -153,14 +153,6 @@ class MiniRecorderPanel: NSPanel {
         setFrame(metrics, display: true)
         orderFrontRegardless()
         logger.notice("show – behavior=\(self.collectionBehavior.rawValue, privacy: .public) level=\(self.level.rawValue, privacy: .public) policy=\(NSApp.activationPolicy().rawValue, privacy: .public) frame=\(NSStringFromRect(self.frame), privacy: .public) mainScreen=\(NSStringFromRect(NSScreen.main?.frame ?? .zero), privacy: .public)")
-        // TEMP DIAGNOSTIC: is the panel on the currently-active Space, or stranded
-        // on a stale full-screen Space? front=frontmost app at show time.
-        let front = NSWorkspace.shared.frontmostApplication?.localizedName ?? "?"
-        logger.notice("show SPACE – isVisible=\(self.isVisible, privacy: .public) isOnActiveSpace=\(self.isOnActiveSpace, privacy: .public) front=\(front, privacy: .public)")
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) { [weak self] in
-            guard let self else { return }
-            self.logger.notice("show SPACE +250ms – isOnActiveSpace=\(self.isOnActiveSpace, privacy: .public)")
-        }
     }
     
     func hide(completion: @escaping () -> Void) {
