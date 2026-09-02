@@ -296,7 +296,7 @@ struct CorrectionSuggestionRow: View {
                     .foregroundStyle(Palette.inkPrimary)
                 Text("· seen \(suggestion.count)×")
                     .font(.system(size: 11))
-                    .foregroundStyle(Palette.inkTertiary)
+                    .foregroundStyle(Palette.inkSecondary)
             }
             .lineLimit(1)
 

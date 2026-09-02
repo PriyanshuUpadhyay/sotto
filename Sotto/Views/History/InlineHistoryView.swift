@@ -315,7 +315,7 @@ struct InlineHistoryView: View {
                     }
                     Text("press · speak · release")
                         .font(.system(size: 11, weight: .medium))
-                        .foregroundColor(Theme.inkTertiary)
+                        .foregroundColor(Theme.inkSecondary)
                 }
                 .padding(.top, 4)
             }

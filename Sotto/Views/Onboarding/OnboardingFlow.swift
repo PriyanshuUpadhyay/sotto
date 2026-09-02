@@ -565,7 +565,7 @@ private struct OnboardingFlowSkipButton: View {
         Button(action: action) {
             Text("Skip")
                 .font(.system(size: 13, weight: .medium))
-                .foregroundColor(Palette.inkTertiary)
+                .foregroundColor(Palette.inkSecondary)
                 .padding(.horizontal, 10)
                 .frame(height: 28)
         }
