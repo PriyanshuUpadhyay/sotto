@@ -12,6 +12,9 @@ struct CircularCheckboxStyle: ToggleStyle {
                 .symbolRenderingMode(.hierarchical)
                 .foregroundColor(configuration.isOn ? Brand.tint : .secondary)
                 .font(.system(size: 18))
+                // The 18pt glyph is a small target for a row-level toggle.
+                .frame(width: 24, height: 24)
+                .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
     }

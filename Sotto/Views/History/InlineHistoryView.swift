@@ -488,14 +488,16 @@ struct InlineHistoryView: View {
     }
 
     private func handleEscape() -> KeyPress.Result {
-        if !searchText.isEmpty {
-            searchText = ""
-            return .handled
-        }
+        // Topmost dismissible layer first — the info panel owns a scrim and
+        // blocks hit-testing, so it is what the user sees Escape acting on.
         if isPanelPresented {
             withAnimation(Animation.haloExpand) {
                 isPanelPresented = false
             }
+            return .handled
+        }
+        if !searchText.isEmpty {
+            searchText = ""
             return .handled
         }
         if expandedId != nil {
@@ -810,12 +812,13 @@ private struct HistoryCardRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: 10) {
-                Toggle("", isOn: Binding(
+                Toggle("Select transcription", isOn: Binding(
                     get: { isChecked },
                     set: { _ in onToggleCheck() }
                 ))
                 .toggleStyle(CircularCheckboxStyle())
                 .labelsHidden()
+                .accessibilityLabel("Select transcription")
 
                 // The expand area excludes the checkbox so clicking the checkbox
                 // toggles selection only. The parent ScrollView is `.focusable`
@@ -899,6 +902,7 @@ private struct HistoryCardRow: View {
                                 )
                         }
                         .buttonStyle(.plain)
+                        .accessibilityAddTraits(selectedTab == tab ? .isSelected : [])
                     }
                     Spacer()
                 }
