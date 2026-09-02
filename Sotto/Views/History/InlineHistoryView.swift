@@ -17,6 +17,12 @@ struct InlineHistoryView: View {
     @State private var expandedId: UUID?
     @State private var selectedTranscriptions: Set<Transcription> = []
     @State private var showDeleteConfirmation = false
+    /// A single-row delete waits out `undoWindowSeconds` before it touches the
+    /// database or the audio file: the row hides immediately, an UNDO toast
+    /// stands, and only then is the deletion committed. Bulk delete keeps its
+    /// confirmation instead.
+    @State private var pendingDeletion: Transcription?
+    @State private var undoWindow: Task<Void, Never>?
     @State private var isPanelPresented = false
     @State private var panelTranscriptionId: UUID?
     @State private var displayedTranscriptions: [Transcription] = []
@@ -33,6 +39,7 @@ struct InlineHistoryView: View {
 
     private let exportService = SottoCSVExportService()
     private let pageSize = 20
+    private static let undoWindowSeconds: TimeInterval = 5
 
     @Query(Self.createLatestTranscriptionIndicatorDescriptor()) private var latestTranscriptionIndicator: [Transcription]
 
@@ -154,6 +161,8 @@ struct InlineHistoryView: View {
         }
         .onDisappear {
             isViewCurrentlyVisible = false
+            // Leaving the surface ends the undo window — the delete stands.
+            commitPendingDeletion()
         }
         .onChange(of: searchText) { _, _ in
             // Debounce the SwiftData fetch ~250ms so we don't refetch per keystroke.
@@ -588,7 +597,7 @@ struct InlineHistoryView: View {
         do {
             lastTimestamp = nil
             let items = try modelContext.fetch(cursorQueryDescriptor())
-            displayedTranscriptions = items
+            displayedTranscriptions = items.filter { $0.id != pendingDeletion?.id }
             lastTimestamp = items.last?.timestamp
             hasMoreContent = items.count == pageSize
         } catch {
@@ -605,7 +614,7 @@ struct InlineHistoryView: View {
 
         do {
             let newItems = try modelContext.fetch(cursorQueryDescriptor(after: lastTimestamp))
-            displayedTranscriptions.append(contentsOf: newItems)
+            displayedTranscriptions.append(contentsOf: newItems.filter { $0.id != pendingDeletion?.id })
             self.lastTimestamp = newItems.last?.timestamp
             hasMoreContent = newItems.count == pageSize
         } catch {
@@ -672,18 +681,66 @@ struct InlineHistoryView: View {
         }
     }
 
+    /// One row, one keypress: no modal. The row leaves the list at once and an
+    /// UNDO toast stands for `undoWindowSeconds`; the transcript and its audio
+    /// file survive until that window closes.
     private func deleteSingle(_ transcription: Transcription) {
+        // At most one undo window is open — an earlier pending delete stands.
+        commitPendingDeletion()
+
+        if expandedId == transcription.id { expandedId = nil }
+        if panelTranscriptionId == transcription.id {
+            panelTranscriptionId = nil
+            isPanelPresented = false
+        }
+        selectedTranscriptions.remove(transcription)
+
+        pendingDeletion = transcription
+        displayedTranscriptions.removeAll { $0.id == transcription.id }
+
+        undoWindow = Task {
+            try? await Task.sleep(for: .seconds(Self.undoWindowSeconds))
+            guard !Task.isCancelled else { return }
+            commitPendingDeletion()
+        }
+
+        NotificationManager.shared.showNotification(
+            title: "Deleted 1 transcription",
+            type: .info,
+            duration: Self.undoWindowSeconds,
+            actionButton: (label: "UNDO", action: { undoPendingDeletion() })
+        )
+    }
+
+    /// Ends the undo window and performs the deferred deletion for real.
+    @MainActor
+    private func commitPendingDeletion() {
+        undoWindow?.cancel()
+        undoWindow = nil
+        guard let transcription = pendingDeletion else { return }
+        pendingDeletion = nil
+
         performDeletion(for: transcription)
         Task {
             do {
                 try modelContext.save()
                 NotificationCenter.default.post(name: .transcriptionDeleted, object: nil)
-                await loadInitialContent()
             } catch {
                 print("Error saving deletion: \(error.localizedDescription)")
-                await loadInitialContent()
             }
+            await loadInitialContent()
         }
+    }
+
+    /// Cancels the pending deletion — nothing was removed yet, so the row simply
+    /// comes back on the next load.
+    @MainActor
+    private func undoPendingDeletion() {
+        undoWindow?.cancel()
+        undoWindow = nil
+        guard pendingDeletion != nil else { return }
+        pendingDeletion = nil
+        Task { await loadInitialContent() }
     }
 
     private func selectAllTranscriptions() async {
