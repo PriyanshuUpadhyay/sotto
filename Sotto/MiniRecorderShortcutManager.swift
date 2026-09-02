@@ -5,6 +5,7 @@ import Combine
 
 extension KeyboardShortcuts.Name {
     static let escapeRecorder = Self("escapeRecorder")
+    static let retryRecorder = Self("retryRecorder")
     static let cancelRecorder = Self("cancelRecorder")
     static let toggleEnhancement = Self("toggleEnhancement", default: .init(.e, modifiers: .command))
 }
@@ -15,10 +16,13 @@ class MiniRecorderShortcutManager: ObservableObject {
     private var recorderUIManager: RecorderUIManager
     private var visibilityTask: Task<Void, Never>?
     private var escapeActivationTask: Task<Void, Never>?
+    private var retryActivationTask: Task<Void, Never>?
     
     private var isCancelHandlerSetup = false
     
     private var isEscapeHandlerSetup = false
+
+    private var isRetryHandlerSetup = false
     
     init(engine: SottoEngine, recorderUIManager: RecorderUIManager) {
         self.engine = engine
@@ -27,10 +31,15 @@ class MiniRecorderShortcutManager: ObservableObject {
         // shared UserDefaults can carry an orphan registration from a duplicate
         // instance and intercept system-wide ESC until the observer first fires.
         KeyboardShortcuts.setShortcut(nil, for: .escapeRecorder)
+        // Same reasoning for ⌘R: it must exist ONLY while a retryable failure
+        // capsule is on screen, never as a persisted global that shadows
+        // Reload in the frontmost app.
+        KeyboardShortcuts.setShortcut(nil, for: .retryRecorder)
         setupVisibilityObserver()
         setupEnhancementShortcut()
         setupEscapeHandlerOnce()
         setupCancelHandlerOnce()
+        setupRetryHandlerOnce()
     }
 
     private func setupVisibilityObserver() {
@@ -63,6 +72,42 @@ class MiniRecorderShortcutManager: ObservableObject {
 
             for await active in merged.values {
                 if active { activateEscapeShortcut() } else { deactivateEscapeShortcut() }
+            }
+        }
+
+        // ⌘R is bound ONLY while the fail capsule offers it — the `.failed`
+        // phase with a retryable cause. `ERR · NO_MODEL` shows a Settings chip
+        // instead, so ⌘R must not be live there either.
+        retryActivationTask = Task { @MainActor in
+            let retryable = Publishers.CombineLatest(
+                recorderUIManager.$phase,
+                recorderUIManager.$currentErrorCode
+            )
+            .map { phase, code in phase == .failed && (code?.isRetryable ?? true) }
+            .removeDuplicates()
+
+            for await active in retryable.values {
+                if active {
+                    KeyboardShortcuts.setShortcut(.init(.r, modifiers: .command), for: .retryRecorder)
+                } else {
+                    KeyboardShortcuts.setShortcut(nil, for: .retryRecorder)
+                }
+            }
+        }
+    }
+
+    // Setup retry handler once
+    private func setupRetryHandlerOnce() {
+        guard !isRetryHandlerSetup else { return }
+        isRetryHandlerSetup = true
+
+        KeyboardShortcuts.onKeyDown(for: .retryRecorder) { [weak self] in
+            Task { @MainActor in
+                guard let self, self.recorderUIManager.phase == .failed else { return }
+                // Same two steps as the chip: acknowledge the surfaced failure,
+                // then re-arm through the engine retry path.
+                self.recorderUIManager.dismissFailedPhase()
+                NotificationCenter.default.post(name: .retryRecording, object: nil)
             }
         }
     }
@@ -152,10 +197,12 @@ class MiniRecorderShortcutManager: ObservableObject {
     deinit {
         visibilityTask?.cancel()
         escapeActivationTask?.cancel()
+        retryActivationTask?.cancel()
         Task { @MainActor in
             KeyboardShortcuts.disable(.toggleEnhancement)
             deactivateEscapeShortcut()
             deactivateCancelShortcut()
+            KeyboardShortcuts.setShortcut(nil, for: .retryRecorder)
         }
     }
 }

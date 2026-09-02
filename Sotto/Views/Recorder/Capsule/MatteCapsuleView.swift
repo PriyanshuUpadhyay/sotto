@@ -146,6 +146,8 @@ struct MatteCapsuleView: View {
                     .lineLimit(1)
             }
 
+            if state == .recording { escHint }
+
             if state == .recording || state == .processing {
                 wordTape
             }
@@ -360,6 +362,20 @@ struct MatteCapsuleView: View {
             snap.disablesAnimations = true
             withTransaction(snap) { glyphDimmed = false }
         }
+    }
+
+    /// The only abort for a live dictation is ESC, and nothing else on the
+    /// surface says so (mockup 01 `.esc-hint`).
+    private var escHint: some View {
+        Text("esc to cancel")
+            .font(.mono(10, weight: .medium))
+            .foregroundStyle(Palette.inkSecondary)
+            .fixedSize()
+            .padding(.horizontal, 6)
+            .padding(.vertical, 2.5)
+            .background(Capsule(style: .continuous).fill(Palette.mtRaise2))
+            .overlay(Capsule(style: .continuous).strokeBorder(Palette.mtLine, lineWidth: 1))
+            .accessibilityHidden(true)
     }
 
     private var retryChip: some View {

@@ -12,7 +12,7 @@ class RecorderUIManager: ObservableObject {
     @Published var phase: HaloPhase = .hidden
     @Published var recordingStartedAt: Date?
     @Published var formattedActivePromptLabel: String?
-    @Published var currentErrorCode: String?
+    @Published var currentErrorCode: FailureCode?
     @Published var lastPasteAppName: String?
 
     private var phaseObservers = Set<AnyCancellable>()
@@ -124,7 +124,7 @@ class RecorderUIManager: ObservableObject {
             .sink { [weak self] event in
                 guard let self else { return }
                 if let event {
-                    self.currentErrorCode = Self.errorCode(from: event).rawValue
+                    self.currentErrorCode = Self.errorCode(from: event)
                     self.phase = .failed
                 } else if self.phase == .failed {
                     self.phase = .hidden
