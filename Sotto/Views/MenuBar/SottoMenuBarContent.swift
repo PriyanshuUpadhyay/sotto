@@ -33,7 +33,7 @@ struct SottoMenuBarContent: View {
 
             Divider()
 
-            Button("Open Sotto…") {
+            Button("Open Sotto") {
                 NSApplication.shared.setActivationPolicy(.regular)
                 openWindow(id: SottoWindowCoordinator.windowID)
                 NSApplication.shared.activate(ignoringOtherApps: true)
@@ -190,7 +190,7 @@ private struct CopyConfirmationToastView: View {
         .padding(.vertical, 12)
         .frame(minWidth: 220, minHeight: 44)
         .background(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
+            RoundedRectangle(cornerRadius: Radius.panel, style: .continuous)
                 .fill(.ultraThinMaterial)
         )
     }
