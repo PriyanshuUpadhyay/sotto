@@ -161,6 +161,9 @@ private func formatTime(_ time: TimeInterval) -> String {
 }
 
 struct WaveformView: View {
+    /// VoiceOver label for the scrubber. Held by `A11yContractTests`.
+    static let scrubberAccessibilityLabel = "Playback position"
+
     let samples: [Float]
     let currentTime: TimeInterval
     let duration: TimeInterval
@@ -243,6 +246,15 @@ struct WaveformView: View {
             }
         }
         .frame(height: 32)
+        .accessibilityElement()
+        .accessibilityLabel(Self.scrubberAccessibilityLabel)
+        .accessibilityValue(formatTime(currentTime))
+        .accessibilityAdjustableAction { direction in
+            guard !isLoading, duration > 0 else { return }
+            let step: TimeInterval = 5
+            let target = currentTime + (direction == .increment ? step : -step)
+            onSeek(max(0, min(duration, target)))
+        }
     }
 }
 
@@ -370,6 +382,10 @@ private enum BannerState: Equatable {
 // MARK: - AudioPlayerView
 
 struct AudioPlayerView: View {
+    /// VoiceOver labels for the transport button. Held by `A11yContractTests`.
+    static let playLabel = "Play"
+    static let pauseLabel = "Pause"
+
     let url: URL
     let transcription: Transcription?
     var onInfoTap: (() -> Void)?
@@ -430,6 +446,8 @@ struct AudioPlayerView: View {
                         icon: playerManager.isPlaying ? "pause.fill" : "play.fill",
                         action: { playerManager.isPlaying ? playerManager.pause() : playerManager.play() }
                     )
+                    .help(playerManager.isPlaying ? Self.pauseLabel : Self.playLabel)
+                    .accessibilityLabel(playerManager.isPlaying ? Self.pauseLabel : Self.playLabel)
                     .scaleEffect(isHovering ? 1.05 : 1.0)
                     .onHover { hovering in
                         withAnimation(Animation.haloExpand) {

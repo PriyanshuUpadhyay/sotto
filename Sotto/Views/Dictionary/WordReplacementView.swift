@@ -416,6 +416,12 @@ private struct ReplacementGlassCard: View {
     @State private var hovering: Bool = false
     @State private var draftOriginal: String = ""
     @State private var draftReplacement: String = ""
+    /// Which row action holds keyboard focus. Non-nil reveals the pair, so Edit
+    /// and Delete are reachable without a pointer (hover alone hid them from the
+    /// keyboard and from VoiceOver activation).
+    @FocusState private var focusedAction: RowAction?
+
+    private enum RowAction: Hashable { case edit, delete }
 
     var body: some View {
         let shape = RoundedRectangle(cornerRadius: Radius.card, style: .continuous)
@@ -485,8 +491,7 @@ private struct ReplacementGlassCard: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
 
             actionButtons
-                .opacity(hovering ? 1 : 0)
-                .allowsHitTesting(hovering)
+                .opacity(hovering || focusedAction != nil ? 1 : 0)
         }
     }
 
@@ -499,7 +504,9 @@ private struct ReplacementGlassCard: View {
                     .font(.system(size: 16, weight: .medium))
             }
             .buttonStyle(.borderless)
+            .focused($focusedAction, equals: .edit)
             .help("Edit replacement")
+            .accessibilityLabel("Edit replacement")
 
             Button(action: onDelete) {
                 Image(systemName: "xmark.circle.fill")
@@ -508,7 +515,9 @@ private struct ReplacementGlassCard: View {
                     .font(.system(size: 16, weight: .medium))
             }
             .buttonStyle(.borderless)
+            .focused($focusedAction, equals: .delete)
             .help("Remove replacement")
+            .accessibilityLabel("Remove replacement")
         }
     }
 
