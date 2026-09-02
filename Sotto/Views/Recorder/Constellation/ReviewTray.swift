@@ -150,7 +150,7 @@ struct ReviewTray: View {
             .frame(minWidth: 24, minHeight: 24)
             .contentShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PressableChipStyle())
         .accessibilityLabel(label)
     }
 

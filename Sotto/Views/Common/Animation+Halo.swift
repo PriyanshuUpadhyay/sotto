@@ -87,6 +87,42 @@ struct HaloShimmer<Content: View>: View {
     }
 }
 
+// MARK: - SweepHighlight
+//
+// The `MotionTokens.sweep` highlight band riding across a label while a long
+// operation runs (mockup 01's transcribing sweep). `active: false` returns the
+// content untouched — callers pass `false` under Reduce Motion.
+
+struct SweepHighlight: ViewModifier {
+    var active: Bool
+
+    func body(content: Content) -> some View {
+        if active {
+            HaloShimmer(period: MotionTokens.sweepDuration) { phase in
+                content.overlay(band(phase: phase).mask(content))
+            }
+        } else {
+            content
+        }
+    }
+
+    /// Band width and travel as fractions of the label — the highlight starts
+    /// fully off the leading edge and ends fully off the trailing one.
+    private static let bandFraction: CGFloat = 0.6
+
+    private func band(phase: Double) -> some View {
+        GeometryReader { geo in
+            let width = geo.size.width * Self.bandFraction
+            LinearGradient(colors: [.clear, Palette.inkPrimary, .clear],
+                           startPoint: .leading, endPoint: .trailing)
+                .frame(width: width)
+                .offset(x: (geo.size.width + width) * CGFloat(phase) - width)
+                .blendMode(.plusLighter)
+        }
+        .allowsHitTesting(false)
+    }
+}
+
 // MARK: - HaloShake
 //
 // Failure x-offset keyframes {-6, 6, -4, 4, -2, 0} over 0.32s. Bumping

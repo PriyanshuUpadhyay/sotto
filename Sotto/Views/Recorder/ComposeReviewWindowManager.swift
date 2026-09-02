@@ -471,20 +471,24 @@ struct ComposeReviewView: View {
 
     private func segButton(_ label: String, _ version: ComposeReviewWindowManager.Version) -> some View {
         let selected = manager.activeVersion == version
-        return Button(label) { manager.selectVersion(version) }
-            .buttonStyle(.plain)
-            .foregroundColor(selected ? Palette.inkPrimary : Palette.inkSecondary)
-            .padding(.horizontal, 7)
-            .padding(.vertical, 3)
-            .background(
-                RoundedRectangle(cornerRadius: 5, style: .continuous)
-                    .fill(selected ? Palette.mtRaise2 : .clear)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 5, style: .continuous)
-                    .strokeBorder(selected ? Palette.mtLine : .clear, lineWidth: 1)
-            )
-            .contentShape(Rectangle())
+        // Chrome sits INSIDE the button label so the press feedback scales the
+        // whole segment, not just its text.
+        return Button(action: { manager.selectVersion(version) }) {
+            Text(label)
+                .foregroundColor(selected ? Palette.inkPrimary : Palette.inkSecondary)
+                .padding(.horizontal, 7)
+                .padding(.vertical, 3)
+                .background(
+                    RoundedRectangle(cornerRadius: 5, style: .continuous)
+                        .fill(selected ? Palette.mtRaise2 : .clear)
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 5, style: .continuous)
+                        .strokeBorder(selected ? Palette.mtLine : .clear, lineWidth: 1)
+                )
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(PressableChipStyle())
     }
 
     private var editor: some View {

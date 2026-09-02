@@ -150,6 +150,9 @@ struct MatteCapsuleView: View {
                     .monospacedDigit()
                     .foregroundStyle(Palette.inkPrimary)
                     .lineLimit(1)
+                    // Transcription is the longest wait in the product — the
+                    // label sweeps so it cannot read as a freeze.
+                    .modifier(SweepHighlight(active: state == .processing && !reduceMotion))
             }
 
             if state == .recording { escHint }
@@ -407,7 +410,7 @@ struct MatteCapsuleView: View {
                         .strokeBorder(Palette.stateFail.opacity(0.6), lineWidth: 1)
                 )
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PressableChipStyle())
         .accessibilityLabel("Retry")
         .accessibilityHint("Press Command R to retry")
     }
@@ -429,7 +432,7 @@ struct MatteCapsuleView: View {
                         .strokeBorder(Palette.stateFail.opacity(0.6), lineWidth: 1)
                 )
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PressableChipStyle())
         .accessibilityLabel("Open Settings")
         .accessibilityHint("Install a transcription model")
     }

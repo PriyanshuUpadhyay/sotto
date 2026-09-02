@@ -13,7 +13,7 @@ enum StateCue {
         switch s {
         case .idleReady:  return "waveform"                // armed/ready
         case .recording:  return "record.circle"           // sacred red dot + ring
-        case .processing: return "gearshape.2"             // transcribe+enhance
+        case .processing: return "sparkles"                // transcribe+enhance
         case .commit:     return "checkmark.circle"
         case .fail:       return "exclamationmark.triangle"
         }

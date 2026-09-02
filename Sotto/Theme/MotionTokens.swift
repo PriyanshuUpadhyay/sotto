@@ -25,8 +25,10 @@ enum MotionTokens {
     static let barsRangeMin: Double = 0.8
     static let barsRangeMax: Double = 1.1
 
-    /// 1.4s cyan sweep L→R (transcribing).
-    static let sweep: Animation = .linear(duration: 1.4)
+    /// 1.4s cyan sweep L→R (transcribing). The raw duration is shared with
+    /// `HaloShimmer`, which needs the period rather than the `Animation`.
+    static let sweepDuration: Double = 1.4
+    static let sweep: Animation = .linear(duration: sweepDuration)
 
     /// 1.6s violet halo breath (enhancing).
     static let breathe: Animation = .easeInOut(duration: 1.6)
