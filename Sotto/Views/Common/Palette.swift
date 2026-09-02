@@ -130,6 +130,43 @@ enum Palette {
     /// Stronger hairline for focus and capsule edges.
     static let mtLine2 = adaptive(light: 0x8e8e93, dark: 0x2c2c34)
 
+    // MARK: - Liquid Glass (floating recorder family)
+    //
+    // The capsule, the ping, the review editor, the palette and the quick-add
+    // panel are made of the PLATFORM material (macOS 26 `.glassEffect`). These
+    // tokens tint it; they never stand in for it. Consumed only by
+    // `.sottoGlass(_:in:)` — see `SottoGlass.swift`.
+
+    /// Body tint for the thinnest glass (capsule, ping). A barely-there wash so
+    /// the desktop's colour stays luminous through the surface.
+    static let glassTint = adaptive(light: 0xffffff, dark: 0x141022).opacity(0.16)
+
+    /// Body tint one step thicker (review editor, palette, quick-add card).
+    static let glassTintThick = adaptive(light: 0xffffff, dark: 0x120e20).opacity(0.22)
+
+    /// Alpha of every frosted region. High on purpose: a frost carries
+    /// `Palette.ink*` text, so its composite over an arbitrary wallpaper must be
+    /// computable rather than hoped for (`MatteContrastTests`).
+    static let glassFrostAlpha: Double = 0.90
+
+    /// The legibility band directly behind transcript text.
+    static let glassBand = mtRaise.opacity(glassFrostAlpha)
+
+    /// A chip riding on glass (esc hint, retry, key hint, version segment).
+    static let glassChipFill = mtRaise2.opacity(glassFrostAlpha)
+
+    /// White α 0.55 — the bright top edge where light enters the glass. Hotter
+    /// than `innerHi`, which sits on an opaque matte fill rather than on glass.
+    static let glassEdgeHi = Color.white.opacity(0.55)
+
+    /// Black α 0.22 — soft inner shadow along the bottom of a glass surface,
+    /// reading as the material's own thickness.
+    static let glassInnerShadow = Color.black.opacity(0.22)
+
+    /// Legibility shadow for short ink sitting directly on glass. Opposes the
+    /// ink, so it separates the glyphs from the desktop in either appearance.
+    static let glassInkShadow = adaptive(light: 0xffffff, dark: 0x000000).opacity(0.5)
+
     // MARK: - Ink ladder
     static let inkPrimary = adaptive(light: 0x1d1d1f, dark: 0xe7e7ea)
     static let inkSecondary = adaptive(light: 0x515157, dark: 0x9a9aa2)
