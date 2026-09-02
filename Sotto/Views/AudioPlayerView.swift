@@ -335,7 +335,7 @@ private struct AsyncCircleButton: View {
                         } else if showSuccess {
                             Image(systemName: "checkmark")
                                 .font(.system(size: 14, weight: .semibold))
-                                .foregroundStyle(Color.green)
+                                .foregroundStyle(Palette.stateCommit)
                         } else {
                             Image(systemName: defaultIcon)
                                 .font(.system(size: 14, weight: .semibold))
@@ -355,16 +355,16 @@ private struct StatusBanner: View {
     var body: some View {
         HStack(spacing: 8) {
             Image(systemName: isError ? "exclamationmark.circle.fill" : "checkmark.circle.fill")
-                .foregroundColor(isError ? .red : .green)
+                .foregroundColor(isError ? Palette.stateFail : Palette.stateCommit)
             Text(message)
                 .font(.system(size: 14, weight: .medium))
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 10)
         .background(
-            RoundedRectangle(cornerRadius: 8)
-                .fill(isError ? Color.red.opacity(0.1) : Color.green.opacity(0.1))
-                .stroke(isError ? Color.red.opacity(0.2) : Color.green.opacity(0.2), lineWidth: 1)
+            RoundedRectangle(cornerRadius: Radius.card, style: .continuous)
+                .fill((isError ? Palette.stateFail : Palette.stateCommit).opacity(0.12))
+                .stroke((isError ? Palette.stateFail : Palette.stateCommit).opacity(0.28), lineWidth: 1)
         )
         .transition(.move(edge: .top).combined(with: .opacity))
     }
@@ -450,7 +450,9 @@ struct AudioPlayerView: View {
                     .accessibilityLabel(playerManager.isPlaying ? Self.pauseLabel : Self.playLabel)
                     .scaleEffect(isHovering ? 1.05 : 1.0)
                     .onHover { hovering in
-                        withAnimation(Animation.haloExpand) {
+                        // A pointer entering a 32pt circle has no momentum to
+                        // carry, so no spring overshoot here.
+                        withAnimation(Animation.haloPhaseCrossfade) {
                             isHovering = hovering
                         }
                     }
@@ -527,7 +529,8 @@ struct AudioPlayerView: View {
     private func showTemporaryBanner(_ state: BannerState) {
         bannerState = state
         DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
-            withAnimation { bannerState = nil }
+            // Mirror the `.haloExpand` entrance instead of SwiftUI's default.
+            withAnimation(Animation.haloCollapse) { bannerState = nil }
         }
     }
 

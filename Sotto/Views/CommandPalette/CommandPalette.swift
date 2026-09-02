@@ -21,11 +21,18 @@ struct CommandPalette: View {
     @State private var expanded: Set<String> = []
     @FocusState private var searchFocused: Bool
     @Environment(\.colorSchemeContrast) private var contrast
+    @Environment(\.colorScheme) private var colorScheme
 
-    private let card = RoundedRectangle(cornerRadius: 13, style: .continuous)
+    private let card = RoundedRectangle(cornerRadius: Radius.panel, style: .continuous)
 
     private var borderColor: Color {
         A11y.borderColor(increaseContrast: contrast == .increased)
+    }
+
+    /// The card floats, so it keeps a drop shadow — but the dark-tuned opacity
+    /// reads as a grey smudge under the light `mtRaise`.
+    private var cardShadow: Color {
+        .black.opacity(colorScheme == .dark ? 0.5 : 0.18)
     }
 
     var body: some View {
@@ -38,7 +45,7 @@ struct CommandPalette: View {
         .frame(width: 560)
         .background(Palette.mtRaise, in: card)
         .overlay(card.stroke(borderColor, lineWidth: 1))
-        .shadow(color: .black.opacity(0.5), radius: 30, y: 14)
+        .shadow(color: cardShadow, radius: 30, y: 14)
         .onAppear { searchFocused = true }
     }
 
@@ -98,7 +105,10 @@ struct CommandPalette: View {
 
     private func row(_ cmd: PaletteCommand, selected: Bool) -> some View {
         let isExpanded = expanded.contains(cmd.id)
-        let rowShape = RoundedRectangle(cornerRadius: 9, style: .continuous)
+        // Rows are inset 6pt from the card, so a concentric inner radius keeps
+        // the corners parallel.
+        let rowShape = RoundedRectangle(cornerRadius: Radius.inner(of: Radius.panel, inset: 6),
+                                        style: .continuous)
         return VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 12) {
                 // phosphor is the signal — only the selected row's glyph lights up.
