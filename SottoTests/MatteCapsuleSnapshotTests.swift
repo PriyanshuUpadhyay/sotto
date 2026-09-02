@@ -84,7 +84,7 @@ final class MatteCapsuleSnapshotTests: XCTestCase {
                     MatteCapsuleView(state: state, elapsed: 12.4, partial: "ship the parser",
                                      reduceMotion: true, onRetry: {})
                 }
-                .frame(width: 360, height: 120)
+                .frame(width: 520, height: 120)
                 .environment(\.colorScheme, scheme)
                 let url = try SnapshotRenderer.render(view, name: "capsule_\(state)-\(suffix)")
                 XCTAssertTrue(FileManager.default.fileExists(atPath: url.path))

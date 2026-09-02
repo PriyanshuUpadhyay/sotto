@@ -33,7 +33,7 @@ enum SottoGlassLevel {
 }
 
 extension SottoGlassLevel {
-    fileprivate var isFrost: Bool {
+    var isFrost: Bool {
         switch self {
         case .chip, .band: return true
         case .capsule, .panel: return false
@@ -41,7 +41,7 @@ extension SottoGlassLevel {
     }
 
     /// Live-glass body tint. Unused by the frost levels.
-    fileprivate var tint: Color {
+    var tint: Color {
         switch self {
         case .panel: return Palette.glassTintThick
         default:     return Palette.glassTint
@@ -49,7 +49,7 @@ extension SottoGlassLevel {
     }
 
     /// Semi-opaque frost fill. Unused by the glass levels.
-    fileprivate var frostFill: Color {
+    var frostFill: Color {
         switch self {
         case .chip: return Palette.glassChipFill
         default:    return Palette.glassBand
@@ -58,7 +58,7 @@ extension SottoGlassLevel {
 
     /// Opaque fallback under Reduce Transparency / Increase Contrast — today's
     /// matte ladder, unchanged.
-    fileprivate var opaqueFill: Color {
+    var opaqueFill: Color {
         switch self {
         case .chip, .band: return Palette.mtRaise2
         case .capsule, .panel: return Palette.mtRaise
@@ -67,14 +67,14 @@ extension SottoGlassLevel {
 
     /// Accent-glow blur radius and alpha — the state colour does not sit on the
     /// surface, it bleeds through as a glow (mockup 01 lane B `.b-cap`).
-    fileprivate var glowRadius: CGFloat {
+    var glowRadius: CGFloat {
         switch self {
         case .panel: return 23
         default:     return 15
         }
     }
 
-    fileprivate var glowAlpha: Double {
+    var glowAlpha: Double {
         switch self {
         case .panel: return 0.15
         default:     return 0.20

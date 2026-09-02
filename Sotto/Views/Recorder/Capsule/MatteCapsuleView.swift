@@ -227,10 +227,9 @@ struct MatteCapsuleView: View {
     /// (Liquid Glass concentricity: inner = outer − inset).
     private static let bandInset: CGFloat = 5
     private static let bandRadius: CGFloat = Radius.inner(of: Radius.capsule, inset: bandInset)
-    /// How far the band runs past the leading edge of the bars, and the share of
-    /// its width the leading dissolve occupies.
-    private static let bandLeadIn: CGFloat = 8
-    private static let bandFadeFraction: CGFloat = 0.045
+    /// How far the band runs past the bars and the tape on either side, so the
+    /// words are not flush against its edge (mockup 01 lane B `.tape` padding).
+    private static let bandBleed: CGFloat = 6
 
     private var liveTape: Bool { state == .recording || state == .processing }
 
@@ -318,24 +317,14 @@ struct MatteCapsuleView: View {
         .background(band)
     }
 
-    /// The band runs a little past the leading edge of the bars and dissolves
-    /// there, so its left end reads as a fade rather than a cut. The trailing
-    /// end keeps its full weight — the newest word lands on it.
+    /// Its own continuous-corner well inside the pill, concentric with it and
+    /// running a little past the content on either side. It is a background, so
+    /// the bleed costs no layout — the capsule's clip bounds it.
     private var band: some View {
         Color.clear
             .sottoGlass(.band,
                         in: RoundedRectangle(cornerRadius: Self.bandRadius, style: .continuous))
-            .padding(.leading, -Self.bandLeadIn)
-            .mask(
-                LinearGradient(
-                    stops: [
-                        .init(color: .clear, location: 0),
-                        .init(color: .black, location: Self.bandFadeFraction),
-                        .init(color: .black, location: 1),
-                    ],
-                    startPoint: .leading, endPoint: .trailing
-                )
-            )
+            .padding(.horizontal, -Self.bandBleed)
             .allowsHitTesting(false)
     }
 
