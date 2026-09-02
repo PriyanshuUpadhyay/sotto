@@ -26,6 +26,28 @@ enum CommandRegistry {
         }
     }
 
+    /// Dictionary navigation: one row per VocabularyTab section, opening the
+    /// window's Dictionary destination (its one home) rather than a Settings
+    /// rail row. Built from the section descriptor, so a section cannot be
+    /// added or dropped without this list following it.
+    static func dictionaryCommands(
+        sections: [VocabularyTab.VocabularyTabSection] = VocabularyTab.VocabularyTabSection.allCases
+    ) -> [PaletteCommand] {
+        sections.map { section in
+            PaletteCommand(
+                id: "nav:dictionary:\(section.searchLabel)",
+                title: section.searchLabel,
+                subtitle: "Dictionary",
+                systemImage: "arrow.right.circle",
+                category: .navigate,
+                requiresFocusRestore: false,
+                run: {
+                    SottoWindowCoordinator.shared.open(dictionarySection: section.searchLabel)
+                }
+            )
+        }
+    }
+
     static func modelCommands(modelNames: [String],
                               activeName: String?,
                               setActive: @escaping (String) -> Void) -> [PaletteCommand] {
@@ -124,7 +146,7 @@ enum CommandRegistry {
 
         // Prompt switching was removed when enhancement collapsed to a single
         // fixed prompt, so the palette no longer offers prompt-switch commands.
-        let nav = navigationCommands(index: SettingsSearch.index)
+        let nav = navigationCommands(index: SettingsSearch.index) + dictionaryCommands()
 
         let transcripts = transcriptCommands(
             rows: fetchTranscriptRows(from: ctx, matching: query, limit: 6)

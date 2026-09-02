@@ -35,6 +35,11 @@ final class SottoWindowCoordinator: ObservableObject {
     /// consumes it on mount. One value — latest wins, no contradictory state.
     var pendingSettingsTarget: PendingSettingsTarget?
 
+    /// Staged Dictionary section jump, mirroring `pendingSettingsTarget`: the
+    /// .selectSettingsSection notification is equally lossy when the window's
+    /// Dictionary destination isn't mounted yet.
+    var pendingDictionarySection: String?
+
     private var opener: ((String) -> Void)?
 
     private init() {}
@@ -69,11 +74,27 @@ final class SottoWindowCoordinator: ObservableObject {
         )
     }
 
+    /// Open the window's Dictionary destination and jump to one of its
+    /// sections (command-palette navigation). Same staging + post pattern as
+    /// `open(settingsSection:label:)`.
+    func open(dictionarySection label: String) {
+        pendingDictionarySection = label
+        open(tab: .dictionary)
+        NotificationCenter.default.post(
+            name: .selectSettingsSection,
+            object: nil,
+            userInfo: ["tab": SettingsTab.vocabulary, "label": label]
+        )
+    }
+
     func open(tab: SottoWindowTab, activate: Bool = true) {
         // Navigating anywhere but Settings invalidates a staged Settings
         // target — otherwise it survives and fires on the next manual visit.
         if tab != .settings {
             pendingSettingsTarget = nil
+        }
+        if tab != .dictionary {
+            pendingDictionarySection = nil
         }
         pendingTab = tab
         let shouldActivate = activate && !AppRuntimeMode.isHeadlessTest

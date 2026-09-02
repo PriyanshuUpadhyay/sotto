@@ -6,12 +6,11 @@ final class SettingsSearchTests: XCTestCase {
 
     // The sum of every indexed tab's section cases — the only legitimate size
     // of a label/section index. v1 must NOT index deeper than this (no
-    // per-control value entries). Models is excluded: it lives in the window
-    // sidebar, not the Settings rail (2026-07 revamp).
+    // per-control value entries). Models and Vocabulary are excluded: both live
+    // in the window sidebar, not the Settings rail.
     private var expectedIndexCount: Int {
         GeneralTab.GeneralTabSection.allCases.count
             + ShortcutsTab.ShortcutsTabSection.allCases.count
-            + VocabularyTab.VocabularyTabSection.allCases.count
             + AdvancedTab.AdvancedTabSection.allCases.count
     }
 
@@ -36,9 +35,13 @@ final class SettingsSearchTests: XCTestCase {
 
         let audio = search.filter("audio")
         XCTAssertTrue(audio.contains { $0.tab == .general && $0.label.localizedCaseInsensitiveContains("audio") })
+    }
 
-        let dictionary = search.filter("dictionary")
-        XCTAssertTrue(dictionary.contains { $0.tab == .vocabulary && $0.label.localizedCaseInsensitiveContains("dictionary") })
+    /// Dictionary is a window sidebar destination, so it is NOT reachable from
+    /// the Settings search field — the command palette reaches it instead.
+    func test_index_holdsNoVocabularyEntries() {
+        XCTAssertFalse(SettingsSearch.index.contains { $0.tab == .vocabulary },
+                       "Vocabulary sections must not be indexed — Dictionary lives in the window sidebar, not the Settings rail")
     }
 
     // MARK: - Case-insensitive

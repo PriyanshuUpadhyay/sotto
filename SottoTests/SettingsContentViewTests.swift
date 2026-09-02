@@ -47,22 +47,22 @@ final class SettingsContentViewTests: XCTestCase {
         )
     }
 
-    func test_settingsContentView_hostsRemainingFourSettingsTabs() throws {
+    func test_settingsContentView_hostsRemainingThreeSettingsTabs() throws {
         let source = try settingsContentViewSource()
         XCTAssertTrue(source.contains("GeneralTab"), "SettingsContentView must host GeneralTab.")
         XCTAssertTrue(source.contains("ShortcutsTab"), "SettingsContentView must host ShortcutsTab.")
-        XCTAssertTrue(source.contains("VocabularyTab"), "SettingsContentView must host VocabularyTab.")
         XCTAssertTrue(source.contains("AdvancedTab"), "SettingsContentView must host AdvancedTab.")
-        // Models lives in exactly one place — the window sidebar destination
-        // (2026-07 revamp). Settings must NOT instantiate it.
+        // Models and Dictionary each live in exactly one place — their window
+        // sidebar destinations. Settings must NOT instantiate either.
         XCTAssertFalse(source.contains("ModelsTab()"), "SettingsContentView must not host ModelsTab — Models is a window-level destination.")
+        XCTAssertFalse(source.contains("VocabularyTab()"), "SettingsContentView must not host VocabularyTab — Dictionary is a window-level destination.")
     }
 
     func test_settingsContentView_drivesRailFromFilteredTabs() throws {
         let source = try settingsContentViewSource()
         // The rail lists `SettingsSearch(query:).filteredTabs()` — derived from
-        // SettingsTab.allCases — so an empty query surfaces all five tabs
-        // (hostsAllFiveSettingsTabs guards that each surface is present).
+        // SettingsTab.allCases, minus the two that graduated to window
+        // destinations (hostsRemainingThreeSettingsTabs guards what is left).
         XCTAssertTrue(
             source.contains("filteredTabs"),
             "SettingsContentView's rail must drive its tabs from SettingsSearch.filteredTabs() (derived from SettingsTab.allCases)."
@@ -109,8 +109,9 @@ final class SettingsContentViewTests: XCTestCase {
     //
     // The .onReceive(.selectSettingsTab) closure switches on
     // `action(current:notification:)`: .select(tab) assigns the rail selection;
-    // .openModelsWindowTab forwards to the window-level Models destination —
-    // .models has no rail row here, so selecting it would render a hidden page.
+    // .openModelsWindowTab / .openDictionaryWindowTab forward to the window-level
+    // destinations — neither tab has a rail row here, so selecting one would
+    // render a hidden page.
 
     func test_action_modelsTab_remapsToWindowModelsDestination() {
         let note = Notification(name: .selectSettingsTab, object: nil, userInfo: ["tab": SettingsTab.models])
@@ -121,13 +122,25 @@ final class SettingsContentViewTests: XCTestCase {
         )
     }
 
-    func test_action_nonModelsTabs_selectTheTab() {
-        for tab in SettingsTab.allCases where tab != .models {
+    /// Same remap for Vocabulary: Dictionary graduated to the window sidebar,
+    /// so a .selectSettingsTab(.vocabulary) must open that destination rather
+    /// than select a rail row that no longer exists.
+    func test_action_vocabularyTab_remapsToWindowDictionaryDestination() {
+        let note = Notification(name: .selectSettingsTab, object: nil, userInfo: ["tab": SettingsTab.vocabulary])
+        XCTAssertEqual(
+            SettingsContentView.action(current: .general, notification: note),
+            .openDictionaryWindowTab,
+            "A .selectSettingsTab(.vocabulary) notification must open the window-level Dictionary destination, never a hidden Settings page."
+        )
+    }
+
+    func test_action_railTabs_selectTheTab() {
+        for tab in SettingsTab.allCases where tab != .models && tab != .vocabulary {
             let note = Notification(name: .selectSettingsTab, object: nil, userInfo: ["tab": tab])
             XCTAssertEqual(
                 SettingsContentView.action(current: .general, notification: note),
                 .select(tab),
-                "Non-models tabs must select the rail row."
+                "Tabs that still have a rail row must select it."
             )
         }
     }

@@ -3,12 +3,14 @@ import SwiftUI
 enum SottoWindowTab: CaseIterable, Hashable {
     case history
     case models
+    case dictionary
     case settings
 
     var title: String {
         switch self {
         case .history:        return "History"
         case .models:         return "Models"
+        case .dictionary:     return "Dictionary"
         case .settings:       return "Settings"
         }
     }
@@ -18,6 +20,7 @@ enum SottoWindowTab: CaseIterable, Hashable {
         switch self {
         case .history:        return "clock"
         case .models:         return "cpu"
+        case .dictionary:     return "character.book.closed"
         case .settings:       return "gearshape"
         }
     }
@@ -146,8 +149,10 @@ struct SottoWindowView: View {
             Self.historyView()
         case .models:
             ModelsDestinationView()
+        case .dictionary:
+            DictionaryDestinationView()
         case .settings:
-            Self.settingsView()
+            SettingsDestinationView()
         }
     }
 }
@@ -266,6 +271,34 @@ private struct MicStatusChip: View {
     }
 }
 
+// MARK: - Destination header
+
+/// The pinned 24pt title every window destination opens with, so a destination
+/// always states where you are. `trailing` carries the optional microlabel.
+private struct DestinationHeader: View {
+    let title: String
+    var trailing: String?
+
+    var body: some View {
+        HStack(alignment: .firstTextBaseline) {
+            Text(title)
+                .font(.ui(24, weight: .semibold))
+                .tracking(-0.4)
+                .foregroundStyle(Palette.inkPrimary)
+            Spacer()
+            if let trailing {
+                Text(trailing)
+                    .font(.microlabel(11))
+                    .tracking(0.18 * 11)
+                    .foregroundStyle(Palette.inkSecondary)
+            }
+        }
+        .padding(.horizontal, 24)
+        .padding(.top, 30)
+        .padding(.bottom, 4)
+    }
+}
+
 // MARK: - Models destination
 
 /// Models as a first-class window destination: a pinned header in the style of
@@ -273,22 +306,59 @@ private struct MicStatusChip: View {
 struct ModelsDestinationView: View {
     var body: some View {
         VStack(spacing: 0) {
-            HStack(alignment: .firstTextBaseline) {
-                Text("Models")
-                    .font(.ui(24, weight: .semibold))
-                    .tracking(-0.4)
-                    .foregroundStyle(Palette.inkPrimary)
-                Spacer()
-                Text("ON-DEVICE")
-                    .font(.microlabel(11))
-                    .tracking(0.18 * 11)
-                    .foregroundStyle(Palette.inkSecondary)
-            }
-            .padding(.horizontal, 24)
-            .padding(.top, 30)
-            .padding(.bottom, 4)
-
+            DestinationHeader(title: "Models", trailing: "ON-DEVICE")
             ModelsTab()
+        }
+        .background(Theme.canvas)
+    }
+}
+
+// MARK: - Dictionary destination
+
+/// Dictionary as a first-class window destination — its ONE home. The rail row
+/// under Settings is gone, so the EXISTING VocabularyTab content (dictionary
+/// words, replacements, filler words) is reachable from exactly one place.
+struct DictionaryDestinationView: View {
+    var body: some View {
+        VStack(spacing: 0) {
+            DestinationHeader(title: "Dictionary")
+            VocabularyTab()
+        }
+        .background(Theme.canvas)
+        .onAppear { consumeStagedSection() }
+        // A live jump means the staged copy has been delivered; it must not
+        // re-apply on a later manual visit.
+        .onReceive(NotificationCenter.default.publisher(for: .selectSettingsSection)) { _ in
+            SottoWindowCoordinator.shared.pendingDictionarySection = nil
+        }
+    }
+
+    /// Consume a section jump staged while this destination wasn't mounted
+    /// (`SottoWindowCoordinator.open(dictionarySection:)` — the notification it
+    /// also posts is lossy pre-mount). Reposted on the next runloop tick so the
+    /// freshly-mounted VocabularyTab is listening.
+    private func consumeStagedSection() {
+        guard let label = SottoWindowCoordinator.shared.pendingDictionarySection else { return }
+        SottoWindowCoordinator.shared.pendingDictionarySection = nil
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+            NotificationCenter.default.post(
+                name: .selectSettingsSection,
+                object: nil,
+                userInfo: ["tab": SettingsTab.vocabulary, "label": label]
+            )
+        }
+    }
+}
+
+// MARK: - Settings destination
+
+/// Settings with the same pinned title its siblings carry, over the EXISTING
+/// in-window SettingsContentView.
+struct SettingsDestinationView: View {
+    var body: some View {
+        VStack(spacing: 0) {
+            DestinationHeader(title: "Settings")
+            SottoWindowView.settingsView()
         }
         .background(Theme.canvas)
     }

@@ -47,6 +47,9 @@ struct SettingsContentView: View {
                 // selection to set; the window swaps to the Models destination).
                 invalidateSectionJumps()
                 SottoWindowCoordinator.shared.open(tab: .models)
+            case .openDictionaryWindowTab:
+                invalidateSectionJumps()
+                SottoWindowCoordinator.shared.open(tab: .dictionary)
             }
             query = ""
         }
@@ -58,7 +61,8 @@ struct SettingsContentView: View {
             if consumesStagedTarget {
                 SottoWindowCoordinator.shared.pendingSettingsTarget = nil
             }
-            guard let tab = notification.userInfo?["tab"] as? SettingsTab, tab != .models,
+            guard let tab = notification.userInfo?["tab"] as? SettingsTab,
+                  tab != .models, tab != .vocabulary,
                   let label = notification.userInfo?["label"] as? String else { return }
             // Already on the target tab → its own listener scrolls; switching
             // tabs re-posts after a tick so the freshly-mounted tab hears it
@@ -94,7 +98,7 @@ struct SettingsContentView: View {
         guard consumesStagedTarget,
               let staged = SottoWindowCoordinator.shared.pendingSettingsTarget else { return }
         SottoWindowCoordinator.shared.pendingSettingsTarget = nil
-        guard staged.tab != .models else { return }
+        guard staged.tab != .models, staged.tab != .vocabulary else { return }
         setSelection(.tab(staged.tab))
         if case .section(let tab, let label) = staged {
             repostSectionJump(tab: tab, label: label)
@@ -120,18 +124,23 @@ struct SettingsContentView: View {
         }
     }
 
-    /// What a `.selectSettingsTab` notification does. `.models` is remapped to
-    /// the window-level Models destination (mirrors `SottoWindowCoordinator
-    /// .route`) — it has no rail row here, so selecting it would render a
-    /// hidden, unreachable page. Pure + static so the remap is unit-testable.
+    /// What a `.selectSettingsTab` notification does. `.models` and
+    /// `.vocabulary` are remapped to their window-level destinations (mirrors
+    /// `SottoWindowCoordinator.route`) — neither has a rail row here, so
+    /// selecting one would render a hidden, unreachable page. Pure + static so
+    /// the remap is unit-testable.
     enum TabNotificationAction: Equatable {
         case select(SettingsTab)
         case openModelsWindowTab
+        case openDictionaryWindowTab
     }
 
     static func action(current: SettingsTab, notification: Notification) -> TabNotificationAction {
-        let next = nextSelection(current: current, notification: notification)
-        return next == .models ? .openModelsWindowTab : .select(next)
+        switch nextSelection(current: current, notification: notification) {
+        case .models:     return .openModelsWindowTab
+        case .vocabulary: return .openDictionaryWindowTab
+        case let next:    return .select(next)
+        }
     }
 
     private var currentTab: SettingsTab {
@@ -143,10 +152,10 @@ struct SettingsContentView: View {
 
     /// Onyx vertical rail: search field on top, narrowed tab list below. The
     /// list is the EXISTING `SettingsSearch.filteredTabs()` — typing narrows it.
-    /// Models is excluded: it graduated to a first-class window destination
-    /// (2026-07 revamp) and must live in exactly one place.
+    /// Models and Vocabulary are excluded: both graduated to first-class window
+    /// destinations and must live in exactly one place.
     private var rail: some View {
-        let tabs = SettingsSearch(query: query).filteredTabs().filter { $0 != .models }
+        let tabs = SettingsSearch(query: query).filteredTabs().filter { $0 != .models && $0 != .vocabulary }
         return VStack(spacing: 0) {
             railSearchField
                 .padding(.horizontal, 12)
@@ -256,7 +265,9 @@ struct SettingsContentView: View {
         // reducer (action(current:notification:)) remaps it to the window-level
         // destination. Models renders in exactly one place — the window sidebar.
         case .tab(.models): EmptyView()
-        case .tab(.vocabulary): VocabularyTab()
+        // Unreachable for the same reason: Dictionary is a window sidebar
+        // destination (DictionaryDestinationView), not a Settings rail row.
+        case .tab(.vocabulary): EmptyView()
         case .tab(.advanced): AdvancedTab()
         case .appearance: AppearanceSettingsView()
         }

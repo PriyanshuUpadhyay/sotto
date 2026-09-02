@@ -24,12 +24,13 @@ struct SettingsSearch {
     static let index: [SettingsSearchResult] = buildIndex()
 
     private static func buildIndex() -> [SettingsSearchResult] {
-        // No Models entries: Models graduated to a first-class window
-        // destination (2026-07 revamp) and is no longer a Settings rail row.
+        // No Models or Vocabulary entries: both graduated to first-class window
+        // destinations and are no longer Settings rail rows, so neither is
+        // reachable from the Settings search field. The command palette reaches
+        // Dictionary through `CommandRegistry.dictionaryCommands` instead.
         var entries: [SettingsSearchResult] = []
         entries += GeneralTab.GeneralTabSection.allCases.map { SettingsSearchResult(tab: .general, label: $0.searchLabel, keywords: $0.searchKeywords) }
         entries += ShortcutsTab.ShortcutsTabSection.allCases.map { SettingsSearchResult(tab: .shortcuts, label: $0.searchLabel, keywords: $0.searchKeywords) }
-        entries += VocabularyTab.VocabularyTabSection.allCases.map { SettingsSearchResult(tab: .vocabulary, label: $0.searchLabel, keywords: $0.searchKeywords) }
         entries += AdvancedTab.AdvancedTabSection.allCases.map { SettingsSearchResult(tab: .advanced, label: $0.searchLabel, keywords: $0.searchKeywords) }
         return entries
     }

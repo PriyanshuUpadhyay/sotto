@@ -33,11 +33,55 @@ final class SottoWindowTests: XCTestCase {
 
     func test_allRequiredTabsPresent() {
         let cases = Set(SottoWindowTab.allCases)
-        let required: Set<SottoWindowTab> = [.history, .models, .settings]
+        let required: Set<SottoWindowTab> = [.history, .models, .dictionary, .settings]
         XCTAssertEqual(
             cases, required,
-            "SottoWindow sidebar must expose History + Models + Settings; diff: \(cases.symmetricDifference(required))"
+            "SottoWindow sidebar must expose History + Models + Dictionary + Settings; diff: \(cases.symmetricDifference(required))"
         )
+    }
+
+    /// Dictionary is a first-class sidebar destination (design-mockups/02): its
+    /// ONE home. The rail row under Settings is gone, so this is the only place
+    /// the vocabulary editors render.
+    func test_dictionaryTab_isPresentWithTitle() {
+        XCTAssertTrue(SottoWindowTab.allCases.contains(.dictionary))
+        XCTAssertEqual(SottoWindowTab.dictionary.title, "Dictionary")
+    }
+
+    func test_dictionaryDestination_bodyRendersVocabularyTab() {
+        let bodyType = String(describing: type(of: DictionaryDestinationView().body))
+        XCTAssertTrue(bodyType.contains("VocabularyTab"),
+                      "Dictionary destination must render the existing VocabularyTab; body was \(bodyType)")
+    }
+
+    /// Settings is the destination that used to state nowhere it was: it now
+    /// carries the same pinned title its siblings have, over SettingsContentView.
+    func test_settingsDestination_bodyComposesTitleOverSettingsContent() {
+        let bodyType = String(describing: type(of: SettingsDestinationView().body))
+        XCTAssertTrue(bodyType.contains("DestinationHeader"),
+                      "Settings destination must carry the shared title header; body was \(bodyType)")
+        XCTAssertTrue(bodyType.contains("SettingsContentView"),
+                      "Settings destination must render SettingsContentView; body was \(bodyType)")
+    }
+
+    /// A staged dictionary section survives a closed window: `open(dictionarySection:)`
+    /// stages the label AND opens the Dictionary destination, so the jump is not
+    /// lost when the notification fires before the destination mounts.
+    func test_openDictionarySection_stagesLabel_andOpensDictionaryTab() {
+        let coordinator = SottoWindowCoordinator.shared
+        coordinator.pendingTab = nil
+        coordinator.pendingDictionarySection = nil
+        coordinator.registerOpener { _ in }
+
+        coordinator.open(dictionarySection: "Word Replacements")
+
+        XCTAssertEqual(coordinator.pendingTab, .dictionary)
+        XCTAssertEqual(coordinator.pendingDictionarySection, "Word Replacements")
+
+        // Navigating elsewhere invalidates it — it must not fire on a later
+        // manual visit to Dictionary.
+        coordinator.open(tab: .history, activate: false)
+        XCTAssertNil(coordinator.pendingDictionarySection)
     }
 
     /// Settings is the in-window third segment: the enum carries a `.settings`
