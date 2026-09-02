@@ -175,10 +175,16 @@ struct ModelsTab: View {
                     VStack(alignment: .leading, spacing: 2) {
                         Text("Confirm custom terms against the audio")
                             .font(.system(size: 12, weight: .semibold))
-                        Text(acousticBoostingCaption)
-                            .font(.system(size: 11))
-                            .foregroundColor(acousticBoostingError == nil ? Palette.inkSecondary : .red)
-                            .fixedSize(horizontal: false, vertical: true)
+                        HStack(spacing: 6) {
+                            if isPreparingAcousticModel {
+                                ProgressView()
+                                    .controlSize(.small)
+                            }
+                            Text(acousticBoostingCaption)
+                                .font(.system(size: 11))
+                                .foregroundColor(acousticBoostingError == nil ? Palette.inkSecondary : Palette.stateFail)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
                     }
                 }
                 .toggleStyle(.switch)
@@ -220,7 +226,7 @@ struct ModelsTab: View {
                 await MainActor.run {
                     isPreparingAcousticModel = false
                     isAcousticBoostingEnabled = false
-                    acousticBoostingError = "Couldn’t download the acoustic model. Tap to retry."
+                    acousticBoostingError = "Couldn’t download the acoustic model. Turn the switch back on to retry."
                 }
             }
         }

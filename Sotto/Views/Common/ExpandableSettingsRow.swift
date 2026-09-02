@@ -31,11 +31,25 @@ struct ExpandableSettingsRow<Content: View>: View {
 
                 Spacer()
 
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundColor(.secondary)
-                    .rotationEffect(.degrees(isEnabled && isExpanded ? 90 : 0))
-                    .opacity(isEnabled ? 1 : 0.4)
+                // A real control, not decoration: the row's tap gesture below
+                // publishes no accessibility action and takes no key focus, so
+                // the expanded content would be mouse-only without this.
+                Button {
+                    withAnimation(Animation.haloPhaseCrossfade) {
+                        isExpanded.toggle()
+                    }
+                } label: {
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundColor(.secondary)
+                        .rotationEffect(.degrees(isEnabled && isExpanded ? 90 : 0))
+                        .opacity(isEnabled ? 1 : 0.4)
+                        .padding(4)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .disabled(!isEnabled)
+                .accessibilityLabel(isExpanded ? "Collapse \(label)" : "Expand \(label)")
             }
             .contentShape(Rectangle())
             .onTapGesture {

@@ -7,6 +7,13 @@ struct ShortcutsTab: View {
     @State private var currentShortcut = KeyboardShortcuts.getShortcut(for: .toggleMiniRecorder)
     @State private var isCustomCancelEnabled = KeyboardShortcuts.getShortcut(for: .cancelRecorder) != nil
     @State private var isCustomCancelExpanded = false
+    /// The cancel binding the user last had, so turning Custom Cancel back on
+    /// restores it instead of losing it.
+    @State private var lastCancelShortcut = KeyboardShortcuts.getShortcut(for: .cancelRecorder)
+    /// Raw names of the shortcuts that currently have a binding. Held in state
+    /// so recording one updates the card's badge immediately — a bare
+    /// `KeyboardShortcuts.getShortcut` call in `body` publishes nothing.
+    @State private var boundNames: Set<String> = Self.currentlyBoundNames()
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var highlightedSection: ShortcutsTabSection?
@@ -52,6 +59,15 @@ struct ShortcutsTab: View {
     /// construction; `SettingsShortcutsTabTests` asserts this equality.
     static var renderedSections: [ShortcutsTabSection] { ShortcutsTabSection.allCases }
 
+    /// The raw names that hold a binding right now — the initial value of
+    /// `boundNames`, read once at mount.
+    private static func currentlyBoundNames() -> Set<String> {
+        Set(shortcutBindings.compactMap { binding in
+            let name = KeyboardShortcuts.Name(binding.name)
+            return KeyboardShortcuts.getShortcut(for: name) == nil ? nil : binding.name
+        })
+    }
+
     var body: some View {
         ScrollViewReader { proxy in
             ScrollView {
@@ -91,8 +107,8 @@ struct ShortcutsTab: View {
                 iconTint: Brand.tint,
                 title: "Shortcuts",
                 subtitle: "Trigger recording from anywhere.",
-                statusText: "1 active",
-                statusTone: .neutral
+                statusText: hotkeyManager.selectedHotkey1 == .none ? "None" : "1 active",
+                statusTone: hotkeyManager.selectedHotkey1 == .none ? .warning : .neutral
             ) {
                 SettingsRow(
                     iconSystemName: "1.circle",
@@ -155,13 +171,23 @@ struct ShortcutsTab: View {
                         label: "Shortcut",
                         iconTint: Brand.tint
                     ) {
-                        KeyboardShortcuts.Recorder(for: .cancelRecorder)
-                            .controlSize(.small)
+                        KeyboardShortcuts.Recorder(for: .cancelRecorder) { shortcut in
+                            lastCancelShortcut = shortcut ?? lastCancelShortcut
+                            setBound(.cancelRecorder, shortcut != nil)
+                        }
+                        .controlSize(.small)
                     }
                 }
                 .onChange(of: isCustomCancelEnabled) { _, newValue in
-                    if !newValue {
+                    if newValue {
+                        if let saved = lastCancelShortcut {
+                            KeyboardShortcuts.setShortcut(saved, for: .cancelRecorder)
+                            setBound(.cancelRecorder, true)
+                        }
+                    } else {
+                        lastCancelShortcut = KeyboardShortcuts.getShortcut(for: .cancelRecorder) ?? lastCancelShortcut
                         KeyboardShortcuts.setShortcut(nil, for: .cancelRecorder)
+                        setBound(.cancelRecorder, false)
                         isCustomCancelExpanded = false
                     }
                 }
@@ -180,7 +206,7 @@ struct ShortcutsTab: View {
             iconTint: Brand.tint,
             title: title,
             subtitle: subtitle,
-            statusText: KeyboardShortcuts.getShortcut(for: name) != nil ? "Bound" : nil,
+            statusText: boundNames.contains(name.rawValue) ? "Bound" : nil,
             statusTone: .neutral
         ) {
             SettingsRow(
@@ -188,9 +214,20 @@ struct ShortcutsTab: View {
                 label: title,
                 iconTint: Brand.tint
             ) {
-                KeyboardShortcuts.Recorder(for: name)
-                    .controlSize(.small)
+                KeyboardShortcuts.Recorder(for: name) { shortcut in
+                    setBound(name, shortcut != nil)
+                }
+                .controlSize(.small)
             }
+        }
+    }
+
+    /// Keeps the "Bound" badge in step with what the recorder just captured.
+    private func setBound(_ name: KeyboardShortcuts.Name, _ isBound: Bool) {
+        if isBound {
+            boundNames.insert(name.rawValue)
+        } else {
+            boundNames.remove(name.rawValue)
         }
     }
 

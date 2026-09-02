@@ -224,21 +224,27 @@ private struct SottoSidebarRow: View {
 
 // MARK: - Mic status chip
 
-/// Sidebar footer: the ACTIVE transcription model + a ready dot (commit green).
+/// Sidebar footer: the ACTIVE transcription model + a state dot — commit green
+/// when a model is selected, fail amber when none is.
 /// Reads the model from the existing manager the Models destination uses.
 private struct MicStatusChip: View {
     @EnvironmentObject private var transcriptionModelManager: TranscriptionModelManager
+
+    private var hasModel: Bool {
+        transcriptionModelManager.currentTranscriptionModel != nil
+    }
 
     private var modelName: String {
         transcriptionModelManager.currentTranscriptionModel?.displayName ?? "No model selected"
     }
 
     var body: some View {
-        HStack(spacing: 8) {
+        let tone = hasModel ? Palette.stateCommit : Palette.stateFail
+        return HStack(spacing: 8) {
             Circle()
-                .fill(Palette.stateCommit)
+                .fill(tone)
                 .frame(width: 6, height: 6)
-                .shadow(color: Palette.stateCommit.opacity(0.5), radius: 3)
+                .shadow(color: tone.opacity(0.5), radius: 3)
             Text(modelName)
                 .font(.mono(11, weight: .medium))
                 .foregroundStyle(Palette.inkSecondary)
@@ -256,7 +262,7 @@ private struct MicStatusChip: View {
                         .strokeBorder(Theme.hairline, lineWidth: 1)
                 )
         )
-        .accessibilityLabel("Active model: \(modelName)")
+        .accessibilityLabel(hasModel ? "Active model: \(modelName)" : "No model selected")
     }
 }
 

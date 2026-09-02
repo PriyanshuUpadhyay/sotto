@@ -1,20 +1,29 @@
 import SwiftUI
 
 struct AudioInputSettingsView: View {
+    /// Hosted inside a `SettingsCard` (General tab): the card already carries
+    /// the icon, title and subtitle, and the tab owns the scroll view — so the
+    /// embedded form drops its own hero, scroll view and page padding.
+    var isEmbedded: Bool = false
+
     @ObservedObject var audioDeviceManager = AudioDeviceManager.shared
     @Environment(\.colorScheme) private var colorScheme
-    
+
     var body: some View {
-        ScrollView {
-            VStack(spacing: 0) {
-                heroSection
-                mainContent
+        if isEmbedded {
+            mainContent
+        } else {
+            ScrollView {
+                VStack(spacing: 0) {
+                    heroSection
+                    mainContent
+                }
             }
         }
     }
     
     private var mainContent: some View {
-        VStack(spacing: 40) {
+        VStack(spacing: isEmbedded ? 20 : 40) {
             inputModeSection
 
             switch audioDeviceManager.inputMode {
@@ -26,8 +35,8 @@ struct AudioInputSettingsView: View {
                 prioritizedDevicesSection
             }
         }
-        .padding(.horizontal, 32)
-        .padding(.vertical, 40)
+        .padding(.horizontal, isEmbedded ? 0 : 32)
+        .padding(.vertical, isEmbedded ? 0 : 40)
     }
     
     private var heroSection: some View {
@@ -37,12 +46,18 @@ struct AudioInputSettingsView: View {
             description: "Configure your microphone preferences"
         )
     }
+
+    /// Sub-section heading INSIDE the card — one step below the card header's
+    /// 14pt title, never above it.
+    private func sectionHeading(_ text: String) -> some View {
+        Text(text)
+            .font(.system(size: 13, weight: .semibold))
+            .foregroundColor(Palette.inkPrimary)
+    }
     
     private var inputModeSection: some View {
         VStack(alignment: .leading, spacing: 20) {
-            Text("Input Mode")
-                .font(.title2)
-                .fontWeight(.semibold)
+            sectionHeading("Input Mode")
             
             HStack(spacing: 20) {
                 ForEach(AudioInputMode.allCases, id: \.self) { mode in
@@ -58,9 +73,7 @@ struct AudioInputSettingsView: View {
     
     private var systemDefaultSection: some View {
         VStack(alignment: .leading, spacing: 20) {
-            Text("Current Device")
-                .font(.title2)
-                .fontWeight(.semibold)
+            sectionHeading("Current Device")
 
             HStack {
                 Image(systemName: "display")
@@ -94,9 +107,7 @@ struct AudioInputSettingsView: View {
     private var customDeviceSection: some View {
         VStack(alignment: .leading, spacing: 20) {
             HStack {
-                Text("Available Devices")
-                    .font(.title2)
-                    .fontWeight(.semibold)
+                sectionHeading("Available Devices")
 
                 Spacer()
 
@@ -135,9 +146,7 @@ struct AudioInputSettingsView: View {
     private var prioritizedDevicesContent: some View {
         VStack(alignment: .leading, spacing: 12) {
             VStack(alignment: .leading, spacing: 4) {
-                Text("Prioritized Devices")
-                    .font(.title2)
-                    .fontWeight(.semibold)
+                sectionHeading("Prioritized Devices")
                 Text("Devices will be used in order of priority. If a device is unavailable, the next one will be tried. If no prioritized device is available, the built-in microphone will be used.")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
@@ -156,9 +165,7 @@ struct AudioInputSettingsView: View {
     
     private var availableDevicesContent: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Available Devices")
-                .font(.title2)
-                .fontWeight(.semibold)
+            sectionHeading("Available Devices")
             
             availableDevicesList
         }

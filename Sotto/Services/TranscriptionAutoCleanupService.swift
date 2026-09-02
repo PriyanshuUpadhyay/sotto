@@ -44,8 +44,38 @@ class TranscriptionAutoCleanupService {
         NotificationCenter.default.removeObserver(self, name: .transcriptionCompleted, object: nil)
     }
 
-    func runManualCleanup(modelContext: ModelContext) async {
+    /// Runs the retention sweep now and reports how many transcripts it deleted.
+    @discardableResult
+    func runManualCleanup(modelContext: ModelContext) async -> Int {
         await sweepOldTranscriptions(modelContext: modelContext)
+    }
+
+    /// How many transcripts the retention sweep would delete right now, so the
+    /// manual button can confirm with a count before deleting anything.
+    func countTranscriptionsToCleanup(modelContext: ModelContext) async -> Int {
+        guard UserDefaults.standard.bool(forKey: keyIsEnabled) else { return 0 }
+
+        let modelContainer = await MainActor.run { modelContext.container }
+        let cutoffDate = retentionCutoffDate()
+
+        do {
+            let backgroundContext = ModelContext(modelContainer)
+            let descriptor = FetchDescriptor<Transcription>(
+                predicate: #Predicate<Transcription> { transcription in
+                    transcription.timestamp < cutoffDate
+                }
+            )
+            return try backgroundContext.fetchCount(descriptor)
+        } catch {
+            logger.error("Failed counting transcripts to clean up: \(error.localizedDescription, privacy: .public)")
+            return 0
+        }
+    }
+
+    private func retentionCutoffDate() -> Date {
+        let retentionMinutes = UserDefaults.standard.integer(forKey: keyRetentionMinutes)
+        let effectiveMinutes = max(retentionMinutes, 0)
+        return Date().addingTimeInterval(TimeInterval(-effectiveMinutes * 60))
     }
 
     @objc private func handleTranscriptionCompleted(_ notification: Notification) {
@@ -88,15 +118,13 @@ class TranscriptionAutoCleanupService {
         }
     }
 
-    private func sweepOldTranscriptions(modelContext: ModelContext) async {
+    @discardableResult
+    private func sweepOldTranscriptions(modelContext: ModelContext) async -> Int {
         guard UserDefaults.standard.bool(forKey: keyIsEnabled) else {
-            return
+            return 0
         }
 
-        let retentionMinutes = UserDefaults.standard.integer(forKey: keyRetentionMinutes)
-        let effectiveMinutes = max(retentionMinutes, 0)
-
-        let cutoffDate = Date().addingTimeInterval(TimeInterval(-effectiveMinutes * 60))
+        let cutoffDate = retentionCutoffDate()
 
         let modelContainer = await MainActor.run { modelContext.container }
 
@@ -126,8 +154,10 @@ class TranscriptionAutoCleanupService {
                     NotificationCenter.default.post(name: .transcriptionDeleted, object: nil)
                 }
             }
+            return deletedCount
         } catch {
             logger.error("Failed during transcription cleanup: \(error.localizedDescription, privacy: .public)")
+            return 0
         }
     }
 
