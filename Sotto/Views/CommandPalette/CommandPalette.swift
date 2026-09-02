@@ -43,7 +43,9 @@ struct CommandPalette: View {
             footer
         }
         .frame(width: 560)
-        .background(Palette.mtRaise, in: card)
+        // Same glass as the review editor — the palette is part of the same
+        // floating HUD family, not a windowed surface.
+        .sottoGlass(.panel, in: card)
         .overlay(card.stroke(borderColor, lineWidth: 1))
         .shadow(color: cardShadow, radius: 30, y: 14)
         .onAppear { searchFocused = true }

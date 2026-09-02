@@ -178,7 +178,7 @@ struct DictionaryQuickAddView: View {
             hintBar
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Palette.mtRaise)
+        .sottoGlass(.panel, in: RoundedRectangle(cornerRadius: Radius.panel, style: .continuous))
         .clipShape(RoundedRectangle(cornerRadius: Radius.panel, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: Radius.panel, style: .continuous)
