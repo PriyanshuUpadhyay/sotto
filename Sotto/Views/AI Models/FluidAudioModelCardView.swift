@@ -34,16 +34,33 @@ struct FluidAudioModelCardView: View {
 
     var body: some View {
         OnyxSurfaceCard(cornerRadius: Radius.control, padding: 16) {
-            HStack(alignment: .top, spacing: 16) {
-                VStack(alignment: .leading, spacing: 6) {
-                    headerSection
-                    metadataSection
-                    descriptionSection
-                    progressSection
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
+            HStack(alignment: .top, spacing: 12) {
+                // The row IS the selection control — one click switches engine.
+                // Real-time, download and the ellipsis menu stay outside its
+                // hit area so they never change the active model.
+                Button(action: {
+                    Task {
+                        transcriptionModelManager.setDefaultTranscriptionModel(model)
+                    }
+                }) {
+                    HStack(alignment: .top, spacing: 16) {
+                        VStack(alignment: .leading, spacing: 6) {
+                            headerSection
+                            metadataSection
+                            descriptionSection
+                            progressSection
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
 
-                actionSection
+                        statusSection
+                    }
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(RowPressStyle())
+                .disabled(!isDownloaded)
+                .accessibilityAddTraits(isCurrent ? [.isSelected] : [])
+
+                trailingControls
             }
         }
         // Selection ring only — OnyxSurfaceCard already strokes its own
@@ -55,21 +72,13 @@ struct FluidAudioModelCardView: View {
     }
 
     private var headerSection: some View {
-        HStack(alignment: .firstTextBaseline) {
+        HStack(alignment: .firstTextBaseline, spacing: 8) {
             Text(model.displayName)
                 .font(.ui(13, weight: .semibold))
                 .foregroundColor(Palette.inkPrimary)
 
-            if model.supportsStreaming && isDownloaded {
-                Toggle("Real-time", isOn: $streamingEnabled)
-                    .toggleStyle(.switch)
-                    .controlSize(.mini)
-                    .font(.ui(11, weight: .medium))
-                    .foregroundColor(Palette.inkSecondary)
-                    .onChange(of: streamingEnabled) { _, newValue in
-                        UserDefaults.standard.set(newValue, forKey: streamingDefaultsKey)
-                    }
-                    .help(streamingEnabled ? "Live streaming enabled — click to switch to batch" : "Batch mode — click to enable live streaming")
+            if isCurrent && isDownloaded {
+                ModelStateBadge.active
             }
 
             Spacer()
@@ -142,29 +151,39 @@ struct FluidAudioModelCardView: View {
         .disabled(isDownloading)
     }
 
-    private var actionSection: some View {
+    /// The row's readiness, read as one chip. ACTIVE rides on the name, so this
+    /// column only says whether the model can be chosen.
+    @ViewBuilder
+    private var statusSection: some View {
+        if isCurrent && !isDownloaded {
+            // Selected but UNUSABLE — the key confusing state.
+            ModelStateBadge.selectedNotDownloaded
+        } else if isDownloaded {
+            ModelStateBadge.ready
+        } else {
+            ModelStateBadge.download(size: model.size)
+        }
+    }
+
+    /// Controls that are NOT the selection: they sit outside the row button so
+    /// downloading, switching to batch or opening the menu never switches the
+    /// active model.
+    private var trailingControls: some View {
         HStack(spacing: 8) {
-            if isCurrent && isDownloaded {
-                Text("Default Model")
-                    .font(.ui(12))
+            if model.supportsStreaming && isDownloaded {
+                Toggle("Real-time", isOn: $streamingEnabled)
+                    .toggleStyle(.switch)
+                    .controlSize(.mini)
+                    .font(.ui(11, weight: .medium))
                     .foregroundColor(Palette.inkSecondary)
-            } else if isCurrent && !isDownloaded {
-                // Selected but UNUSABLE — the key confusing state.
-                ModelStateBadge.selectedNotDownloaded
-                downloadButton
-            } else if isDownloaded {
-                ModelStateBadge.downloaded
-                Button(action: {
-                    Task {
-                        transcriptionModelManager.setDefaultTranscriptionModel(model)
+                    .onChange(of: streamingEnabled) { _, newValue in
+                        UserDefaults.standard.set(newValue, forKey: streamingDefaultsKey)
                     }
-                }) {
-                    Text("Set as Default")
-                        .font(.ui(12))
-                }
-                .buttonStyle(.bordered)
-                .controlSize(.small)
-            } else {
+                    .help(streamingEnabled ? "Live streaming enabled — click to switch to batch" : "Batch mode — click to enable live streaming")
+                    .fixedSize()
+            }
+
+            if !isDownloaded {
                 downloadButton
             }
 

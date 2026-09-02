@@ -9,18 +9,23 @@ struct NativeAppleModelCardView: View {
     
     var body: some View {
         OnyxSurfaceCard(cornerRadius: Radius.control, padding: 16) {
-            HStack(alignment: .top, spacing: 16) {
-                // Main Content
-                VStack(alignment: .leading, spacing: 6) {
-                    headerSection
-                    metadataSection
-                    descriptionSection
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
+            // The row IS the selection control — one click switches engine.
+            // Nothing to download, so it is always selectable.
+            Button(action: setDefaultAction) {
+                HStack(alignment: .top, spacing: 16) {
+                    VStack(alignment: .leading, spacing: 6) {
+                        headerSection
+                        metadataSection
+                        descriptionSection
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
 
-                // Action Controls
-                actionSection
+                    ModelStateBadge.ready
+                }
+                .contentShape(Rectangle())
             }
+            .buttonStyle(RowPressStyle())
+            .accessibilityAddTraits(isCurrent ? [.isSelected] : [])
         }
         // Selection ring only — OnyxSurfaceCard already strokes its own
         // hairline, and the radius stays concentric with the card around it.
@@ -31,11 +36,15 @@ struct NativeAppleModelCardView: View {
     }
 
     private var headerSection: some View {
-        HStack(alignment: .firstTextBaseline) {
+        HStack(alignment: .firstTextBaseline, spacing: 8) {
             Text(model.displayName)
                 .font(.ui(13, weight: .semibold))
                 .foregroundColor(Palette.inkPrimary)
-            
+
+            if isCurrent {
+                ModelStateBadge.active
+            }
+
             Spacer()
         }
     }
@@ -77,21 +86,5 @@ struct NativeAppleModelCardView: View {
             .fixedSize(horizontal: false, vertical: true)
             .padding(.top, 4)
     }
-    
-    private var actionSection: some View {
-        HStack(spacing: 8) {
-            if isCurrent {
-                Text("Default Model")
-                    .font(.ui(12))
-                    .foregroundColor(Palette.inkSecondary)
-            } else {
-                Button(action: setDefaultAction) {
-                    Text("Set as Default")
-                        .font(.ui(12))
-                }
-                .buttonStyle(.bordered)
-                .controlSize(.small)
-            }
-        }
-    }
-} 
+}
+

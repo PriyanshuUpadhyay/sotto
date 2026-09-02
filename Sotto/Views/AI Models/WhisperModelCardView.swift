@@ -21,18 +21,28 @@ struct WhisperModelCardView: View {
     
     var body: some View {
         OnyxSurfaceCard(cornerRadius: Radius.control, padding: 16) {
-            HStack(alignment: .top, spacing: 16) {
-                // Main Content
-                VStack(alignment: .leading, spacing: 6) {
-                    headerSection
-                    metadataSection
-                    descriptionSection
-                    progressSection
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
+            HStack(alignment: .top, spacing: 12) {
+                // The row IS the selection control — one click switches engine.
+                // Download and the ellipsis menu stay outside its hit area.
+                Button(action: setDefaultAction) {
+                    HStack(alignment: .top, spacing: 16) {
+                        VStack(alignment: .leading, spacing: 6) {
+                            headerSection
+                            metadataSection
+                            descriptionSection
+                            progressSection
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
 
-                // Action Controls
-                actionSection
+                        statusSection
+                    }
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(RowPressStyle())
+                .disabled(!isDownloaded)
+                .accessibilityAddTraits(isCurrent ? [.isSelected] : [])
+
+                trailingControls
             }
         }
         // Selection ring only — OnyxSurfaceCard already strokes its own
@@ -44,11 +54,15 @@ struct WhisperModelCardView: View {
     }
 
     private var headerSection: some View {
-        HStack(alignment: .firstTextBaseline) {
+        HStack(alignment: .firstTextBaseline, spacing: 8) {
             Text(model.displayName)
                 .font(.ui(13, weight: .semibold))
                 .foregroundColor(Palette.inkPrimary)
-            
+
+            if isCurrent && isDownloaded {
+                ModelStateBadge.active
+            }
+
             Spacer()
         }
     }
@@ -128,36 +142,36 @@ struct WhisperModelCardView: View {
         .disabled(isDownloading)
     }
 
-    private var actionSection: some View {
-        HStack(spacing: 8) {
-            if isCurrent && isDownloaded {
-                Text("Default Model")
-                    .font(.ui(12))
-                    .foregroundColor(Palette.inkSecondary)
-            } else if isCurrent && !isDownloaded {
-                // Selected but UNUSABLE — the key confusing state. Make it
-                // self-explanatory and one-click-fixable.
-                ModelStateBadge.selectedNotDownloaded
-                downloadButton
-            } else if isDownloaded {
-                if isWarming {
-                    HStack(spacing: 6) {
-                        ProgressView()
-                            .controlSize(.small)
-                        Text("Optimizing model for your device...")
-                            .font(.ui(12))
-                            .foregroundColor(Palette.inkSecondary)
-                    }
-                } else {
-                    ModelStateBadge.downloaded
-                    Button(action: setDefaultAction) {
-                        Text("Set as Default")
-                            .font(.ui(12))
-                    }
-                    .buttonStyle(.bordered)
-                    .controlSize(.small)
+    /// The row's readiness, read as one chip. ACTIVE rides on the name, so this
+    /// column only says whether the model can be chosen.
+    @ViewBuilder
+    private var statusSection: some View {
+        if isCurrent && !isDownloaded {
+            // Selected but UNUSABLE — the key confusing state. Kept as its own
+            // explained badge; `trailingControls` carries the one-click fix.
+            ModelStateBadge.selectedNotDownloaded
+        } else if isDownloaded {
+            if isWarming {
+                HStack(spacing: 6) {
+                    ProgressView()
+                        .controlSize(.small)
+                    Text("Optimizing model for your device...")
+                        .font(.ui(12))
+                        .foregroundColor(Palette.inkSecondary)
                 }
             } else {
+                ModelStateBadge.ready
+            }
+        } else {
+            ModelStateBadge.download(size: model.size)
+        }
+    }
+
+    /// Controls that are NOT the selection: they sit outside the row button so
+    /// downloading or opening the menu never switches the active model.
+    private var trailingControls: some View {
+        HStack(spacing: 8) {
+            if !isDownloaded {
                 downloadButton
             }
 
@@ -198,38 +212,40 @@ struct ImportedWhisperModelCardView: View {
 
     var body: some View {
         OnyxSurfaceCard(cornerRadius: Radius.control, padding: 16) {
-            HStack(alignment: .top, spacing: 16) {
-                VStack(alignment: .leading, spacing: 6) {
-                    HStack(alignment: .firstTextBaseline) {
-                        Text(model.displayName)
-                            .font(.ui(13, weight: .semibold))
-                            .foregroundColor(Palette.inkPrimary)
-                        Spacer()
-                    }
+            HStack(alignment: .top, spacing: 12) {
+                Button(action: setDefaultAction) {
+                    HStack(alignment: .top, spacing: 16) {
+                        VStack(alignment: .leading, spacing: 6) {
+                            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                                Text(model.displayName)
+                                    .font(.ui(13, weight: .semibold))
+                                    .foregroundColor(Palette.inkPrimary)
+                                if isCurrent && isDownloaded {
+                                    ModelStateBadge.active
+                                }
+                                Spacer()
+                            }
 
-                    Text("Imported local model")
-                        .font(.ui(11))
-                        .foregroundColor(Palette.inkSecondary)
-                        .lineLimit(2)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .padding(.top, 4)
+                            Text("Imported local model")
+                                .font(.ui(11))
+                                .foregroundColor(Palette.inkSecondary)
+                                .lineLimit(2)
+                                .fixedSize(horizontal: false, vertical: true)
+                                .padding(.top, 4)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+
+                        if isDownloaded {
+                            ModelStateBadge.ready
+                        }
+                    }
+                    .contentShape(Rectangle())
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
+                .buttonStyle(RowPressStyle())
+                .disabled(!isDownloaded)
+                .accessibilityAddTraits(isCurrent ? [.isSelected] : [])
 
                 HStack(spacing: 8) {
-                    if isCurrent {
-                        Text("Default Model")
-                            .font(.ui(12))
-                            .foregroundColor(Palette.inkSecondary)
-                    } else if isDownloaded {
-                        Button(action: setDefaultAction) {
-                            Text("Set as Default")
-                                .font(.ui(12))
-                        }
-                        .buttonStyle(.bordered)
-                        .controlSize(.small)
-                    }
-
                     if isDownloaded {
                         Menu {
                             Button(action: deleteAction) {
@@ -287,13 +303,17 @@ struct ModelDownloadErrorLabel: View {
 struct ModelStateBadge: View {
     enum Kind {
         case selectedNotDownloaded
-        case downloaded
+        case active
+        case ready
+        case download(size: String)
     }
 
     let kind: Kind
 
     static let selectedNotDownloaded = ModelStateBadge(kind: .selectedNotDownloaded)
-    static let downloaded = ModelStateBadge(kind: .downloaded)
+    static let active = ModelStateBadge(kind: .active)
+    static let ready = ModelStateBadge(kind: .ready)
+    static func download(size: String) -> ModelStateBadge { ModelStateBadge(kind: .download(size: size)) }
 
     var body: some View {
         switch kind {
@@ -313,10 +333,30 @@ struct ModelStateBadge: View {
             )
             .accessibilityElement(children: .combine)
             .accessibilityLabel("Selected but not downloaded")
-        case .downloaded:
-            Text("Downloaded")
-                .font(.ui(11, weight: .medium))
-                .foregroundColor(.secondary)
+        case .active:
+            Text("ACTIVE")
+                .font(.microlabel(10))
+                .tracking(0.18 * 10)
+                .foregroundColor(Palette.phosphor)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .background(
+                    RoundedRectangle(cornerRadius: Radius.control, style: .continuous)
+                        .fill(Palette.phosphor.opacity(0.12))
+                )
+                .accessibilityLabel("Active model")
+        case .ready:
+            Text("READY")
+                .font(.microlabel(10))
+                .tracking(0.18 * 10)
+                .foregroundColor(Palette.inkSecondary)
+                .fixedSize()
+        case .download(let size):
+            Text("\(size.uppercased()) DOWNLOAD")
+                .font(.microlabel(10))
+                .tracking(0.18 * 10)
+                .foregroundColor(Palette.inkSecondary)
+                .fixedSize()
         }
     }
 }
