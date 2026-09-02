@@ -356,44 +356,58 @@ struct InlineHistoryView: View {
 
     // MARK: - Card List
 
+    /// Day sections over the WHOLE assembled list, so a day that continues past
+    /// a "Load More" grows its section instead of repeating its label.
+    private var daySections: [HistoryDayGrouping.Section<Transcription>] {
+        HistoryDayGrouping.sections(displayedTranscriptions) { $0.timestamp }
+    }
+
     private var cardListView: some View {
         ScrollViewReader { proxy in
             ScrollView {
                 LazyVStack(spacing: 12) {
-                    ForEach(displayedTranscriptions) { transcription in
-                        HistoryCardRow(
-                            transcription: transcription,
-                            isExpanded: expandedId == transcription.id,
-                            isChecked: selectedTranscriptions.contains(transcription),
-                            isFocused: focusedId == transcription.id,
-                            isSelected: selectedID == transcription.id,
-                            onToggleExpand: {
-                                onSelect?(transcription)
-                                withAnimation(Animation.haloPhaseCrossfade) {
-                                    expandedId = expandedId == transcription.id ? nil : transcription.id
-                                }
-                            },
-                            onToggleCheck: { toggleSelection(transcription) },
-                            onShowInfo: {
-                                panelTranscriptionId = transcription.id
-                                withAnimation(Animation.haloExpand) {
-                                    isPanelPresented = true
-                                }
-                            },
-                            onExportAudio: {
-                                exportService.exportTranscriptionsToCSV(transcriptions: [transcription])
-                            },
-                            onDelete: { deleteSingle(transcription) }
-                        )
-                        .cardSurface(isSelected: selectedID == transcription.id)
-                        // Brand focus ring — matches the card radius, distinct
-                        // from hover (fill lift) and checkbox-checked (circular toggle).
-                        .overlay {
-                            RoundedRectangle(cornerRadius: Radius.card, style: .continuous)
-                                .strokeBorder(Brand.tint, lineWidth: 2)
-                                .opacity(focusedId == transcription.id ? 1 : 0)
+                    ForEach(daySections, id: \.day) { section in
+                        Text(HistoryDayGrouping.label(for: section.day))
+                            .font(.microlabel(11))
+                            .tracking(1.2)
+                            .foregroundStyle(Palette.phosphor)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+
+                        ForEach(section.rows) { transcription in
+                            HistoryCardRow(
+                                transcription: transcription,
+                                isExpanded: expandedId == transcription.id,
+                                isChecked: selectedTranscriptions.contains(transcription),
+                                isFocused: focusedId == transcription.id,
+                                isSelected: selectedID == transcription.id,
+                                onToggleExpand: {
+                                    onSelect?(transcription)
+                                    withAnimation(Animation.haloPhaseCrossfade) {
+                                        expandedId = expandedId == transcription.id ? nil : transcription.id
+                                    }
+                                },
+                                onToggleCheck: { toggleSelection(transcription) },
+                                onShowInfo: {
+                                    panelTranscriptionId = transcription.id
+                                    withAnimation(Animation.haloExpand) {
+                                        isPanelPresented = true
+                                    }
+                                },
+                                onExportAudio: {
+                                    exportService.exportTranscriptionsToCSV(transcriptions: [transcription])
+                                },
+                                onDelete: { deleteSingle(transcription) }
+                            )
+                            .cardSurface(isSelected: selectedID == transcription.id)
+                            // Brand focus ring — matches the card radius, distinct
+                            // from hover (fill lift) and checkbox-checked (circular toggle).
+                            .overlay {
+                                RoundedRectangle(cornerRadius: Radius.card, style: .continuous)
+                                    .strokeBorder(Brand.tint, lineWidth: 2)
+                                    .opacity(focusedId == transcription.id ? 1 : 0)
+                            }
+                            .id(transcription.id)
                         }
-                        .id(transcription.id)
                     }
 
                     if hasMoreContent {
@@ -845,7 +859,9 @@ private struct HistoryCardRow: View {
                 // expands the row AND focuses the list for subsequent keys.
                 HStack(spacing: 10) {
                     VStack(alignment: .leading, spacing: 4) {
-                        Text(transcription.timestamp, format: .dateTime.month(.abbreviated).day().hour().minute())
+                        // Time only — the day section header above the run
+                        // already names the day.
+                        Text(transcription.timestamp, format: .dateTime.hour().minute())
                             .font(.mono(11))
                             .tabularNumbers()
                             .foregroundStyle(Palette.inkSecondary)

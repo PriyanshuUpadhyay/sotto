@@ -6,6 +6,10 @@ class MiniWindowManager: ObservableObject {
     @Published var isVisible = false
     private var windowController: NSWindowController?
     private var panel: MiniRecorderPanel?
+    /// Built once and re-parented into every rebuilt panel: the panel has to be
+    /// fresh (see `show()`), the SwiftUI graph does not, and rebuilding it sat
+    /// synchronously between the hotkey and the capsule's first frame.
+    private var hostingController: NSHostingController<AnyView>?
 
     private let makeView: (MiniWindowManager) -> AnyView
 
@@ -85,9 +89,9 @@ class MiniWindowManager: ObservableObject {
         deinitializeWindow()
         let metrics = MiniRecorderPanel.calculateWindowMetrics()
         let newPanel = MiniRecorderPanel(contentRect: metrics)
-        let view = makeView(self)
-        let hostingController = NSHostingController(rootView: view)
-        newPanel.contentView = hostingController.view
+        let controller = hostingController ?? NSHostingController(rootView: makeView(self))
+        hostingController = controller
+        newPanel.contentView = controller.view
         panel = newPanel
         windowController = NSWindowController(window: newPanel)
         newPanel.orderFrontRegardless()
@@ -95,6 +99,11 @@ class MiniWindowManager: ObservableObject {
 
     private func deinitializeWindow() {
         panel?.orderOut(nil)
+        // A view has one superview, so the hosting view must leave the outgoing
+        // panel before the next one adopts it. `hostingController` deliberately
+        // survives — it is the view tree the next panel reuses.
+        hostingController?.view.removeFromSuperview()
+        panel?.contentView = nil
         windowController?.close()
         windowController = nil
         panel = nil
