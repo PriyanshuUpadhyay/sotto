@@ -32,10 +32,10 @@ final class ReviewTrayPanel: NSPanel {
         isMovable = false
         backgroundColor = .clear
         isOpaque = false
-        // Unlike the recorder strip (whose halos would compete with a window
-        // shadow), the ping is a flat pill — a system shadow gives it the
-        // floating depth for free, following the pill's alpha shape.
-        hasShadow = true
+        // No system shadow: a Liquid Glass lens reports a rectangular alpha to
+        // the window shadow, which then paints a square behind the rounded
+        // surface (seen on device). The SwiftUI content draws its own depth.
+        hasShadow = false
         titlebarAppearsTransparent = true
         titleVisibility = .hidden
         standardWindowButton(.closeButton)?.isHidden = true

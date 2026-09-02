@@ -368,8 +368,13 @@ struct ComposeReviewView: View {
         .padding(14)
         .frame(width: Self.panelWidth, alignment: .leading)
         // The capsule's glass, one step thicker (mockup 01 lane B `.b-review`).
-        .sottoGlass(.panel, in: RoundedRectangle(cornerRadius: Radius.panel, style: .continuous))
-        .sottoGlassGlow(Palette.phosphor, level: .panel)
+        .sottoGlass(.panel, in: RoundedRectangle(cornerRadius: Radius.panel))
+        // The lens blurs its whole frame; clip it to the card so the corners
+        // outside the radius stay untouched desktop (seen on device).
+        .clipShape(RoundedRectangle(cornerRadius: Radius.panel))
+        // No painted glow or shadow: the panel window hugs the card, so a blurred
+        // halo is cut off at the window edge and reads as a faint square in the
+        // corner pockets (measured on device). The material carries its depth.
         .background(sizeReader)
         // Hidden accelerators: ⌘↵ (Return alone inserts a newline in the
         // editor) and — read-only faces only, where no editable text view is

@@ -77,10 +77,12 @@ extension SottoGlassLevel {
         }
     }
 
+    /// A whisper of state colour, not a bath: at 0.20 the glass sampled the
+    /// halo and the whole recording pill read red (owner feedback on device).
     var glowAlpha: Double {
         switch self {
         case .panel: return 0.15
-        default:     return 0.20
+        default:     return 0.10
         }
     }
 }
@@ -129,15 +131,20 @@ struct SottoGlassBackground<S: InsettableShape>: ViewModifier {
     }
 }
 
-// MARK: - Accent glow
+// MARK: - Depth (drop shadow + accent glow)
 //
-// Separate from the material because it must be painted OUTSIDE the caller's
-// clip: the capsule and the ping both mask themselves to the revealed span, and
-// a glow drawn inside that mask would be cropped to nothing.
+// Painted as blurred SHAPES behind the surface, never with `.shadow()`: a
+// shadow takes its silhouette from the rendered alpha, and a Liquid Glass lens
+// renders a rectangular alpha, so `.shadow()` (and the window's own shadow)
+// painted a faint square behind every rounded surface on device. The shapes
+// live OUTSIDE the caller's clip or mask, which would otherwise crop them.
 
-struct SottoGlassGlow: ViewModifier {
-    let color: Color?
+struct SottoGlassDepth<S: Shape>: ViewModifier {
+    let shape: S
+    let glow: Color?
     let level: SottoGlassLevel
+    /// Explicit shadow colour (already carrying its alpha); nil = black at the level's alpha.
+    let shadowColor: Color?
 
     @Environment(\.colorSchemeContrast) private var contrast
 
@@ -146,11 +153,37 @@ struct SottoGlassGlow: ViewModifier {
         // (`AdaptiveGlass.contrastedHaloDisabled`); the solid border carries the
         // state instead.
         let suppressed = contrast == .increased && AdaptiveGlass.contrastedHaloDisabled
-        return content.shadow(
-            color: (suppressed ? nil : color)?.opacity(level.glowAlpha) ?? .clear,
-            radius: level.glowRadius
+        return content.background(
+            ZStack {
+                shape.fill(shadowColor ?? Color.black.opacity(level.shadowAlpha))
+                    .blur(radius: level.shadowRadius)
+                    .offset(y: level.shadowOffsetY)
+                if let glow, !suppressed {
+                    shape.fill(glow.opacity(level.glowAlpha))
+                        .blur(radius: level.glowRadius)
+                }
+            }
+            .allowsHitTesting(false)
         )
     }
+}
+
+extension SottoGlassLevel {
+    var shadowAlpha: Double {
+        switch self {
+        case .panel: return 0.35
+        default:     return 0.40
+        }
+    }
+
+    var shadowRadius: CGFloat {
+        switch self {
+        case .panel: return 24
+        default:     return 15
+        }
+    }
+
+    var shadowOffsetY: CGFloat { 12 }
 }
 
 // MARK: - Ink on glass
@@ -188,9 +221,38 @@ extension View {
         modifier(SottoGlassBackground(level: level, shape: shape, tint: tint))
     }
 
-    /// Bleeds the state colour through the glass as a glow. Apply OUTSIDE any
-    /// clip or mask the surface uses.
-    func sottoGlassGlow(_ color: Color?, level: SottoGlassLevel) -> some View {
-        modifier(SottoGlassGlow(color: color, level: level))
+    /// Paints the surface's depth — drop shadow plus the optional state glow —
+    /// as blurred copies of `shape` behind this view. Apply OUTSIDE any clip or
+    /// mask the surface uses, with the shape of the VISIBLE surface.
+    func sottoGlassDepth<S: Shape>(
+        in shape: S,
+        glow: Color? = nil,
+        level: SottoGlassLevel,
+        shadowColor: Color? = nil
+    ) -> some View {
+        modifier(SottoGlassDepth(shape: shape, glow: glow, level: level, shadowColor: shadowColor))
+    }
+}
+
+// MARK: - Lens shape
+//
+// `glassEffect(in:)` given a `RoundedRectangle` is mapped onto a rectangular
+// effect view with a corner radius, and on device that view painted a faint
+// rectangular tint into the corner pockets outside the radius. A custom shape
+// with the same path is masked as a path instead, which is what the capsule's
+// `TrailingInsetCapsule` already gets. Use this for every rounded lens.
+struct SottoLensRect: InsettableShape {
+    var cornerRadius: CGFloat
+    var insetAmount: CGFloat = 0
+
+    func path(in rect: CGRect) -> Path {
+        Path(roundedRect: rect.insetBy(dx: insetAmount, dy: insetAmount),
+             cornerRadius: max(cornerRadius - insetAmount, 0), style: .continuous)
+    }
+
+    func inset(by amount: CGFloat) -> SottoLensRect {
+        var copy = self
+        copy.insetAmount += amount
+        return copy
     }
 }

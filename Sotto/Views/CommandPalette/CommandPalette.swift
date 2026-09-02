@@ -24,12 +24,6 @@ struct CommandPalette: View {
 
     private let card = RoundedRectangle(cornerRadius: Radius.panel, style: .continuous)
 
-    /// The card floats, so it keeps a drop shadow — but the dark-tuned opacity
-    /// reads as a grey smudge under the light `mtRaise`.
-    private var cardShadow: Color {
-        .black.opacity(colorScheme == .dark ? 0.5 : 0.18)
-    }
-
     var body: some View {
         VStack(spacing: 0) {
             searchField
@@ -40,8 +34,9 @@ struct CommandPalette: View {
         .frame(width: 560)
         // Same glass as the review editor — the palette is part of the same
         // floating HUD family, not a windowed surface.
-        .sottoGlass(.panel, in: card)
-        .shadow(color: cardShadow, radius: 30, y: 14)
+        .sottoGlass(.panel, in: RoundedRectangle(cornerRadius: Radius.panel))
+        // Clip the lens to the card; the blur would otherwise cover the frame corners.
+        .clipShape(card)
         .onAppear { searchFocused = true }
     }
 

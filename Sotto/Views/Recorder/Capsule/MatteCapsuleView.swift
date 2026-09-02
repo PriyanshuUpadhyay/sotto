@@ -186,9 +186,8 @@ struct MatteCapsuleView: View {
         .mask(revealMask)
         // The accent does not sit on the surface, it bleeds through the glass —
         // painted outside the mask, which would otherwise crop it away.
-        .sottoGlassGlow(state.color, level: .capsule)
-        // Floating object → soft drop shadow (spec §1: shadows only on floating).
-        .shadow(color: .black.opacity(0.4), radius: 15, x: 0, y: 12)
+        .sottoGlassDepth(in: TrailingInsetCapsule(trailing: revealInset),
+                         glow: glowColor, level: .capsule)
         .offset(x: revealOffset)
         .accessibilityElement(children: .combine)
         .accessibilityLabel(StateCue.voiceOverLabel(for: state, enhancing: enhancing,
@@ -463,9 +462,17 @@ struct MatteCapsuleView: View {
     /// results stain the material — briefly, and faintly.
     private var stateTint: Color? {
         switch state {
-        case .commit, .fail: return state.color.opacity(Palette.glassStateTintAlpha)
-        default:             return nil
+        case .commit: return Palette.phosphor.opacity(Palette.glassStateTintAlpha)
+        case .fail:   return state.color.opacity(Palette.glassStateTintAlpha)
+        default:      return nil
         }
+    }
+
+    /// The halo follows the user's accent, not the state: a red bath around a
+    /// live recording read as an alarm (owner feedback). The glyph and the timer
+    /// still carry the state; only a failure keeps its own colour.
+    private var glowColor: Color {
+        state == .fail ? state.color : Palette.phosphor
     }
 
     // MARK: - Content derivation

@@ -78,7 +78,9 @@ class DictionaryQuickAddPanel: NSPanel {
         isMovableByWindowBackground = true
         backgroundColor = .clear
         isOpaque = false
-        hasShadow = true
+        // See ReviewTrayPanel: the glass lens would give the window shadow a
+        // square outline. The card draws its own shadow.
+        hasShadow = false
         titlebarAppearsTransparent = true
         titleVisibility = .hidden
         standardWindowButton(.closeButton)?.isHidden = true
@@ -178,7 +180,7 @@ struct DictionaryQuickAddView: View {
             hintBar
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .sottoGlass(.panel, in: RoundedRectangle(cornerRadius: Radius.panel, style: .continuous))
+        .sottoGlass(.panel, in: RoundedRectangle(cornerRadius: Radius.panel))
         .clipShape(RoundedRectangle(cornerRadius: Radius.panel, style: .continuous))
         .onKeyPress(.escape) {
             onDismiss()

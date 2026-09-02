@@ -78,14 +78,15 @@ struct ReviewTray: View {
         // Same glass as the capsule — the ping is the capsule's sibling, not a
         // different kind of object. The material lights its own edge; the only
         // drawn border is the one `.sottoGlass` adds in the opaque a11y branch.
-        .sottoGlass(.capsule, in: shape)
+        .sottoGlass(.capsule, in: RoundedRectangle(cornerRadius: Radius.capsule))
+        // Clip the lens to the pill; the blur would otherwise cover the frame corners.
+        .clipShape(shape)
         .compositingGroup()
         .mask(alignment: .leading) {
             shape.padding(.trailing, revealed ? 0 : actionsClip)
         }
         // Commit green bleeds through the glass — outside the mask, which would
         // otherwise crop the glow away.
-        .sottoGlassGlow(Palette.stateCommit, level: .capsule)
         // Recenter the collapsed visible portion within the full-width panel.
         .offset(x: revealed ? 0 : actionsClip / 2)
         .animation(reduceMotion ? nil : MotionTokens.stateEnter, value: revealed)
