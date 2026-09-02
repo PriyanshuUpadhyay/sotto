@@ -57,6 +57,9 @@ private class TaskDelegate: NSObject, URLSessionTaskDelegate {
 class WhisperModelManager: ObservableObject {
     @Published var availableModels: [WhisperModelFile] = []
     @Published var downloadProgress: [String: Double] = [:]
+    /// Last download failure per model name. Set when a download throws,
+    /// cleared when a new attempt starts.
+    @Published var downloadErrors: [String: String] = [:]
     @Published var whisperContext: WhisperContext?
     @Published var isModelLoaded = false
     @Published var loadedWhisperModel: WhisperModelFile?
@@ -199,6 +202,7 @@ class WhisperModelManager: ObservableObject {
 
     func downloadModel(_ model: WhisperModel) async {
         guard let url = URL(string: model.downloadURL) else { return }
+        downloadErrors.removeValue(forKey: model.name)
         await performModelDownload(model, url)
     }
 
@@ -296,6 +300,7 @@ class WhisperModelManager: ObservableObject {
     private func handleModelDownloadError(_ model: WhisperModel, _ error: Error) {
         self.downloadProgress.removeValue(forKey: model.name + "_main")
         self.downloadProgress.removeValue(forKey: model.name + "_coreml")
+        self.downloadErrors[model.name] = error.localizedDescription
     }
 
     func deleteModel(_ model: WhisperModelFile) async {

@@ -279,6 +279,7 @@ struct ModelsTab: View {
             isDownloaded: whisperModelManager.availableModels.contains { $0.name == model.name },
             isCurrent: transcriptionModelManager.currentTranscriptionModel?.name == model.name,
             downloadProgress: whisperModelManager.downloadProgress,
+            downloadError: whisperModelManager.downloadErrors[model.name],
             modelURL: whisperModelManager.availableModels.first { $0.name == model.name }?.url,
             isWarming: isWarming,
             deleteAction: {

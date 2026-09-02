@@ -7,6 +7,9 @@ import os
 class FluidAudioModelManager: ObservableObject {
     @Published var parakeetDownloadStates: [String: Bool] = [:]
     @Published var downloadProgress: [String: Double] = [:]
+    /// Last download failure per model name. Set when a download throws,
+    /// cleared when a new attempt starts.
+    @Published var downloadErrors: [String: String] = [:]
 
     var onModelDeleted: ((String) -> Void)?
     var onModelsChanged: (() -> Void)?
@@ -95,6 +98,7 @@ class FluidAudioModelManager: ObservableObject {
         let modelName = model.name
         parakeetDownloadStates[modelName] = true
         downloadProgress[modelName] = 0.0
+        downloadErrors.removeValue(forKey: modelName)
 
         let timer = Timer.scheduledTimer(withTimeInterval: 1.2, repeats: true) { timer in
             Task { @MainActor in
@@ -150,6 +154,7 @@ class FluidAudioModelManager: ObservableObject {
             didSucceed = true
         } catch {
             UserDefaults.standard.set(false, forKey: parakeetDefaultsKey(for: modelName))
+            downloadErrors[modelName] = error.localizedDescription
             logger.error("❌ FluidAudio download failed for \(modelName, privacy: .public): \(error.localizedDescription, privacy: .public)")
         }
 

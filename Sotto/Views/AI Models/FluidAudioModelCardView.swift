@@ -106,6 +106,10 @@ struct FluidAudioModelCardView: View {
             .padding(.top, 4)
     }
 
+    private var downloadError: String? {
+        fluidAudioModelManager.downloadErrors[model.name]
+    }
+
     private var progressSection: some View {
         Group {
             if isDownloading {
@@ -113,6 +117,9 @@ struct FluidAudioModelCardView: View {
                 ProgressView(value: progress)
                     .progressViewStyle(LinearProgressViewStyle())
                     .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.top, 8)
+            } else if let downloadError {
+                ModelDownloadErrorLabel(message: downloadError)
                     .padding(.top, 8)
             }
         }
@@ -125,8 +132,8 @@ struct FluidAudioModelCardView: View {
             }
         }) {
             HStack(spacing: 4) {
-                Text(isDownloading ? "Downloading..." : "Download")
-                Image(systemName: "arrow.down.circle")
+                Text(isDownloading ? "Downloading..." : (downloadError == nil ? "Download" : "Retry"))
+                Image(systemName: downloadError == nil ? "arrow.down.circle" : "arrow.clockwise")
             }
             .font(.system(size: 12, weight: .medium))
         }

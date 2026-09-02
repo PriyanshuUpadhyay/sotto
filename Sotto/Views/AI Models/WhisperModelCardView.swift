@@ -6,6 +6,7 @@ struct WhisperModelCardView: View {
     let isDownloaded: Bool
     let isCurrent: Bool
     let downloadProgress: [String: Double]
+    let downloadError: String?
     let modelURL: URL?
     let isWarming: Bool
     
@@ -108,6 +109,9 @@ struct WhisperModelCardView: View {
                 )
                 .padding(.top, 8)
                 .frame(maxWidth: .infinity, alignment: .leading)
+            } else if let downloadError {
+                ModelDownloadErrorLabel(message: downloadError)
+                    .padding(.top, 8)
             }
         }
     }
@@ -115,9 +119,9 @@ struct WhisperModelCardView: View {
     private var downloadButton: some View {
         Button(action: downloadAction) {
             HStack(spacing: 4) {
-                Text(isDownloading ? "Downloading..." : "Download")
+                Text(isDownloading ? "Downloading..." : (downloadError == nil ? "Download" : "Retry"))
                     .font(.system(size: 12, weight: .medium))
-                Image(systemName: "arrow.down.circle")
+                Image(systemName: downloadError == nil ? "arrow.down.circle" : "arrow.clockwise")
                     .font(.system(size: 12, weight: .medium))
             }
         }
@@ -260,6 +264,23 @@ struct ImportedWhisperModelCardView: View {
     }
 }
 
+
+// MARK: - Model Download Error
+//
+// The cause of a failed download, rendered on the card that failed so a retry
+// is not blind. Paired with the action column's Retry button.
+struct ModelDownloadErrorLabel: View {
+    let message: String
+
+    var body: some View {
+        Label(message, systemImage: "exclamationmark.triangle.fill")
+            .font(.system(size: 11))
+            .foregroundColor(Palette.stateFail)
+            .fixedSize(horizontal: false, vertical: true)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .accessibilityLabel("Download failed: \(message)")
+    }
+}
 
 // MARK: - Model State Badge
 //
