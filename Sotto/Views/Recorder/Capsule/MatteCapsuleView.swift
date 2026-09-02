@@ -229,12 +229,20 @@ struct MatteCapsuleView: View {
         Capsule(style: .continuous).padding(.trailing, revealInset)
     }
 
-    /// New York 13pt (`Font.transcript(13)`) metrics twin for cheap
-    /// measurement — no layout reads of the rendered tape.
+    /// The tape face — the user's own words at the SAME size the review
+    /// editor uses, so one scale carries a transcript across the app.
+    private static let tapeFontSize: CGFloat = 15
+    /// Positive tracking on the small serif (§15). The measurement twins must
+    /// add it back by hand — `NSFont` metrics do not carry it, and an
+    /// under-measured tape clips under the reveal mask.
+    private static let tapeTracking: CGFloat = 0.1
+
+    /// New York `tapeFontSize` metrics twin for cheap measurement — no layout
+    /// reads of the rendered tape.
     private static let measureFont: NSFont = {
-        let base = NSFont.systemFont(ofSize: 13)
+        let base = NSFont.systemFont(ofSize: tapeFontSize)
         guard let descriptor = base.fontDescriptor.withDesign(.serif),
-              let serif = NSFont(descriptor: descriptor, size: 13) else { return base }
+              let serif = NSFont(descriptor: descriptor, size: tapeFontSize) else { return base }
         return serif
     }()
 
@@ -242,7 +250,7 @@ struct MatteCapsuleView: View {
     /// measurably wider than roman at this size; measuring it roman clips.
     private static let measureFontItalic: NSFont = {
         let descriptor = measureFont.fontDescriptor.withSymbolicTraits(.italic)
-        return NSFont(descriptor: descriptor, size: 13) ?? measureFont
+        return NSFont(descriptor: descriptor, size: tapeFontSize) ?? measureFont
     }()
 
     static func contentWidth(of words: [StreamedWord], italicLast: Bool) -> CGFloat {
@@ -252,6 +260,7 @@ struct MatteCapsuleView: View {
             let font = (italicLast && index == words.count - 1)
                 ? measureFontItalic : measureFont
             total += (word.text as NSString).size(withAttributes: [.font: font]).width
+            total += CGFloat(word.text.count) * tapeTracking
         }
         return total
     }
@@ -282,7 +291,8 @@ struct MatteCapsuleView: View {
         // it as the new last word) and corrections must stay instant.
         let tentative = state == .recording && word.id == tape.words.last?.id
         return Text(word.text)
-            .font(.transcript(13))
+            .font(.transcript(Self.tapeFontSize))
+            .tracking(Self.tapeTracking)
             .italic(tentative)
             .foregroundStyle(tentative ? Palette.inkSecondary : Palette.inkPrimary)
             .lineLimit(1)
