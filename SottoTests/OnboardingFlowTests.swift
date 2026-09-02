@@ -75,6 +75,37 @@ final class OnboardingFlowTests: XCTestCase {
         XCTAssertTrue(afterModelTier.isFinished)
     }
 
+    // MARK: - Wayfinding (step numbering + Back)
+
+    func test_stepNumbering_countsThePathWithoutDone() {
+        XCTAssertEqual(OnboardingPath.full.visibleStepCount, 6)
+        XCTAssertEqual(OnboardingPath.essentials.visibleStepCount, 3)
+
+        XCTAssertEqual(OnboardingPosition.start.stepNumber, 1)
+        XCTAssertEqual(OnboardingPosition(path: .full, step: .shortcut).stepNumber, 5)
+        XCTAssertEqual(OnboardingPosition(path: .essentials, step: .shortcut).stepNumber, 2)
+        XCTAssertNil(OnboardingPosition(path: .full, step: .done).stepNumber)
+    }
+
+    func test_retreating_walksThePathBackwards_andTheFirstStepHasNoBack() {
+        let shortcut = OnboardingPosition(path: .full, step: .shortcut)
+        XCTAssertTrue(shortcut.canRetreat)
+        XCTAssertEqual(shortcut.retreated().step, .screenRecording)
+        XCTAssertEqual(shortcut.retreated().path, .full)
+
+        let essentialsShortcut = OnboardingPosition(path: .essentials, step: .shortcut)
+        XCTAssertEqual(essentialsShortcut.retreated().step, .microphone)
+
+        XCTAssertFalse(OnboardingPosition.start.canRetreat)
+        XCTAssertEqual(OnboardingPosition.start.retreated().step, .welcome)
+        XCTAssertFalse(OnboardingPosition(path: .essentials, step: .microphone).canRetreat)
+    }
+
+    func test_retreatingThenAdvancing_returnsToTheSameStep() {
+        let position = OnboardingPosition(path: .full, step: .modelTier)
+        XCTAssertEqual(position.retreated().advanced(), position)
+    }
+
     // MARK: - Required vs optional gating (explicit)
 
     func test_microphoneIsRequired() {
