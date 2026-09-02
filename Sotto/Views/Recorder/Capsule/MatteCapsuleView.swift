@@ -495,7 +495,7 @@ struct MatteCapsuleView: View {
 
     static func timer(_ seconds: TimeInterval) -> String {
         let s = max(0, Int(seconds))
-        return String(format: "%02d:%02d", s / 60, s % 60)
+        return String(format: "%d:%02d", s / 60, s % 60)
     }
 }
 

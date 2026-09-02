@@ -114,6 +114,6 @@ final class MatteCapsuleSnapshotTests: XCTestCase {
         // now hosts MatteCapsuleContainer → MatteCapsuleView). A green build is
         // the assertion; the value check keeps the symbol referenced.
         XCTAssertNotNil(CapsuleState.idleReady.color)
-        XCTAssertEqual(MatteCapsuleView.timer(125), "02:05")
+        XCTAssertEqual(MatteCapsuleView.timer(125), "2:05")
     }
 }
