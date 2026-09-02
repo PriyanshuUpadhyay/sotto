@@ -69,33 +69,27 @@ struct ReviewTray: View {
             Image(systemName: "checkmark")
                 .font(.system(size: 12, weight: .semibold))
                 .foregroundColor(Palette.stateCommit)
+                .glassInkShadow()
             caption
             actions
                 .opacity(revealed ? 1 : 0)
         }
         .padding(.horizontal, 16)
         .frame(height: Self.pillHeight)
-        .background(shape.fill(Palette.mtRaise))
+        // Same glass as the capsule — the ping is the capsule's sibling, not a
+        // different kind of object. Material, top edge and inner shadow all
+        // live in `.sottoGlass`.
+        .sottoGlass(.capsule, in: shape)
         .overlay(
             shape.strokeBorder(A11y.borderColor(increaseContrast: contrast == .increased), lineWidth: 1)
-        )
-        .overlay(
-            // Top-edge sheen — a thin bright hairline reads the pill as a raised
-            // surface (Liquid Glass concentricity, matches the capsule).
-            shape.strokeBorder(
-                LinearGradient(
-                    colors: [Palette.innerHi, .clear],
-                    startPoint: .top, endPoint: .center
-                ),
-                lineWidth: 1
-            )
-            .blendMode(.plusLighter)
-            .allowsHitTesting(false)
         )
         .compositingGroup()
         .mask(alignment: .leading) {
             shape.padding(.trailing, revealed ? 0 : actionsClip)
         }
+        // Commit green bleeds through the glass — outside the mask, which would
+        // otherwise crop the glow away.
+        .sottoGlassGlow(Palette.stateCommit, level: .capsule)
         // Recenter the collapsed visible portion within the full-width panel.
         .offset(x: revealed ? 0 : actionsClip / 2)
         .animation(reduceMotion ? nil : MotionTokens.stateEnter, value: revealed)
@@ -128,6 +122,7 @@ struct ReviewTray: View {
         .font(.microlabel(10))
         .tracking(1.1)
         .textCase(.uppercase)
+        .glassInkShadow()
     }
 
     // MARK: - Ghost actions (hover/focus reveal)
@@ -156,6 +151,7 @@ struct ReviewTray: View {
                     .tracking(1.1)
             }
             .foregroundColor(Palette.inkSecondary)
+            .glassInkShadow()
             .padding(.horizontal, 6)
             .frame(minWidth: 24, minHeight: 24)
             .contentShape(RoundedRectangle(cornerRadius: 6, style: .continuous))

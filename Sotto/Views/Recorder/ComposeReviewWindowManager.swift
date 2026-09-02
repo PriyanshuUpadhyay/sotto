@@ -351,6 +351,13 @@ struct ComposeReviewView: View {
     /// The editor's internal text inset + our padding, so the measured text
     /// height maps to the editor frame without clipping the last line.
     private static let editorChrome: CGFloat = 28
+    /// Concentric radius for the frosted band inside the card
+    /// (inner = outer − inset; the band is inset by the card's 14pt padding
+    /// minus its own 5pt breathing room).
+    private static let nestRadius: CGFloat = Radius.inner(of: Radius.panel, inset: 7)
+    /// Version-toggle track and its segments, concentric inside the header row.
+    private static let segmentTrackRadius: CGFloat = Radius.control + 1
+    private static let segmentRadius: CGFloat = Radius.inner(of: segmentTrackRadius, inset: 2)
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -361,23 +368,13 @@ struct ComposeReviewView: View {
         }
         .padding(14)
         .frame(width: Self.panelWidth, alignment: .leading)
-        .background(
-            RoundedRectangle(cornerRadius: Radius.panel, style: .continuous)
-                .fill(Palette.mtRaise)
-        )
+        // The capsule's glass, one step thicker (mockup 01 lane B `.b-review`).
+        .sottoGlass(.panel, in: RoundedRectangle(cornerRadius: Radius.panel, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: Radius.panel, style: .continuous)
                 .strokeBorder(A11y.borderColor(increaseContrast: contrast == .increased), lineWidth: 1)
         )
-        .overlay(
-            RoundedRectangle(cornerRadius: Radius.panel, style: .continuous)
-                .strokeBorder(
-                    LinearGradient(colors: [Palette.innerHi, .clear], startPoint: .top, endPoint: .center),
-                    lineWidth: 1
-                )
-                .blendMode(.plusLighter)
-                .allowsHitTesting(false)
-        )
+        .sottoGlassGlow(Palette.phosphor, level: .panel)
         .background(sizeReader)
         // Hidden accelerators: ⌘↵ (Return alone inserts a newline in the
         // editor) and — read-only faces only, where no editable text view is
@@ -427,6 +424,7 @@ struct ComposeReviewView: View {
         }
         .font(.microlabel(10))
         .tracking(1.1)
+        .glassInkShadow()
     }
 
     private var enhancingLabel: some View {
@@ -463,14 +461,8 @@ struct ComposeReviewView: View {
             segButton("RAW", .raw)
         }
         .padding(2)
-        .background(
-            RoundedRectangle(cornerRadius: 7, style: .continuous)
-                .fill(Color.black.opacity(0.25))
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 7, style: .continuous)
-                .strokeBorder(Palette.mtLine, lineWidth: 1)
-        )
+        .sottoGlass(.chip, in: RoundedRectangle(cornerRadius: Self.segmentTrackRadius,
+                                                style: .continuous))
     }
 
     /// True when the active face shows the editable draft; false = the face
@@ -494,11 +486,11 @@ struct ComposeReviewView: View {
                 .padding(.horizontal, 7)
                 .padding(.vertical, 3)
                 .background(
-                    RoundedRectangle(cornerRadius: 5, style: .continuous)
-                        .fill(selected ? Palette.mtRaise2 : .clear)
+                    RoundedRectangle(cornerRadius: Self.segmentRadius, style: .continuous)
+                        .fill(selected ? Palette.glassChipFill : .clear)
                 )
                 .overlay(
-                    RoundedRectangle(cornerRadius: 5, style: .continuous)
+                    RoundedRectangle(cornerRadius: Self.segmentRadius, style: .continuous)
                         .strokeBorder(selected ? Palette.mtLine : .clear, lineWidth: 1)
                 )
                 .contentShape(Rectangle())
@@ -532,26 +524,21 @@ struct ComposeReviewView: View {
             }
         }
         .padding(8)
-        .background(
-            RoundedRectangle(cornerRadius: 9, style: .continuous)
-                .fill(Palette.mtRaise2)
-        )
+        // The frosted band: the transcript is the one thing here the user
+        // actually reads, so it never sits on bare glass.
+        .sottoGlass(.band, in: RoundedRectangle(cornerRadius: Self.nestRadius, style: .continuous))
         // Enhancing halo — accent breathes behind the nest (mock state 02);
         // rides the same pulse as the header label.
         .background(
             Group {
                 if manager.isEnhancing {
-                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    RoundedRectangle(cornerRadius: Radius.inner(of: Radius.panel, inset: 2), style: .continuous)
                         .fill(Palette.phosphor.opacity(0.12))
                         .blur(radius: 16)
                         .padding(-8)
                         .opacity(enhancingPulse ? 1 : 0)
                 }
             }
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 9, style: .continuous)
-                .strokeBorder(Palette.mtLine, lineWidth: 1)
         )
         .frame(maxWidth: .infinity, alignment: .leading)
         // Measure the rendered text height (matching font + width) and size
@@ -636,14 +623,7 @@ struct ComposeReviewView: View {
         .fixedSize()
         .padding(.horizontal, 6)
         .padding(.vertical, 3)
-        .background(
-            RoundedRectangle(cornerRadius: Radius.control, style: .continuous)
-                .fill(Palette.mtRaise2)
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: Radius.control, style: .continuous)
-                .strokeBorder(Palette.mtLine, lineWidth: 1)
-        )
+        .sottoGlass(.chip, in: RoundedRectangle(cornerRadius: Radius.control, style: .continuous))
     }
 
     private var sizeReader: some View {
