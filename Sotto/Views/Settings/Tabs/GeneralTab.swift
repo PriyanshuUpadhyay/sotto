@@ -26,11 +26,14 @@ struct GeneralTab: View {
     // and a key cannot be renamed without failing `SettingsGeneralTabTests`.
 
     enum GeneralTabSection: CaseIterable, Hashable {
+        // Ordered by consequence: Permissions decides whether the app works at
+        // all, so it leads — ahead of the tall device-priority editor most
+        // users touch once. The search index order follows this enum.
+        case permissionsStatus
         case audioInput
         case soundFeedback
         case launchAtLogin
         case hideDock
-        case permissionsStatus
     }
 
     struct MigratedBinding {
