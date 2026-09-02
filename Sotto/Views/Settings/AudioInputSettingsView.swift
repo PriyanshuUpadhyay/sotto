@@ -51,7 +51,7 @@ struct AudioInputSettingsView: View {
     /// 14pt title, never above it.
     private func sectionHeading(_ text: String) -> some View {
         Text(text)
-            .font(.system(size: 13, weight: .semibold))
+            .font(.ui(13, weight: .semibold))
             .foregroundColor(Palette.inkPrimary)
     }
     
@@ -85,7 +85,7 @@ struct AudioInputSettingsView: View {
                 Spacer()
 
                 Label("Active", systemImage: "wave.3.right")
-                    .font(.system(size: 10.5, weight: .semibold))
+                    .font(.ui(10.5, weight: .semibold))
                     .tracking(0.06 * 10.5)
                     .foregroundStyle(Palette.success)
                     .padding(.horizontal, 8)
@@ -347,7 +347,7 @@ struct DeviceSelectionCard: View {
                 
                 if isActive {
                     Label("Active", systemImage: "wave.3.right")
-                        .font(.system(size: 10.5, weight: .semibold))
+                        .font(.ui(10.5, weight: .semibold))
                         .tracking(0.06 * 10.5)
                         .foregroundStyle(Palette.success)
                         .padding(.horizontal, 8)
@@ -391,12 +391,12 @@ struct DevicePriorityCard: View {
             // Priority number or dash
             if let priority = priority {
                 Text("\(priority + 1)")
-                    .font(.system(size: 18, weight: .medium))
+                    .font(.ui(18, weight: .medium))
                     .foregroundStyle(.secondary)
                     .frame(width: 24)
             } else {
                 Text("-")
-                    .font(.system(size: 18, weight: .medium))
+                    .font(.ui(18, weight: .medium))
                     .foregroundStyle(.secondary)
                     .frame(width: 24)
             }
@@ -412,7 +412,7 @@ struct DevicePriorityCard: View {
                 // Active status
                 if isActive {
                     Label("Active", systemImage: "wave.3.right")
-                        .font(.system(size: 10.5, weight: .semibold))
+                        .font(.ui(10.5, weight: .semibold))
                         .tracking(0.06 * 10.5)
                         .foregroundStyle(Palette.success)
                         .padding(.horizontal, 8)

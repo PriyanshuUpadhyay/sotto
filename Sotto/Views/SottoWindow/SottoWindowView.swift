@@ -184,7 +184,7 @@ private struct SottoSidebarRow: View {
                     .font(.system(size: 13, weight: .medium))
                     .frame(width: 18)
                 Text(tab.title)
-                    .font(.system(size: 13.5, weight: .medium))
+                    .font(.ui(13.5, weight: .medium))
                 Spacer(minLength: 0)
             }
             .foregroundStyle(labelColor)
@@ -275,7 +275,7 @@ struct ModelsDestinationView: View {
         VStack(spacing: 0) {
             HStack(alignment: .firstTextBaseline) {
                 Text("Models")
-                    .font(.system(size: 24, weight: .semibold))
+                    .font(.ui(24, weight: .semibold))
                     .tracking(-0.4)
                     .foregroundStyle(Palette.inkPrimary)
                 Spacer()

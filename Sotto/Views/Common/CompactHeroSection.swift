@@ -15,9 +15,9 @@ struct CompactHeroSection: View {
 
             VStack(spacing: 6) {
                 Text(title)
-                    .font(.system(size: 22, weight: .bold))
+                    .font(.ui(22, weight: .bold))
                 Text(description)
-                    .font(.system(size: 14))
+                    .font(.ui(14))
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
                     .frame(maxWidth: maxDescriptionWidth)

@@ -57,14 +57,14 @@ struct FluidAudioModelCardView: View {
     private var headerSection: some View {
         HStack(alignment: .firstTextBaseline) {
             Text(model.displayName)
-                .font(.system(size: 13, weight: .semibold))
+                .font(.ui(13, weight: .semibold))
                 .foregroundColor(Palette.inkPrimary)
 
             if model.supportsStreaming && isDownloaded {
                 Toggle("Real-time", isOn: $streamingEnabled)
                     .toggleStyle(.switch)
                     .controlSize(.mini)
-                    .font(.system(size: 11, weight: .medium))
+                    .font(.ui(11, weight: .medium))
                     .foregroundColor(Palette.inkSecondary)
                     .onChange(of: streamingEnabled) { _, newValue in
                         UserDefaults.standard.set(newValue, forKey: streamingDefaultsKey)
@@ -91,14 +91,14 @@ struct FluidAudioModelCardView: View {
             }
             .fixedSize(horizontal: true, vertical: false)
         }
-        .font(.system(size: 11))
+        .font(.ui(11))
         .foregroundColor(Palette.inkSecondary)
         .lineLimit(1)
     }
 
     private var descriptionSection: some View {
         Text(model.description)
-            .font(.system(size: 11))
+            .font(.ui(11))
             .foregroundColor(Palette.inkSecondary)
             .lineLimit(2)
             .fixedSize(horizontal: false, vertical: true)
@@ -146,7 +146,7 @@ struct FluidAudioModelCardView: View {
         HStack(spacing: 8) {
             if isCurrent && isDownloaded {
                 Text("Default Model")
-                    .font(.system(size: 12))
+                    .font(.ui(12))
                     .foregroundColor(Palette.inkSecondary)
             } else if isCurrent && !isDownloaded {
                 // Selected but UNUSABLE — the key confusing state.
@@ -160,7 +160,7 @@ struct FluidAudioModelCardView: View {
                     }
                 }) {
                     Text("Set as Default")
-                        .font(.system(size: 12))
+                        .font(.ui(12))
                 }
                 .buttonStyle(.bordered)
                 .controlSize(.small)

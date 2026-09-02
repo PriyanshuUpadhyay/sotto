@@ -32,7 +32,7 @@ struct HistoryStatsBand: View {
     private func statCell(value: String, label: String) -> some View {
         VStack(alignment: .leading, spacing: 5) {
             Text(value)
-                .font(.system(size: 24, weight: .semibold))
+                .font(.ui(24, weight: .semibold))
                 .tracking(-0.4)
                 .tabularNumbers()
                 .foregroundStyle(Palette.inkPrimary)

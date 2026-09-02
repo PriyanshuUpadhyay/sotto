@@ -8,7 +8,7 @@ struct FillerWordChip: View {
     var body: some View {
         HStack(spacing: 4) {
             Text(word)
-                .font(.system(size: 12))
+                .font(.ui(12))
                 .foregroundColor(.primary)
 
             Button(action: onDelete) {

@@ -46,7 +46,7 @@ struct WhisperModelCardView: View {
     private var headerSection: some View {
         HStack(alignment: .firstTextBaseline) {
             Text(model.displayName)
-                .font(.system(size: 13, weight: .semibold))
+                .font(.ui(13, weight: .semibold))
                 .foregroundColor(Palette.inkPrimary)
             
             Spacer()
@@ -57,20 +57,20 @@ struct WhisperModelCardView: View {
         HStack(spacing: 12) {
             // Language
             Label(model.language, systemImage: "globe")
-                .font(.system(size: 11))
+                .font(.ui(11))
                 .foregroundColor(Palette.inkSecondary)
                 .lineLimit(1)
             
             // Size
             Label(model.size, systemImage: "internaldrive")
-                .font(.system(size: 11))
+                .font(.ui(11))
                 .foregroundColor(Palette.inkSecondary)
                 .lineLimit(1)
             
             // Speed
             HStack(spacing: 3) {
                 Text("Speed")
-                    .font(.system(size: 11, weight: .medium))
+                    .font(.ui(11, weight: .medium))
                     .foregroundColor(Palette.inkSecondary)
                 progressDotsWithNumber(value: model.speed * 10)
             }
@@ -80,7 +80,7 @@ struct WhisperModelCardView: View {
             // Accuracy
             HStack(spacing: 3) {
                 Text("Accuracy")
-                    .font(.system(size: 11, weight: .medium))
+                    .font(.ui(11, weight: .medium))
                     .foregroundColor(Palette.inkSecondary)
                 progressDotsWithNumber(value: model.accuracy * 10)
             }
@@ -92,7 +92,7 @@ struct WhisperModelCardView: View {
     
     private var descriptionSection: some View {
         Text(model.description)
-            .font(.system(size: 11))
+            .font(.ui(11))
             .foregroundColor(Palette.inkSecondary)
             .lineLimit(2)
             .fixedSize(horizontal: false, vertical: true)
@@ -119,7 +119,7 @@ struct WhisperModelCardView: View {
         Button(action: downloadAction) {
             HStack(spacing: 4) {
                 Text(isDownloading ? "Downloading..." : (downloadError == nil ? "Download" : "Retry"))
-                    .font(.system(size: 12, weight: .medium))
+                    .font(.ui(12, weight: .medium))
                 Image(systemName: downloadError == nil ? "arrow.down.circle" : "arrow.clockwise")
                     .font(.system(size: 12, weight: .medium))
             }
@@ -132,7 +132,7 @@ struct WhisperModelCardView: View {
         HStack(spacing: 8) {
             if isCurrent && isDownloaded {
                 Text("Default Model")
-                    .font(.system(size: 12))
+                    .font(.ui(12))
                     .foregroundColor(Palette.inkSecondary)
             } else if isCurrent && !isDownloaded {
                 // Selected but UNUSABLE — the key confusing state. Make it
@@ -145,14 +145,14 @@ struct WhisperModelCardView: View {
                         ProgressView()
                             .controlSize(.small)
                         Text("Optimizing model for your device...")
-                            .font(.system(size: 12))
+                            .font(.ui(12))
                             .foregroundColor(Palette.inkSecondary)
                     }
                 } else {
                     ModelStateBadge.downloaded
                     Button(action: setDefaultAction) {
                         Text("Set as Default")
-                            .font(.system(size: 12))
+                            .font(.ui(12))
                     }
                     .buttonStyle(.bordered)
                     .controlSize(.small)
@@ -202,13 +202,13 @@ struct ImportedWhisperModelCardView: View {
                 VStack(alignment: .leading, spacing: 6) {
                     HStack(alignment: .firstTextBaseline) {
                         Text(model.displayName)
-                            .font(.system(size: 13, weight: .semibold))
+                            .font(.ui(13, weight: .semibold))
                             .foregroundColor(Palette.inkPrimary)
                         Spacer()
                     }
 
                     Text("Imported local model")
-                        .font(.system(size: 11))
+                        .font(.ui(11))
                         .foregroundColor(Palette.inkSecondary)
                         .lineLimit(2)
                         .fixedSize(horizontal: false, vertical: true)
@@ -219,12 +219,12 @@ struct ImportedWhisperModelCardView: View {
                 HStack(spacing: 8) {
                     if isCurrent {
                         Text("Default Model")
-                            .font(.system(size: 12))
+                            .font(.ui(12))
                             .foregroundColor(Palette.inkSecondary)
                     } else if isDownloaded {
                         Button(action: setDefaultAction) {
                             Text("Set as Default")
-                                .font(.system(size: 12))
+                                .font(.ui(12))
                         }
                         .buttonStyle(.bordered)
                         .controlSize(.small)
@@ -272,7 +272,7 @@ struct ModelDownloadErrorLabel: View {
 
     var body: some View {
         Label(message, systemImage: "exclamationmark.triangle.fill")
-            .font(.system(size: 11))
+            .font(.ui(11))
             .foregroundColor(Palette.stateFail)
             .fixedSize(horizontal: false, vertical: true)
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -302,7 +302,7 @@ struct ModelStateBadge: View {
                 Image(systemName: "exclamationmark.triangle.fill")
                     .font(.system(size: 10))
                 Text("Selected · not downloaded")
-                    .font(.system(size: 11, weight: .medium))
+                    .font(.ui(11, weight: .medium))
             }
             .foregroundColor(Palette.recRed)
             .padding(.horizontal, 8)
@@ -315,7 +315,7 @@ struct ModelStateBadge: View {
             .accessibilityLabel("Selected but not downloaded")
         case .downloaded:
             Text("Downloaded")
-                .font(.system(size: 11, weight: .medium))
+                .font(.ui(11, weight: .medium))
                 .foregroundColor(.secondary)
         }
     }

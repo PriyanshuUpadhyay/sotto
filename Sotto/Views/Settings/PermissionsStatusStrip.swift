@@ -123,7 +123,7 @@ struct PermissionsStatusStrip<Source: PermissionRequesting>: View {
         return HStack(spacing: 6) {
             Label(granted ? "Granted" : "Not granted",
                   systemImage: granted ? "checkmark.circle.fill" : "exclamationmark.circle")
-                .font(.system(size: 10.5, weight: .semibold))
+                .font(.ui(10.5, weight: .semibold))
                 .foregroundStyle(tone)
                 .padding(.horizontal, 8)
                 .padding(.vertical, 3)

@@ -167,7 +167,7 @@ struct SettingsContentView: View {
                     }
                     if tabs.isEmpty && !showsAppearanceRow {
                         Text("No settings match “\(query)”")
-                            .font(.system(size: 12))
+                            .font(.ui(12))
                             .foregroundStyle(Palette.inkSecondary)
                             .fixedSize(horizontal: false, vertical: true)
                             .frame(maxWidth: .infinity, alignment: .leading)
@@ -332,7 +332,9 @@ struct AppearanceSettingsView: View {
             .font(.microlabel(11))
             .tracking(0.18 * 11)
             .foregroundStyle(Palette.inkSecondary)
-            .frame(width: 140, alignment: .leading)
+            // minWidth, not width: the column keeps its rhythm at the default
+            // text size and grows rather than clipping at larger ones.
+            .frame(minWidth: 140, alignment: .leading)
     }
 
     /// 18pt dot in a ≥24pt hit target; selected = a ring in the swatch's own
@@ -436,7 +438,7 @@ struct SettingsRailRow: View {
                     .foregroundStyle(isSelected ? SettingsRailRowStyle.selectedGlyph : SettingsRailRowStyle.idleLabel)
                     .frame(width: 18)
                 Text(title)
-                    .font(.system(size: 13, weight: isSelected ? .semibold : .regular))
+                    .font(.ui(13, weight: isSelected ? .semibold : .regular))
                     .foregroundStyle(isSelected ? SettingsRailRowStyle.label : SettingsRailRowStyle.idleLabel)
                 Spacer(minLength: 0)
             }

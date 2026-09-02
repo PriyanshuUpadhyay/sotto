@@ -33,7 +33,7 @@ struct NativeAppleModelCardView: View {
     private var headerSection: some View {
         HStack(alignment: .firstTextBaseline) {
             Text(model.displayName)
-                .font(.system(size: 13, weight: .semibold))
+                .font(.ui(13, weight: .semibold))
                 .foregroundColor(Palette.inkPrimary)
             
             Spacer()
@@ -44,25 +44,25 @@ struct NativeAppleModelCardView: View {
         HStack(spacing: 12) {
             // Native Apple
             Label("Native Apple", systemImage: "apple.logo")
-                .font(.system(size: 11))
+                .font(.ui(11))
                 .foregroundColor(Palette.inkSecondary)
                 .lineLimit(1)
             
             // Language
             Label(model.language, systemImage: "globe")
-                .font(.system(size: 11))
+                .font(.ui(11))
                 .foregroundColor(Palette.inkSecondary)
                 .lineLimit(1)
             
             // On-Device
             Label("On-Device", systemImage: "checkmark.shield")
-                .font(.system(size: 11))
+                .font(.ui(11))
                 .foregroundColor(Palette.inkSecondary)
                 .lineLimit(1)
             
             // Requires macOS 26+
             Label("macOS 26+", systemImage: "macbook")
-                .font(.system(size: 11))
+                .font(.ui(11))
                 .foregroundColor(Palette.inkSecondary)
                 .lineLimit(1)
         }
@@ -71,7 +71,7 @@ struct NativeAppleModelCardView: View {
     
     private var descriptionSection: some View {
         Text(model.description)
-            .font(.system(size: 11))
+            .font(.ui(11))
             .foregroundColor(Palette.inkSecondary)
             .lineLimit(2)
             .fixedSize(horizontal: false, vertical: true)
@@ -82,12 +82,12 @@ struct NativeAppleModelCardView: View {
         HStack(spacing: 8) {
             if isCurrent {
                 Text("Default Model")
-                    .font(.system(size: 12))
+                    .font(.ui(12))
                     .foregroundColor(Palette.inkSecondary)
             } else {
                 Button(action: setDefaultAction) {
                     Text("Set as Default")
-                        .font(.system(size: 12))
+                        .font(.ui(12))
                 }
                 .buttonStyle(.bordered)
                 .controlSize(.small)
