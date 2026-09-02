@@ -44,7 +44,7 @@ final class AnnouncementManager {
         reminderPanel = panel
 
         NSAnimationContext.runAnimationGroup { context in
-            context.duration = reduceMotion ? 0.20 : 0.22
+            context.duration = reduceMotion ? 0 : MotionTokens.stateEnterDuration
             context.timingFunction = CAMediaTimingFunction(name: .easeOut)
             panel.animator().alphaValue = 1
             if !reduceMotion {
@@ -57,9 +57,10 @@ final class AnnouncementManager {
     func dismissReminderToast() {
         guard let panel = reminderPanel else { return }
         reminderPanel = nil
+        let reduceMotion = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
         NSAnimationContext.runAnimationGroup({ context in
-            context.duration = 0.18
-            context.timingFunction = CAMediaTimingFunction(name: .easeIn)
+            context.duration = reduceMotion ? 0 : MotionTokens.stateExitDuration
+            context.timingFunction = CAMediaTimingFunction(name: .easeOut)
             panel.animator().alphaValue = 0
         }, completionHandler: {
             panel.close()
@@ -69,7 +70,9 @@ final class AnnouncementManager {
     @MainActor
     private func positionReminder(_ panel: NSPanel) {
         let screen = NSApp.keyWindow?.screen ?? NSScreen.main ?? NSScreen.screens[0]
-        let frame = screen.frame
+        // visibleFrame excludes the menu bar and the notch region — `frame`
+        // drew the toast over both. Matches `NotificationManager.positionWindow`.
+        let frame = screen.visibleFrame
         let x = frame.midX - (panel.frame.width / 2)
         let y = frame.maxY - 16 - panel.frame.height
         panel.setFrameOrigin(NSPoint(x: x, y: y))

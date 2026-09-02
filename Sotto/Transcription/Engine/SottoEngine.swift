@@ -205,7 +205,12 @@ class SottoEngine: NSObject, ObservableObject {
             // the next one. No-op when nothing is pending.
             ComposeReviewWindowManager.shared.commit()
             guard transcriptionModelManager.currentTranscriptionModel != nil else {
-                NotificationManager.shared.showNotification(title: "No AI Model Selected", type: .error)
+                NotificationManager.shared.showNotification(
+                    title: "No transcription model selected — pick one to start dictating",
+                    type: .error,
+                    actionButton: (label: "CHOOSE MODEL",
+                                   action: { SottoWindowCoordinator.shared.open(settingsTab: .models) })
+                )
                 return
             }
             shouldCancelRecording = false
@@ -334,7 +339,12 @@ class SottoEngine: NSObject, ObservableObject {
                                     self.failurePublisher.send(FailureEvent(reason: error.localizedDescription))
                                     self.recordingState = .idle
                                     self.recordedFile = nil
-                                    await NotificationManager.shared.showNotification(title: "Recording failed to start", type: .error)
+                                    await NotificationManager.shared.showNotification(
+                                        title: "Recording failed to start",
+                                        type: .error,
+                                        actionButton: (label: "RETRY",
+                                                       action: { NotificationCenter.default.post(name: .retryRecording, object: nil) })
+                                    )
                                     self.logger.notice("toggleRecord: calling dismissMiniRecorder from error handler")
                                     await self.recorderUIManager?.dismissMiniRecorder()
                                 }

@@ -32,11 +32,11 @@ struct SettingsRow<Control: View>: View {
                 iconTile
                 VStack(alignment: .leading, spacing: 2) {
                     Text(label)
-                        .font(.system(size: 13, weight: .medium))
+                        .font(.ui(13, weight: .medium))
                         .foregroundColor(Palette.inkPrimary)
                     if let subtitle, !subtitle.isEmpty {
                         Text(subtitle)
-                            .font(.system(size: 11, weight: .regular))
+                            .font(.ui(11, weight: .regular))
                             .foregroundColor(Palette.inkSecondary)
                             .fixedSize(horizontal: false, vertical: true)
                     }

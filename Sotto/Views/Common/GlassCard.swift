@@ -51,10 +51,10 @@ private struct GlassCardPreviewBody: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Recording")
-                .font(.system(size: 13, weight: .semibold))
+                .font(.ui(13, weight: .semibold))
                 .foregroundColor(.primary)
             Text("Trigger and capture audio.")
-                .font(.system(size: 11))
+                .font(.ui(11))
                 .foregroundColor(.secondary)
         }
         .frame(maxWidth: .infinity, alignment: .leading)

@@ -129,8 +129,10 @@ class LastTranscriptionService: ObservableObject {
 
             guard let currentModel = transcriptionModelManager.currentTranscriptionModel else {
                 NotificationManager.shared.showNotification(
-                    title: "No transcription model selected",
-                    type: .error
+                    title: "No transcription model selected — pick one to retry",
+                    type: .error,
+                    actionButton: (label: "CHOOSE MODEL",
+                                   action: { SottoWindowCoordinator.shared.open(settingsTab: .models) })
                 )
                 return
             }

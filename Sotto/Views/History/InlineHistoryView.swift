@@ -17,6 +17,12 @@ struct InlineHistoryView: View {
     @State private var expandedId: UUID?
     @State private var selectedTranscriptions: Set<Transcription> = []
     @State private var showDeleteConfirmation = false
+    /// A single-row delete waits out `undoWindowSeconds` before it touches the
+    /// database or the audio file: the row hides immediately, an UNDO toast
+    /// stands, and only then is the deletion committed. Bulk delete keeps its
+    /// confirmation instead.
+    @State private var pendingDeletion: Transcription?
+    @State private var undoWindow: Task<Void, Never>?
     @State private var isPanelPresented = false
     @State private var panelTranscriptionId: UUID?
     @State private var displayedTranscriptions: [Transcription] = []
@@ -24,6 +30,9 @@ struct InlineHistoryView: View {
     @State private var hasMoreContent = true
     @State private var lastTimestamp: Date?
     @State private var isViewCurrentlyVisible = false
+    /// Every row the current search matches, not just the loaded page — "Select
+    /// All" and ⌘A select all of them, so the control has to say so.
+    @State private var totalMatchingCount = 0
 
     // Keyboard-first navigation cursor (distinct from checkbox selection + expansion).
     @State private var focusedId: UUID?
@@ -33,6 +42,7 @@ struct InlineHistoryView: View {
 
     private let exportService = SottoCSVExportService()
     private let pageSize = 20
+    private static let undoWindowSeconds: TimeInterval = 5
 
     @Query(Self.createLatestTranscriptionIndicatorDescriptor()) private var latestTranscriptionIndicator: [Transcription]
 
@@ -69,6 +79,19 @@ struct InlineHistoryView: View {
         }
 
         descriptor.fetchLimit = pageSize
+        return descriptor
+    }
+
+    /// Unpaginated twin of `cursorQueryDescriptor` — the scope "Select All" and
+    /// ⌘A actually cover. Used with `fetchCount`, so no rows are materialised.
+    private func matchingCountDescriptor() -> FetchDescriptor<Transcription> {
+        var descriptor = FetchDescriptor<Transcription>()
+        if !searchText.isEmpty {
+            descriptor.predicate = #Predicate<Transcription> { transcription in
+                transcription.text.localizedStandardContains(searchText) ||
+                (transcription.enhancedText?.localizedStandardContains(searchText) ?? false)
+            }
+        }
         return descriptor
     }
 
@@ -154,6 +177,8 @@ struct InlineHistoryView: View {
         }
         .onDisappear {
             isViewCurrentlyVisible = false
+            // Leaving the surface ends the undo window — the delete stands.
+            commitPendingDeletion()
         }
         .onChange(of: searchText) { _, _ in
             // Debounce the SwiftData fetch ~250ms so we don't refetch per keystroke.
@@ -212,7 +237,7 @@ struct InlineHistoryView: View {
                 .buttonStyle(.plain)
                 .foregroundColor(.secondary)
             } else {
-                Button("Select All") {
+                Button("Select All (\(totalMatchingCount))") {
                     Task { await selectAllTranscriptions() }
                 }
                 .font(.system(size: 12, weight: .medium))
@@ -306,7 +331,7 @@ struct InlineHistoryView: View {
                     }
                     Text("press · speak · release")
                         .font(.system(size: 11, weight: .medium))
-                        .foregroundColor(Theme.inkTertiary)
+                        .foregroundColor(Theme.inkSecondary)
                 }
                 .padding(.top, 4)
             }
@@ -316,32 +341,11 @@ struct InlineHistoryView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
-    /// Unicode key-cap glyphs for the *primary* dictation hotkey (`selectedHotkey1`).
-    /// Single-modifier options collapse to one cap (⌘/⌥/⌃/⇧/fn); `.custom` parses
-    /// the recorded `KeyboardShortcuts.Shortcut`. Empty ⇒ no hotkey bound. Mirrors
-    /// the derivation in `SettingsView.keyComboGlyphs`.
+    /// Unicode key-cap glyphs for the *primary* dictation hotkey
+    /// (`selectedHotkey1`). Empty ⇒ no hotkey bound. Shared with the onboarding
+    /// shortcut step and the first-run reminder toast.
     private var dictationGlyphs: [String] {
-        switch hotkeyManager.selectedHotkey1 {
-        case .none:
-            return []
-        case .custom:
-            guard let s = KeyboardShortcuts.getShortcut(for: .toggleMiniRecorder) else { return [] }
-            var caps: [String] = []
-            let m = s.modifiers
-            if m.contains(.control) { caps.append("⌃") }
-            if m.contains(.option)  { caps.append("⌥") }
-            if m.contains(.shift)   { caps.append("⇧") }
-            if m.contains(.command) { caps.append("⌘") }
-            let modifierGlyphs: Set<Character> = ["⌃", "⌥", "⇧", "⌘"]
-            let keyPart = String(s.description.drop(while: { modifierGlyphs.contains($0) }))
-            if !keyPart.isEmpty { caps.append(keyPart) }
-            return caps
-        case .rightOption, .leftOption:    return ["⌥"]
-        case .leftControl, .rightControl:  return ["⌃"]
-        case .fn:                          return ["fn"]
-        case .rightCommand:                return ["⌘"]
-        case .rightShift:                  return ["⇧"]
-        }
+        HotkeyManager.dictationGlyphs(for: hotkeyManager.selectedHotkey1)
     }
 
     private func openShortcutsSettings() {
@@ -500,14 +504,16 @@ struct InlineHistoryView: View {
     }
 
     private func handleEscape() -> KeyPress.Result {
-        if !searchText.isEmpty {
-            searchText = ""
-            return .handled
-        }
+        // Topmost dismissible layer first — the info panel owns a scrim and
+        // blocks hit-testing, so it is what the user sees Escape acting on.
         if isPanelPresented {
             withAnimation(Animation.haloExpand) {
                 isPanelPresented = false
             }
+            return .handled
+        }
+        if !searchText.isEmpty {
+            searchText = ""
             return .handled
         }
         if expandedId != nil {
@@ -609,9 +615,10 @@ struct InlineHistoryView: View {
         do {
             lastTimestamp = nil
             let items = try modelContext.fetch(cursorQueryDescriptor())
-            displayedTranscriptions = items
+            displayedTranscriptions = items.filter { $0.id != pendingDeletion?.id }
             lastTimestamp = items.last?.timestamp
             hasMoreContent = items.count == pageSize
+            totalMatchingCount = (try? modelContext.fetchCount(matchingCountDescriptor())) ?? items.count
         } catch {
             print("Error loading transcriptions: \(error)")
         }
@@ -626,7 +633,7 @@ struct InlineHistoryView: View {
 
         do {
             let newItems = try modelContext.fetch(cursorQueryDescriptor(after: lastTimestamp))
-            displayedTranscriptions.append(contentsOf: newItems)
+            displayedTranscriptions.append(contentsOf: newItems.filter { $0.id != pendingDeletion?.id })
             self.lastTimestamp = newItems.last?.timestamp
             hasMoreContent = newItems.count == pageSize
         } catch {
@@ -693,18 +700,66 @@ struct InlineHistoryView: View {
         }
     }
 
+    /// One row, one keypress: no modal. The row leaves the list at once and an
+    /// UNDO toast stands for `undoWindowSeconds`; the transcript and its audio
+    /// file survive until that window closes.
     private func deleteSingle(_ transcription: Transcription) {
+        // At most one undo window is open — an earlier pending delete stands.
+        commitPendingDeletion()
+
+        if expandedId == transcription.id { expandedId = nil }
+        if panelTranscriptionId == transcription.id {
+            panelTranscriptionId = nil
+            isPanelPresented = false
+        }
+        selectedTranscriptions.remove(transcription)
+
+        pendingDeletion = transcription
+        displayedTranscriptions.removeAll { $0.id == transcription.id }
+
+        undoWindow = Task {
+            try? await Task.sleep(for: .seconds(Self.undoWindowSeconds))
+            guard !Task.isCancelled else { return }
+            commitPendingDeletion()
+        }
+
+        NotificationManager.shared.showNotification(
+            title: "Deleted 1 transcription",
+            type: .info,
+            duration: Self.undoWindowSeconds,
+            actionButton: (label: "UNDO", action: { undoPendingDeletion() })
+        )
+    }
+
+    /// Ends the undo window and performs the deferred deletion for real.
+    @MainActor
+    private func commitPendingDeletion() {
+        undoWindow?.cancel()
+        undoWindow = nil
+        guard let transcription = pendingDeletion else { return }
+        pendingDeletion = nil
+
         performDeletion(for: transcription)
         Task {
             do {
                 try modelContext.save()
                 NotificationCenter.default.post(name: .transcriptionDeleted, object: nil)
-                await loadInitialContent()
             } catch {
                 print("Error saving deletion: \(error.localizedDescription)")
-                await loadInitialContent()
             }
+            await loadInitialContent()
         }
+    }
+
+    /// Cancels the pending deletion — nothing was removed yet, so the row simply
+    /// comes back on the next load.
+    @MainActor
+    private func undoPendingDeletion() {
+        undoWindow?.cancel()
+        undoWindow = nil
+        guard pendingDeletion != nil else { return }
+        pendingDeletion = nil
+        Task { await loadInitialContent() }
     }
 
     private func selectAllTranscriptions() async {
@@ -774,12 +829,13 @@ private struct HistoryCardRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: 10) {
-                Toggle("", isOn: Binding(
+                Toggle("Select transcription", isOn: Binding(
                     get: { isChecked },
                     set: { _ in onToggleCheck() }
                 ))
                 .toggleStyle(CircularCheckboxStyle())
                 .labelsHidden()
+                .accessibilityLabel("Select transcription")
 
                 // The expand area excludes the checkbox so clicking the checkbox
                 // toggles selection only. The parent ScrollView is `.focusable`
@@ -795,8 +851,11 @@ private struct HistoryCardRow: View {
                             .foregroundStyle(Palette.inkSecondary)
 
                         if !isExpanded {
+                            // The user's own words — `Font.transcript` is the
+                            // token for history transcript bodies.
                             Text(transcription.enhancedText ?? transcription.text)
-                                .font(.system(size: 13))
+                                .font(.transcript(15))
+                                .lineSpacing(3)
                                 .lineLimit(2)
                                 .foregroundStyle(Palette.inkPrimary)
                         }
@@ -863,6 +922,7 @@ private struct HistoryCardRow: View {
                                 )
                         }
                         .buttonStyle(.plain)
+                        .accessibilityAddTraits(selectedTab == tab ? .isSelected : [])
                     }
                     Spacer()
                 }
@@ -870,7 +930,8 @@ private struct HistoryCardRow: View {
 
             ScrollView {
                 Text(displayText)
-                    .font(.body)
+                    .font(.transcript(15))
+                    .lineSpacing(3)
                     .foregroundColor(.primary)
                     .textSelection(.enabled)
                     .frame(maxWidth: .infinity, alignment: .leading)

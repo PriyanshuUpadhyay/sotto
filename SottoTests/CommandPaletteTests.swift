@@ -151,6 +151,29 @@ final class CommandPaletteTests: XCTestCase {
         XCTAssertEqual(model.results.map { $0.id }, ["a"])
     }
 
+    /// A new query is a new ranking, so the highlight must return to the best
+    /// match — otherwise ⏎ runs a row that belonged to the previous result set.
+    @MainActor
+    func test_model_applyQuery_resetsSelectionToTop() {
+        let source = [
+            PaletteCommand(id: "a", title: "Alpha one", subtitle: "", systemImage: "x",
+                           category: .navigate, requiresFocusRestore: false, run: {}),
+            PaletteCommand(id: "b", title: "Alpha two", subtitle: "", systemImage: "x",
+                           category: .navigate, requiresFocusRestore: false, run: {}),
+            PaletteCommand(id: "c", title: "Alpha three", subtitle: "", systemImage: "x",
+                           category: .navigate, requiresFocusRestore: false, run: {}),
+        ]
+        let model = CommandPaletteModel()
+        model.setSource(source)
+        model.applyQuery("alpha")
+        model.moveSelection(by: 2)
+        XCTAssertEqual(model.selectionIndex, 2)
+
+        model.applyQuery("alpha t")
+        XCTAssertEqual(model.selectionIndex, 0)
+        XCTAssertEqual(model.selectedCommand?.id, model.results.first?.id)
+    }
+
     @MainActor
     func test_model_moveSelection_clampsToBounds() {
         let source = [

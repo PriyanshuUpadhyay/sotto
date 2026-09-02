@@ -45,10 +45,6 @@ struct VocabularyView: View {
     /// VoiceOver + tooltip label for the dictionary add button.
     static let addButtonLabel = "Add word"
 
-    private var shouldShowAddButton: Bool {
-        !newWord.isEmpty
-    }
-
     /// Up to 3 highest-confidence correction suggestions mined from repeated
     /// post-paste edits. Recomputed from the live queries + dismissals.
     private var suggestions: [CorrectionSuggestion] {
@@ -85,20 +81,20 @@ struct VocabularyView: View {
                 .padding(.vertical, 8)
                 .background(matteFieldBackground)
 
-                if shouldShowAddButton {
-                    Button(action: addWords) {
-                        Image(systemName: "plus.circle.fill")
-                            .symbolRenderingMode(.hierarchical)
-                            .foregroundStyle(Palette.phosphor)
-                            .font(.system(size: 16, weight: .semibold))
-                    }
-                    .buttonStyle(.borderless)
-                    .disabled(newWord.isEmpty)
-                    .help(VocabularyView.addButtonLabel)
-                    .accessibilityLabel(VocabularyView.addButtonLabel)
+                // Present at all times: inserting the button on the first
+                // keystroke resized the field under the caret mid-typing.
+                Button(action: addWords) {
+                    Image(systemName: "plus.circle.fill")
+                        .symbolRenderingMode(.hierarchical)
+                        .foregroundStyle(Palette.phosphor)
+                        .font(.system(size: 16, weight: .semibold))
                 }
+                .buttonStyle(.borderless)
+                .disabled(newWord.isEmpty)
+                .opacity(newWord.isEmpty ? 0.35 : 1)
+                .help(VocabularyView.addButtonLabel)
+                .accessibilityLabel(VocabularyView.addButtonLabel)
             }
-            .animation(Animation.haloPhaseCrossfade, value: shouldShowAddButton)
 
             if !vocabularyWords.isEmpty {
                 VStack(alignment: .leading, spacing: 12) {
@@ -296,7 +292,7 @@ struct CorrectionSuggestionRow: View {
                     .foregroundStyle(Palette.inkPrimary)
                 Text("· seen \(suggestion.count)×")
                     .font(.system(size: 11))
-                    .foregroundStyle(Palette.inkTertiary)
+                    .foregroundStyle(Palette.inkSecondary)
             }
             .lineLimit(1)
 

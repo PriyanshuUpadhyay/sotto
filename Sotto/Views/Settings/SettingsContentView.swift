@@ -165,6 +165,15 @@ struct SettingsContentView: View {
                             setSelection(.appearance)
                         }
                     }
+                    if tabs.isEmpty && !showsAppearanceRow {
+                        Text("No settings match “\(query)”")
+                            .font(.ui(12))
+                            .foregroundStyle(Palette.inkSecondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.horizontal, 10)
+                            .padding(.top, 6)
+                    }
                 }
                 .padding(.horizontal, 10)
             }
@@ -204,11 +213,18 @@ struct SettingsContentView: View {
         )
     }
 
+    /// Appearance is a rail-level extra, not a SettingsTab, so it carries its
+    /// own keywords instead of a search-index entry.
+    private static let appearanceKeywords = [
+        "appearance", "theme", "accent", "color", "colour", "dark", "light", "reduced motion",
+    ]
+
     /// Appearance isn't in the search index; it stays visible while the rail is
-    /// unfiltered, or when the query names it.
+    /// unfiltered, or when the query names it or one of its controls.
     private var showsAppearanceRow: Bool {
         let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
-        return trimmed.isEmpty || "Appearance".localizedCaseInsensitiveContains(trimmed)
+        guard !trimmed.isEmpty else { return true }
+        return Self.appearanceKeywords.contains { $0.localizedCaseInsensitiveContains(trimmed) }
     }
 
     /// Selects a tab. If a query is active, posts `.selectSettingsSection` (on
@@ -316,7 +332,9 @@ struct AppearanceSettingsView: View {
             .font(.microlabel(11))
             .tracking(0.18 * 11)
             .foregroundStyle(Palette.inkSecondary)
-            .frame(width: 140, alignment: .leading)
+            // minWidth, not width: the column keeps its rhythm at the default
+            // text size and grows rather than clipping at larger ones.
+            .frame(minWidth: 140, alignment: .leading)
     }
 
     /// 18pt dot in a ≥24pt hit target; selected = a ring in the swatch's own
@@ -341,7 +359,7 @@ struct AppearanceSettingsView: View {
                 .frame(width: 28, height: 28)
                 .contentShape(Circle())
             }
-            .buttonStyle(.plain)
+            .buttonStyle(RowPressStyle())
             .accessibilityLabel("\(choice.title) accent")
             .accessibilityAddTraits(isSelected ? .isSelected : [])
 
@@ -353,12 +371,27 @@ struct AppearanceSettingsView: View {
     }
 }
 
+// MARK: - Row press feedback
+
+/// Pointer-down feedback for the hand-built navigation rows (both rails and the
+/// accent swatch), mirroring `LimeFillButtonStyle`'s treatment: a slight dim on
+/// press, released over 120ms. Without it these rows answer a click only after
+/// the destination repaints.
+struct RowPressStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .opacity(configuration.isPressed ? 0.75 : 1)
+            .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
+    }
+}
+
 // MARK: - Rail row
 
 /// Matte rail-row colors (the dev-tool rail look). Selection is a `mtRaise2`
-/// fill + inset hairline + phosphor glyph + primary-ink label — NOT the old
-/// black-text-on-lime accent fill. Extracted so `SettingsMatteSnapshotTests`
-/// can assert the matte selection without rendering.
+/// fill + a phosphor edge tick + phosphor glyph + primary-ink label — NOT the
+/// old black-text-on-lime accent fill. Extracted so
+/// `SettingsMatteSnapshotTests` can assert the matte selection without
+/// rendering.
 enum SettingsRailRowStyle {
     /// Selected row fill — nested matte surface (NOT the accent).
     static let selectedFill = Palette.mtRaise2
@@ -371,13 +404,13 @@ enum SettingsRailRowStyle {
     static let idleLabel = Palette.inkSecondary
     /// Hover fill on an unselected row.
     static let hoverFill = Palette.mtRaise
-    /// Inset hairline drawn around the selected row.
-    static let selectedHairline = Palette.mtLine2
 }
 
 /// One row in the Settings rail. Matte dev-tool selection: the selected row
-/// fills `mtRaise2` with an inset hairline, a phosphor glyph, and a primary-ink
-/// label; others read `inkSecondary`, hover → a faint matte fill.
+/// fills `mtRaise2` with a phosphor edge tick, a phosphor glyph and a
+/// primary-ink label; others read `inkSecondary`, hover → a faint matte fill.
+/// Geometry matches `SottoSidebarRow` — the two rails sit side by side in one
+/// window and must read as one selection idiom.
 struct SettingsRailRow: View {
     let title: String
     let systemImage: String
@@ -397,7 +430,7 @@ struct SettingsRailRow: View {
     }
 
     var body: some View {
-        let shape = RoundedRectangle(cornerRadius: Radius.card, style: .continuous)
+        let shape = RoundedRectangle(cornerRadius: Radius.control, style: .continuous)
         return Button(action: action) {
             HStack(spacing: 10) {
                 Image(systemName: systemImage)
@@ -405,22 +438,28 @@ struct SettingsRailRow: View {
                     .foregroundStyle(isSelected ? SettingsRailRowStyle.selectedGlyph : SettingsRailRowStyle.idleLabel)
                     .frame(width: 18)
                 Text(title)
-                    .font(.system(size: 13, weight: isSelected ? .semibold : .regular))
+                    .font(.ui(13, weight: isSelected ? .semibold : .regular))
                     .foregroundStyle(isSelected ? SettingsRailRowStyle.label : SettingsRailRowStyle.idleLabel)
                 Spacer(minLength: 0)
             }
-            .padding(.horizontal, 10)
+            .padding(.leading, 14)
+            .padding(.trailing, 10)
             .padding(.vertical, 8)
             .background(shape.fill(rowFill))
-            .overlay {
+            .overlay(alignment: .leading) {
                 if isSelected {
-                    shape.strokeBorder(SettingsRailRowStyle.selectedHairline, lineWidth: 1)
+                    RoundedRectangle(cornerRadius: 1)
+                        .fill(SettingsRailRowStyle.selectedGlyph)
+                        .frame(width: 2, height: 16)
+                        .padding(.leading, 3)
                 }
             }
             .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(RowPressStyle())
         .onHover { isHovering = $0 }
+        .accessibilityLabel(title)
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 
     private var rowFill: Color {
@@ -468,7 +507,7 @@ func handleSettingsSectionJump<S: Hashable>(
     if reduceMotion {
         proxy.scrollTo(section, anchor: .top)
     } else {
-        withAnimation(.easeInOut(duration: 0.35)) {
+        withAnimation(.easeOut(duration: 0.22)) {
             proxy.scrollTo(section, anchor: .top)
         }
     }

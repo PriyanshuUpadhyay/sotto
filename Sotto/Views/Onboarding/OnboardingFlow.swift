@@ -61,6 +61,20 @@ enum OnboardingPath: CaseIterable {
         }
         return sequence[index + 1]
     }
+
+    func step(before step: OnboardingFlowStep) -> OnboardingFlowStep {
+        let sequence = steps
+        guard let index = sequence.firstIndex(of: step), index > 0 else { return firstStep }
+        return sequence[index - 1]
+    }
+
+    /// Position of `step` in this path, and how many steps the path asks for.
+    /// `.done` is the terminator, so it is not counted or numbered.
+    func index(of step: OnboardingFlowStep) -> Int? {
+        steps.firstIndex(of: step)
+    }
+
+    var visibleStepCount: Int { steps.filter { $0 != .done }.count }
 }
 
 struct OnboardingPosition: Equatable {
@@ -78,6 +92,18 @@ struct OnboardingPosition: Equatable {
     func advanced() -> OnboardingPosition {
         OnboardingPosition(path: path, step: path.step(after: step))
     }
+
+    func retreated() -> OnboardingPosition {
+        OnboardingPosition(path: path, step: path.step(before: step))
+    }
+
+    /// 1-based number of the current step, or nil at `.done`.
+    var stepNumber: Int? {
+        guard step != .done, let index = path.index(of: step) else { return nil }
+        return index + 1
+    }
+
+    var canRetreat: Bool { (path.index(of: step) ?? 0) > 0 && step != .done }
 }
 
 struct OnboardingFlow: View {
@@ -101,11 +127,17 @@ struct OnboardingFlow: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
 
             VStack {
-                HStack {
-                    Spacer()
-                    OnboardingFlowSkipButton {
-                        OnboardingState.shared.markSkipped()
-                        onFinish()
+                ZStack {
+                    stepIndicator
+                    HStack {
+                        if position.canRetreat {
+                            OnboardingFlowBackButton { position = position.retreated() }
+                        }
+                        Spacer()
+                        OnboardingFlowSkipButton {
+                            OnboardingState.shared.markSkipped()
+                            onFinish()
+                        }
                     }
                 }
                 Spacer()
@@ -113,6 +145,19 @@ struct OnboardingFlow: View {
             .padding(16)
         }
         .frame(width: 480, height: 640)
+    }
+
+    /// Wayfinding: how far along the chosen path the user is. `.full` asks for
+    /// six steps, `.essentials` three, so the count is read off the live path.
+    @ViewBuilder
+    private var stepIndicator: some View {
+        if let number = position.stepNumber {
+            Text("STEP \(number) OF \(position.path.visibleStepCount)")
+                .font(.microlabel(11))
+                .tracking(1.4)
+                .foregroundColor(Palette.inkSecondary)
+                .accessibilityLabel("Step \(number) of \(position.path.visibleStepCount)")
+        }
     }
 
     @ViewBuilder
@@ -463,6 +508,7 @@ struct OnboardingPhosphorButtonStyle: ButtonStyle {
                     .fill(Palette.phosphor)
             )
             .opacity(configuration.isPressed ? 0.85 : 1)
+            .scaleEffect(configuration.isPressed ? 0.97 : 1)
             .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
     }
 }
@@ -492,6 +538,27 @@ private struct OnboardingFlowBackdrop: View {
     }
 }
 
+private struct OnboardingFlowBackButton: View {
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 4) {
+                Image(systemName: "chevron.left")
+                    .font(.system(size: 11, weight: .semibold))
+                Text("Back")
+                    .font(.system(size: 13, weight: .medium))
+            }
+            .foregroundColor(Palette.inkSecondary)
+            .padding(.horizontal, 10)
+            .frame(height: 28)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Back")
+        .accessibilityHint("Returns to the previous setup step")
+    }
+}
+
 private struct OnboardingFlowSkipButton: View {
     let action: () -> Void
 
@@ -499,7 +566,7 @@ private struct OnboardingFlowSkipButton: View {
         Button(action: action) {
             Text("Skip")
                 .font(.system(size: 13, weight: .medium))
-                .foregroundColor(Palette.inkTertiary)
+                .foregroundColor(Palette.inkSecondary)
                 .padding(.horizontal, 10)
                 .frame(height: 28)
         }

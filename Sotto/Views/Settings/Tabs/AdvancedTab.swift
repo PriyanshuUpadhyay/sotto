@@ -89,7 +89,7 @@ struct AdvancedTab: View {
                 Self.privacyView()
 
                 Text("Control how Sotto handles your transcription data and audio recordings.")
-                    .font(.system(size: 11))
+                    .font(.ui(11))
                     .foregroundColor(Palette.inkSecondary)
                     .fixedSize(horizontal: false, vertical: true)
                     .padding(.top, 4)
@@ -142,7 +142,7 @@ struct AdvancedTab: View {
                 }
 
                 Text("Export or import all your settings, prompts, dictionary, and custom models.")
-                    .font(.system(size: 11))
+                    .font(.ui(11))
                     .foregroundColor(Palette.inkSecondary)
                     .fixedSize(horizontal: false, vertical: true)
                     .padding(.top, 4)

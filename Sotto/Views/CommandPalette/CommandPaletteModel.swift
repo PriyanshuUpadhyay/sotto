@@ -3,8 +3,8 @@ import Combine
 
 /// Drives the palette card: holds the full command source, the live query, the
 /// ranked `results`, and the keyboard `selectionIndex`. Ranking is synchronous
-/// and pure (via `PaletteFuzzy`); the VIEW debounces typing before calling
-/// `applyQuery` so we don't re-rank on every keystroke.
+/// and pure (via `PaletteFuzzy`), so the view calls `applyQuery` on every
+/// keystroke — no debounce sits on the palette's input path.
 @MainActor
 final class CommandPaletteModel: ObservableObject {
     @Published private(set) var results: [PaletteCommand] = []
@@ -18,10 +18,9 @@ final class CommandPaletteModel: ObservableObject {
 
     func applyQuery(_ query: String) {
         results = Self.rank(source, query: query)
-        selectionIndex = results.isEmpty ? 0 : min(selectionIndex, results.count - 1)
-        if selectionIndex < 0 { selectionIndex = 0 }
-        // Reset to top whenever the result set shrinks to keep selection visible.
-        if selectionIndex >= results.count { selectionIndex = 0 }
+        // A new query is a new ranking: the best match is row 0, so ⏎ can never
+        // run a row that belonged to the previous result set.
+        selectionIndex = 0
     }
 
     func moveSelection(by delta: Int) {

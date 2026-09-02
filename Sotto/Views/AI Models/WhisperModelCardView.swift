@@ -6,6 +6,7 @@ struct WhisperModelCardView: View {
     let isDownloaded: Bool
     let isCurrent: Bool
     let downloadProgress: [String: Double]
+    let downloadError: String?
     let modelURL: URL?
     let isWarming: Bool
     
@@ -19,7 +20,7 @@ struct WhisperModelCardView: View {
     }
     
     var body: some View {
-        OnyxSurfaceCard(cornerRadius: 16, padding: 16) {
+        OnyxSurfaceCard(cornerRadius: Radius.control, padding: 16) {
             HStack(alignment: .top, spacing: 16) {
                 // Main Content
                 VStack(alignment: .leading, spacing: 6) {
@@ -34,20 +35,19 @@ struct WhisperModelCardView: View {
                 actionSection
             }
         }
+        // Selection ring only — OnyxSurfaceCard already strokes its own
+        // hairline, and the radius stays concentric with the card around it.
         .overlay(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .stroke(
-                    isCurrent ? Brand.tint.opacity(0.55) : Theme.separator,
-                    lineWidth: isCurrent ? 1.5 : 1
-                )
+            RoundedRectangle(cornerRadius: Radius.control, style: .continuous)
+                .strokeBorder(Brand.tint.opacity(isCurrent ? 0.55 : 0), lineWidth: 1.5)
         )
     }
 
     private var headerSection: some View {
         HStack(alignment: .firstTextBaseline) {
             Text(model.displayName)
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundColor(Color(.labelColor))
+                .font(.ui(13, weight: .semibold))
+                .foregroundColor(Palette.inkPrimary)
             
             Spacer()
         }
@@ -57,21 +57,21 @@ struct WhisperModelCardView: View {
         HStack(spacing: 12) {
             // Language
             Label(model.language, systemImage: "globe")
-                .font(.system(size: 11))
-                .foregroundColor(Color(.secondaryLabelColor))
+                .font(.ui(11))
+                .foregroundColor(Palette.inkSecondary)
                 .lineLimit(1)
             
             // Size
             Label(model.size, systemImage: "internaldrive")
-                .font(.system(size: 11))
-                .foregroundColor(Color(.secondaryLabelColor))
+                .font(.ui(11))
+                .foregroundColor(Palette.inkSecondary)
                 .lineLimit(1)
             
             // Speed
             HStack(spacing: 3) {
                 Text("Speed")
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundColor(Color(.secondaryLabelColor))
+                    .font(.ui(11, weight: .medium))
+                    .foregroundColor(Palette.inkSecondary)
                 progressDotsWithNumber(value: model.speed * 10)
             }
             .lineLimit(1)
@@ -80,8 +80,8 @@ struct WhisperModelCardView: View {
             // Accuracy
             HStack(spacing: 3) {
                 Text("Accuracy")
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundColor(Color(.secondaryLabelColor))
+                    .font(.ui(11, weight: .medium))
+                    .foregroundColor(Palette.inkSecondary)
                 progressDotsWithNumber(value: model.accuracy * 10)
             }
             .lineLimit(1)
@@ -92,8 +92,8 @@ struct WhisperModelCardView: View {
     
     private var descriptionSection: some View {
         Text(model.description)
-            .font(.system(size: 11))
-            .foregroundColor(Color(.secondaryLabelColor))
+            .font(.ui(11))
+            .foregroundColor(Palette.inkSecondary)
             .lineLimit(2)
             .fixedSize(horizontal: false, vertical: true)
             .padding(.top, 4)
@@ -108,6 +108,9 @@ struct WhisperModelCardView: View {
                 )
                 .padding(.top, 8)
                 .frame(maxWidth: .infinity, alignment: .leading)
+            } else if let downloadError {
+                ModelDownloadErrorLabel(message: downloadError)
+                    .padding(.top, 8)
             }
         }
     }
@@ -115,9 +118,9 @@ struct WhisperModelCardView: View {
     private var downloadButton: some View {
         Button(action: downloadAction) {
             HStack(spacing: 4) {
-                Text(isDownloading ? "Downloading..." : "Download")
-                    .font(.system(size: 12, weight: .medium))
-                Image(systemName: "arrow.down.circle")
+                Text(isDownloading ? "Downloading..." : (downloadError == nil ? "Download" : "Retry"))
+                    .font(.ui(12, weight: .medium))
+                Image(systemName: downloadError == nil ? "arrow.down.circle" : "arrow.clockwise")
                     .font(.system(size: 12, weight: .medium))
             }
         }
@@ -129,8 +132,8 @@ struct WhisperModelCardView: View {
         HStack(spacing: 8) {
             if isCurrent && isDownloaded {
                 Text("Default Model")
-                    .font(.system(size: 12))
-                    .foregroundColor(Color(.secondaryLabelColor))
+                    .font(.ui(12))
+                    .foregroundColor(Palette.inkSecondary)
             } else if isCurrent && !isDownloaded {
                 // Selected but UNUSABLE — the key confusing state. Make it
                 // self-explanatory and one-click-fixable.
@@ -142,14 +145,14 @@ struct WhisperModelCardView: View {
                         ProgressView()
                             .controlSize(.small)
                         Text("Optimizing model for your device...")
-                            .font(.system(size: 12))
-                            .foregroundColor(Color(.secondaryLabelColor))
+                            .font(.ui(12))
+                            .foregroundColor(Palette.inkSecondary)
                     }
                 } else {
                     ModelStateBadge.downloaded
                     Button(action: setDefaultAction) {
                         Text("Set as Default")
-                            .font(.system(size: 12))
+                            .font(.ui(12))
                     }
                     .buttonStyle(.bordered)
                     .controlSize(.small)
@@ -194,19 +197,19 @@ struct ImportedWhisperModelCardView: View {
     var setDefaultAction: () -> Void
 
     var body: some View {
-        OnyxSurfaceCard(cornerRadius: 16, padding: 16) {
+        OnyxSurfaceCard(cornerRadius: Radius.control, padding: 16) {
             HStack(alignment: .top, spacing: 16) {
                 VStack(alignment: .leading, spacing: 6) {
                     HStack(alignment: .firstTextBaseline) {
                         Text(model.displayName)
-                            .font(.system(size: 13, weight: .semibold))
-                            .foregroundColor(Color(.labelColor))
+                            .font(.ui(13, weight: .semibold))
+                            .foregroundColor(Palette.inkPrimary)
                         Spacer()
                     }
 
                     Text("Imported local model")
-                        .font(.system(size: 11))
-                        .foregroundColor(Color(.secondaryLabelColor))
+                        .font(.ui(11))
+                        .foregroundColor(Palette.inkSecondary)
                         .lineLimit(2)
                         .fixedSize(horizontal: false, vertical: true)
                         .padding(.top, 4)
@@ -216,12 +219,12 @@ struct ImportedWhisperModelCardView: View {
                 HStack(spacing: 8) {
                     if isCurrent {
                         Text("Default Model")
-                            .font(.system(size: 12))
-                            .foregroundColor(Color(.secondaryLabelColor))
+                            .font(.ui(12))
+                            .foregroundColor(Palette.inkSecondary)
                     } else if isDownloaded {
                         Button(action: setDefaultAction) {
                             Text("Set as Default")
-                                .font(.system(size: 12))
+                                .font(.ui(12))
                         }
                         .buttonStyle(.bordered)
                         .controlSize(.small)
@@ -250,16 +253,32 @@ struct ImportedWhisperModelCardView: View {
                 }
             }
         }
+        // Selection ring only — OnyxSurfaceCard already strokes its own
+        // hairline, and the radius stays concentric with the card around it.
         .overlay(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .stroke(
-                    isCurrent ? Brand.tint.opacity(0.55) : Theme.separator,
-                    lineWidth: isCurrent ? 1.5 : 1
-                )
+            RoundedRectangle(cornerRadius: Radius.control, style: .continuous)
+                .strokeBorder(Brand.tint.opacity(isCurrent ? 0.55 : 0), lineWidth: 1.5)
         )
     }
 }
 
+
+// MARK: - Model Download Error
+//
+// The cause of a failed download, rendered on the card that failed so a retry
+// is not blind. Paired with the action column's Retry button.
+struct ModelDownloadErrorLabel: View {
+    let message: String
+
+    var body: some View {
+        Label(message, systemImage: "exclamationmark.triangle.fill")
+            .font(.ui(11))
+            .foregroundColor(Palette.stateFail)
+            .fixedSize(horizontal: false, vertical: true)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .accessibilityLabel("Download failed: \(message)")
+    }
+}
 
 // MARK: - Model State Badge
 //
@@ -283,7 +302,7 @@ struct ModelStateBadge: View {
                 Image(systemName: "exclamationmark.triangle.fill")
                     .font(.system(size: 10))
                 Text("Selected · not downloaded")
-                    .font(.system(size: 11, weight: .medium))
+                    .font(.ui(11, weight: .medium))
             }
             .foregroundColor(Palette.recRed)
             .padding(.horizontal, 8)
@@ -296,7 +315,7 @@ struct ModelStateBadge: View {
             .accessibilityLabel("Selected but not downloaded")
         case .downloaded:
             Text("Downloaded")
-                .font(.system(size: 11, weight: .medium))
+                .font(.ui(11, weight: .medium))
                 .foregroundColor(.secondary)
         }
     }
@@ -309,7 +328,7 @@ func progressDotsWithNumber(value: Double) -> some View {
         progressDots(value: value)
         Text(String(format: "%.1f", value))
             .font(.system(size: 10, weight: .medium, design: .monospaced))
-            .foregroundColor(Color(.secondaryLabelColor))
+            .foregroundColor(Palette.inkSecondary)
     }
 }
 
@@ -325,9 +344,9 @@ func progressDots(value: Double) -> some View {
 
 func performanceColor(value: Double) -> Color {
     switch value {
-    case 0.8...1.0: return Color(.systemGreen)
-    case 0.6..<0.8: return Color(.systemYellow)
-    case 0.4..<0.6: return Color(.systemOrange)
-    default: return Color(.systemRed)
+    case 0.8...1.0: return Palette.success
+    case 0.6..<0.8: return Palette.warn
+    case 0.4..<0.6: return Palette.stateFail
+    default: return Palette.recRed
     }
 }

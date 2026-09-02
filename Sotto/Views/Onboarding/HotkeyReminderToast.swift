@@ -1,6 +1,5 @@
 import AppKit
 import SwiftUI
-import KeyboardShortcuts
 
 extension Notification.Name {
     static let firstInvocationDidFire = Notification.Name("firstInvocationDidFire_v1")
@@ -13,13 +12,23 @@ enum HotkeyReminderToast {
     static func show() {
         let state = OnboardingState.shared
         guard state.shouldPresentHotkeyReminder else { return }
+
+        // Teach the binding that actually fires. With nothing bound there is no
+        // gesture to teach, so hold the reminder back (unmarked) until there is.
+        let option = HotkeyManager.storedDictationHotkey
+        let glyphs = HotkeyManager.dictationGlyphs(for: option)
+        guard !glyphs.isEmpty else { return }
+
         state.markHotkeyReminderShown()
 
-        let shortcut = KeyboardShortcuts.getShortcut(for: .toggleMiniRecorder)?.description ?? "⌥ SPACE"
         let reduceMotion = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
 
         AnnouncementManager.shared.showReminderToast(
-            HotkeyReminderToastView(shortcut: shortcut, onClose: { dismiss() }),
+            HotkeyReminderToastView(
+                shortcut: glyphs.joined(separator: " "),
+                spokenShortcut: option.displayName,
+                onClose: { dismiss() }
+            ),
             reduceMotion: reduceMotion
         )
 
@@ -43,6 +52,7 @@ enum HotkeyReminderToast {
 
 struct HotkeyReminderToastView: View {
     let shortcut: String
+    let spokenShortcut: String
     let onClose: () -> Void
 
     var body: some View {
@@ -56,7 +66,7 @@ struct HotkeyReminderToastView: View {
                 + Text(shortcut).font(.mono(13, weight: .medium)).foregroundColor(Palette.inkPrimary)
                 + Text(" to dictate").foregroundColor(Palette.inkPrimary))
                 .font(.system(size: 13, weight: .regular))
-                .accessibilityLabel("Tip: press \(shortcut) to start dictation")
+                .accessibilityLabel("Tip: press \(spokenShortcut) to start dictation")
 
             Button(action: onClose) {
                 Image(systemName: "xmark")

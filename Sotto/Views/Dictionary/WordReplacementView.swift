@@ -96,10 +96,6 @@ struct WordReplacementView: View {
         UserDefaults.standard.set(sortMode.rawValue, forKey: "wordReplacementSortMode")
     }
 
-    private var shouldShowAddButton: Bool {
-        !originalWord.isEmpty || !replacementWord.isEmpty
-    }
-
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
             HStack(alignment: .top, spacing: 10) {
@@ -138,19 +134,20 @@ struct WordReplacementView: View {
 
                 matteField("Replacement text", text: $replacementWord, onSubmit: addReplacement)
 
-                if shouldShowAddButton {
-                    Button(action: addReplacement) {
-                        Image(systemName: "plus.circle.fill")
-                            .symbolRenderingMode(.hierarchical)
-                            .foregroundStyle(Palette.phosphor)
-                            .font(.system(size: 16, weight: .semibold))
-                    }
-                    .buttonStyle(.borderless)
-                    .disabled(originalWord.isEmpty || replacementWord.isEmpty)
-                    .help("Add word replacement")
+                // Present at all times: inserting the button on the first
+                // keystroke resized the fields under the caret mid-typing.
+                Button(action: addReplacement) {
+                    Image(systemName: "plus.circle.fill")
+                        .symbolRenderingMode(.hierarchical)
+                        .foregroundStyle(Palette.phosphor)
+                        .font(.system(size: 16, weight: .semibold))
                 }
+                .buttonStyle(.borderless)
+                .disabled(originalWord.isEmpty || replacementWord.isEmpty)
+                .opacity(originalWord.isEmpty || replacementWord.isEmpty ? 0.35 : 1)
+                .help("Add word replacement")
+                .accessibilityLabel("Add word replacement")
             }
-            .animation(Animation.haloPhaseCrossfade, value: shouldShowAddButton)
 
             if !wordReplacements.isEmpty {
                 sortHeader
@@ -416,6 +413,12 @@ private struct ReplacementGlassCard: View {
     @State private var hovering: Bool = false
     @State private var draftOriginal: String = ""
     @State private var draftReplacement: String = ""
+    /// Which row action holds keyboard focus. Non-nil reveals the pair, so Edit
+    /// and Delete are reachable without a pointer (hover alone hid them from the
+    /// keyboard and from VoiceOver activation).
+    @FocusState private var focusedAction: RowAction?
+
+    private enum RowAction: Hashable { case edit, delete }
 
     var body: some View {
         let shape = RoundedRectangle(cornerRadius: Radius.card, style: .continuous)
@@ -485,8 +488,7 @@ private struct ReplacementGlassCard: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
 
             actionButtons
-                .opacity(hovering ? 1 : 0)
-                .allowsHitTesting(hovering)
+                .opacity(hovering || focusedAction != nil ? 1 : 0)
         }
     }
 
@@ -499,7 +501,9 @@ private struct ReplacementGlassCard: View {
                     .font(.system(size: 16, weight: .medium))
             }
             .buttonStyle(.borderless)
+            .focused($focusedAction, equals: .edit)
             .help("Edit replacement")
+            .accessibilityLabel("Edit replacement")
 
             Button(action: onDelete) {
                 Image(systemName: "xmark.circle.fill")
@@ -508,7 +512,9 @@ private struct ReplacementGlassCard: View {
                     .font(.system(size: 16, weight: .medium))
             }
             .buttonStyle(.borderless)
+            .focused($focusedAction, equals: .delete)
             .help("Remove replacement")
+            .accessibilityLabel("Remove replacement")
         }
     }
 

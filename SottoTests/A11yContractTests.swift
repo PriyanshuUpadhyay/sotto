@@ -60,6 +60,19 @@ final class A11yContractTests: XCTestCase {
                        "dictionary add button must announce a VoiceOver label")
     }
 
+    /// The audio player is the surface for reviewing a transcript against its
+    /// audio, so its scrubber and transport must announce like every other
+    /// reachable control.
+    func testAudioPlayerControlsAnnounceDistinctNonEmptyLabels() {
+        let labels = [WaveformView.scrubberAccessibilityLabel,
+                      AudioPlayerView.playLabel,
+                      AudioPlayerView.pauseLabel]
+        XCTAssertTrue(labels.allSatisfy { !$0.isEmpty },
+                      "each audio player control must announce a VoiceOver label")
+        XCTAssertEqual(Set(labels).count, labels.count,
+                       "the audio player controls must not announce the same label")
+    }
+
     func testReviewTrayActionsAnnounceDistinctNonEmptyLabels() {
         let labels = [ReviewTray.undoButtonLabel, ReviewTray.copyButtonLabel]
         XCTAssertTrue(labels.allSatisfy { !$0.isEmpty },

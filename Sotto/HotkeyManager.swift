@@ -150,6 +150,41 @@ class HotkeyManager: ObservableObject {
             return self != .custom && self != .none
         }
     }
+
+    /// The stored primary dictation hotkey, read without touching a live
+    /// manager. `.rightCommand` is the shipped default, so this is what fires on
+    /// a clean install.
+    static var storedDictationHotkey: HotkeyOption {
+        HotkeyOption(rawValue: UserDefaults.standard.string(forKey: "selectedHotkey1") ?? "") ?? .rightCommand
+    }
+
+    /// Unicode key-cap glyphs for a dictation hotkey option. Single-modifier
+    /// options collapse to one cap (⌘/⌥/⌃/⇧/fn); `.custom` parses the recorded
+    /// `KeyboardShortcuts.Shortcut`. Empty ⇒ nothing is bound, so a teaching
+    /// surface must offer "set a shortcut" instead of a combo.
+    static func dictationGlyphs(for option: HotkeyOption) -> [String] {
+        switch option {
+        case .none:
+            return []
+        case .custom:
+            guard let s = KeyboardShortcuts.getShortcut(for: .toggleMiniRecorder) else { return [] }
+            var caps: [String] = []
+            let m = s.modifiers
+            if m.contains(.control) { caps.append("⌃") }
+            if m.contains(.option)  { caps.append("⌥") }
+            if m.contains(.shift)   { caps.append("⇧") }
+            if m.contains(.command) { caps.append("⌘") }
+            let modifierGlyphs: Set<Character> = ["⌃", "⌥", "⇧", "⌘"]
+            let keyPart = String(s.description.drop(while: { modifierGlyphs.contains($0) }))
+            if !keyPart.isEmpty { caps.append(keyPart) }
+            return caps
+        case .rightOption, .leftOption:    return ["⌥"]
+        case .leftControl, .rightControl:  return ["⌃"]
+        case .fn:                          return ["fn"]
+        case .rightCommand:                return ["⌘"]
+        case .rightShift:                  return ["⇧"]
+        }
+    }
     
     init(engine: SottoEngine, recorderUIManager: RecorderUIManager) {
         self.selectedHotkey1 = HotkeyOption(rawValue: UserDefaults.standard.string(forKey: "selectedHotkey1") ?? "") ?? .rightCommand

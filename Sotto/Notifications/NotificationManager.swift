@@ -66,8 +66,9 @@ class NotificationManager {
         
         self.notificationWindow = panel
         
+        let reduceMotion = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
         NSAnimationContext.runAnimationGroup({ context in
-            context.duration = 0.3
+            context.duration = reduceMotion ? 0 : MotionTokens.stateEnterDuration
             context.timingFunction = CAMediaTimingFunction(name: .easeOut)
             panel.animator().alphaValue = 1
         })
@@ -108,9 +109,12 @@ class NotificationManager {
         dismissTimer?.invalidate()
         dismissTimer = nil
         
+        let reduceMotion = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
         NSAnimationContext.runAnimationGroup({ context in
-            context.duration = 0.2
-            context.timingFunction = CAMediaTimingFunction(name: .easeIn)
+            // ease-in starts slow exactly where the user is looking; the exit
+            // token leaves on the same curve the rest of the app uses.
+            context.duration = reduceMotion ? 0 : MotionTokens.stateExitDuration
+            context.timingFunction = CAMediaTimingFunction(name: .easeOut)
             window.animator().alphaValue = 0
         }, completionHandler: {
             window.close()

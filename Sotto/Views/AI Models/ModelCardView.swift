@@ -8,6 +8,7 @@ struct ModelCardView: View {
     let isDownloaded: Bool
     let isCurrent: Bool
     let downloadProgress: [String: Double]
+    let downloadError: String?
     let modelURL: URL?
     let isWarming: Bool
 
@@ -25,6 +26,7 @@ struct ModelCardView: View {
                         isDownloaded: isDownloaded,
                         isCurrent: isCurrent,
                         downloadProgress: downloadProgress,
+                        downloadError: downloadError,
                         modelURL: modelURL,
                         isWarming: isWarming,
                         deleteAction: deleteAction,

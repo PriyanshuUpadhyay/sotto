@@ -1,11 +1,15 @@
 import Foundation
 
 /// One searchable Settings entry: a section in a tab, identified by its tab and
-/// a human-readable label. v1 indexes section LABELS only — never live control
-/// values — so the index holds exactly one entry per section.
+/// a human-readable label, plus the names of the controls that section holds.
+/// The index still holds exactly one entry per section — control names are
+/// keywords ON the section entry, never live control values.
 struct SettingsSearchResult: Equatable, Identifiable {
     let tab: SettingsTab
     let label: String
+    /// What the section's own controls are called, so a query naming a control
+    /// ("haptic", "export") finds the section that owns it.
+    var keywords: [String] = []
     var id: String { "\(tab.rawValue):\(label)" }
 }
 
@@ -23,23 +27,24 @@ struct SettingsSearch {
         // No Models entries: Models graduated to a first-class window
         // destination (2026-07 revamp) and is no longer a Settings rail row.
         var entries: [SettingsSearchResult] = []
-        entries += GeneralTab.GeneralTabSection.allCases.map { SettingsSearchResult(tab: .general, label: $0.searchLabel) }
-        entries += ShortcutsTab.ShortcutsTabSection.allCases.map { SettingsSearchResult(tab: .shortcuts, label: $0.searchLabel) }
-        entries += VocabularyTab.VocabularyTabSection.allCases.map { SettingsSearchResult(tab: .vocabulary, label: $0.searchLabel) }
-        entries += AdvancedTab.AdvancedTabSection.allCases.map { SettingsSearchResult(tab: .advanced, label: $0.searchLabel) }
+        entries += GeneralTab.GeneralTabSection.allCases.map { SettingsSearchResult(tab: .general, label: $0.searchLabel, keywords: $0.searchKeywords) }
+        entries += ShortcutsTab.ShortcutsTabSection.allCases.map { SettingsSearchResult(tab: .shortcuts, label: $0.searchLabel, keywords: $0.searchKeywords) }
+        entries += VocabularyTab.VocabularyTabSection.allCases.map { SettingsSearchResult(tab: .vocabulary, label: $0.searchLabel, keywords: $0.searchKeywords) }
+        entries += AdvancedTab.AdvancedTabSection.allCases.map { SettingsSearchResult(tab: .advanced, label: $0.searchLabel, keywords: $0.searchKeywords) }
         return entries
     }
 
     /// Pure, testable filter. An empty (or whitespace-only) query returns every
-    /// index entry. Otherwise it returns entries whose section label or tab
-    /// title contains the query, case-insensitively. v1 = label/section match
-    /// only; no live control values are consulted.
+    /// index entry. Otherwise it returns entries whose section label, tab title
+    /// or control keywords contain the query, case-insensitively. Still one
+    /// entry per section; no live control values are consulted.
     func filter(_ query: String) -> [SettingsSearchResult] {
         let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return Self.index }
         return Self.index.filter { entry in
             entry.label.localizedCaseInsensitiveContains(trimmed)
                 || entry.tab.title.localizedCaseInsensitiveContains(trimmed)
+                || entry.keywords.contains { $0.localizedCaseInsensitiveContains(trimmed) }
         }
     }
 
@@ -56,11 +61,12 @@ struct SettingsSearch {
     }
 }
 
-// MARK: - Section labels
+// MARK: - Section labels and control keywords
 //
-// Human labels for each tab's section descriptor. Each switch is EXHAUSTIVE
-// over its enum, so adding or removing a section case is a compile error here —
-// the search index stays in lockstep with the tabs' real composition.
+// Human labels — and the names of the controls each section holds — for every
+// tab's section descriptor. Each switch is EXHAUSTIVE over its enum, so adding
+// or removing a section case is a compile error here — the search index stays
+// in lockstep with the tabs' real composition.
 
 extension GeneralTab.GeneralTabSection {
     var searchLabel: String {
@@ -70,6 +76,16 @@ extension GeneralTab.GeneralTabSection {
         case .launchAtLogin: return "Launch at Login"
         case .hideDock: return "Hide Dock Icon"
         case .permissionsStatus: return "Permissions"
+        }
+    }
+
+    var searchKeywords: [String] {
+        switch self {
+        case .audioInput: return ["microphone", "mic", "input device", "device priority"]
+        case .soundFeedback: return ["sound", "haptics", "haptic feedback", "mute", "resume delay"]
+        case .launchAtLogin: return ["startup", "start automatically", "login item"]
+        case .hideDock: return ["dock icon", "menu bar only"]
+        case .permissionsStatus: return ["accessibility", "screen recording", "microphone access"]
         }
     }
 }
@@ -82,6 +98,16 @@ extension ShortcutsTab.ShortcutsTabSection {
         case .retry: return "Retry Last Transcription"
         case .commandPalette: return "Command Palette"
         case .customCancel: return "Custom Cancel"
+        }
+    }
+
+    var searchKeywords: [String] {
+        switch self {
+        case .primaryShortcuts: return ["hotkey", "keyboard", "record", "push to talk"]
+        case .paste: return ["clipboard", "hotkey"]
+        case .retry: return ["hotkey", "re-run"]
+        case .commandPalette: return ["hotkey", "command k"]
+        case .customCancel: return ["stop", "escape", "hotkey"]
         }
     }
 }
@@ -103,6 +129,14 @@ extension VocabularyTab.VocabularyTabSection {
         case .fillerWords: return "Filler Words"
         }
     }
+
+    var searchKeywords: [String] {
+        switch self {
+        case .dictionary: return ["vocabulary", "terms", "spelling", "custom words"]
+        case .wordReplacements: return ["replace", "substitution", "rewrite"]
+        case .fillerWords: return ["um", "uh", "hmm"]
+        }
+    }
 }
 
 extension AdvancedTab.AdvancedTabSection {
@@ -112,4 +146,12 @@ extension AdvancedTab.AdvancedTabSection {
         case .backup: return "Backup & Restore"
         }
     }
+
+    var searchKeywords: [String] {
+        switch self {
+        case .privacy: return ["auto-delete", "cleanup", "retention", "audio files", "transcripts"]
+        case .backup: return ["export", "import", "restore"]
+        }
+    }
 }
+

@@ -44,13 +44,14 @@ struct SettingsSectionHeader: View {
 
             VStack(alignment: .leading, spacing: 1) {
                 Text(title)
-                    .font(.system(size: 14, weight: .semibold))
+                    .font(.ui(14, weight: .semibold))
                     .foregroundColor(Palette.inkPrimary)
                 if let subtitle, !subtitle.isEmpty {
                     Text(subtitle)
-                        .font(.system(size: 11, weight: .regular))
+                        .font(.ui(11, weight: .regular))
                         .foregroundColor(Palette.inkSecondary)
-                        .lineLimit(1)
+                        .lineLimit(2)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
             }
 

@@ -130,7 +130,7 @@ struct ModelsTab: View {
 
                     if experimentalModels.isEmpty {
                         Text("No additional experimental models are available on this macOS version.")
-                            .font(.system(size: 11))
+                            .font(.ui(11))
                             .foregroundColor(Palette.inkSecondary)
                     }
                 }
@@ -174,11 +174,17 @@ struct ModelsTab: View {
                 Toggle(isOn: $isAcousticBoostingEnabled) {
                     VStack(alignment: .leading, spacing: 2) {
                         Text("Confirm custom terms against the audio")
-                            .font(.system(size: 12, weight: .semibold))
-                        Text(acousticBoostingCaption)
-                            .font(.system(size: 11))
-                            .foregroundColor(acousticBoostingError == nil ? Palette.inkSecondary : .red)
-                            .fixedSize(horizontal: false, vertical: true)
+                            .font(.ui(12, weight: .semibold))
+                        HStack(spacing: 6) {
+                            if isPreparingAcousticModel {
+                                ProgressView()
+                                    .controlSize(.small)
+                            }
+                            Text(acousticBoostingCaption)
+                                .font(.ui(11))
+                                .foregroundColor(acousticBoostingError == nil ? Palette.inkSecondary : Palette.stateFail)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
                     }
                 }
                 .toggleStyle(.switch)
@@ -220,7 +226,7 @@ struct ModelsTab: View {
                 await MainActor.run {
                     isPreparingAcousticModel = false
                     isAcousticBoostingEnabled = false
-                    acousticBoostingError = "Couldn’t download the acoustic model. Tap to retry."
+                    acousticBoostingError = "Couldn’t download the acoustic model. Turn the switch back on to retry."
                 }
             }
         }
@@ -235,7 +241,7 @@ struct ModelsTab: View {
                     .tracking(0.06 * 10.5)
                     .foregroundColor(Brand.tint)
                 Text(tier.subtitle)
-                    .font(.system(size: 11))
+                    .font(.ui(11))
                     .foregroundColor(Palette.inkSecondary)
                 Spacer(minLength: 0)
             }
@@ -244,7 +250,7 @@ struct ModelsTab: View {
                 modelCard(for: model)
             } else {
                 Text("Model unavailable")
-                    .font(.system(size: 11))
+                    .font(.ui(11))
                     .foregroundColor(Palette.inkSecondary)
             }
         }
@@ -256,7 +262,7 @@ struct ModelsTab: View {
             if #available(macOS 26, *) {
                 VStack(alignment: .leading, spacing: 6) {
                     Text("Experimental Apple Speech path. This is useful as a native baseline, but docs currently flag it as experimental and it may not work yet.")
-                        .font(.system(size: 11))
+                        .font(.ui(11))
                         .foregroundColor(Palette.inkSecondary)
                         .fixedSize(horizontal: false, vertical: true)
                     modelCard(for: model)
@@ -279,6 +285,7 @@ struct ModelsTab: View {
             isDownloaded: whisperModelManager.availableModels.contains { $0.name == model.name },
             isCurrent: transcriptionModelManager.currentTranscriptionModel?.name == model.name,
             downloadProgress: whisperModelManager.downloadProgress,
+            downloadError: whisperModelManager.downloadErrors[model.name],
             modelURL: whisperModelManager.availableModels.first { $0.name == model.name }?.url,
             isWarming: isWarming,
             deleteAction: {
@@ -341,9 +348,9 @@ struct ModelsTab: View {
                 )) {
                     VStack(alignment: .leading, spacing: 2) {
                         Text("Clean up transcripts with AI")
-                            .font(.system(size: 12, weight: .semibold))
+                            .font(.ui(12, weight: .semibold))
                         Text("Removes fillers and adds punctuation while preserving your wording. Off pastes the raw transcript.")
-                            .font(.system(size: 11))
+                            .font(.ui(11))
                             .foregroundColor(Palette.inkSecondary)
                             .fixedSize(horizontal: false, vertical: true)
                     }

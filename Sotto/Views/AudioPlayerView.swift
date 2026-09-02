@@ -128,7 +128,9 @@ class AudioPlayerManager: ObservableObject {
     }
     
     private func startTimer() {
-        timer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in
+        // 30 Hz on `.common` so the playhead neither strobes nor stalls while a
+        // menu is open or the list is being scrolled.
+        let timer = Timer(timeInterval: 1.0 / 30.0, repeats: true) { [weak self] _ in
             guard let self = self else { return }
             self.currentTime = self.audioPlayer?.currentTime ?? 0
             if self.currentTime >= self.duration {
@@ -136,6 +138,8 @@ class AudioPlayerManager: ObservableObject {
                 self.seek(to: 0)
             }
         }
+        RunLoop.main.add(timer, forMode: .common)
+        self.timer = timer
     }
 
     private func stopTimer() {
@@ -161,6 +165,9 @@ private func formatTime(_ time: TimeInterval) -> String {
 }
 
 struct WaveformView: View {
+    /// VoiceOver label for the scrubber. Held by `A11yContractTests`.
+    static let scrubberAccessibilityLabel = "Playback position"
+
     let samples: [Float]
     let currentTime: TimeInterval
     let duration: TimeInterval
@@ -185,6 +192,7 @@ struct WaveformView: View {
                     HStack(spacing: 0.5) {
                         ForEach(0..<samples.count, id: \.self) { index in
                             WaveformBar(
+                                index: index,
                                 sample: samples[index],
                                 isPlayed: CGFloat(index) / CGFloat(samples.count) <= CGFloat(currentTime / duration),
                                 totalBars: samples.count,
@@ -243,10 +251,20 @@ struct WaveformView: View {
             }
         }
         .frame(height: 32)
+        .accessibilityElement()
+        .accessibilityLabel(Self.scrubberAccessibilityLabel)
+        .accessibilityValue(formatTime(currentTime))
+        .accessibilityAdjustableAction { direction in
+            guard !isLoading, duration > 0 else { return }
+            let step: TimeInterval = 5
+            let target = currentTime + (direction == .increment ? step : -step)
+            onSeek(max(0, min(duration, target)))
+        }
     }
 }
 
 struct WaveformBar: View {
+    let index: Int
     let sample: Float
     let isPlayed: Bool
     let totalBars: Int
@@ -255,7 +273,9 @@ struct WaveformBar: View {
     let hoverProgress: CGFloat
     
     private var isNearHover: Bool {
-        let barPosition = geometryWidth / CGFloat(totalBars)
+        // The bar's own centre — the previous expression was the bar WIDTH, the
+        // same for every bar, so the whole waveform bulged at once.
+        let barPosition = (CGFloat(index) + 0.5) * (geometryWidth / CGFloat(totalBars))
         let hoverPosition = hoverProgress * geometryWidth
         return abs(barPosition - hoverPosition) < 20
     }
@@ -323,7 +343,7 @@ private struct AsyncCircleButton: View {
                         } else if showSuccess {
                             Image(systemName: "checkmark")
                                 .font(.system(size: 14, weight: .semibold))
-                                .foregroundStyle(Color.green)
+                                .foregroundStyle(Palette.stateCommit)
                         } else {
                             Image(systemName: defaultIcon)
                                 .font(.system(size: 14, weight: .semibold))
@@ -343,16 +363,16 @@ private struct StatusBanner: View {
     var body: some View {
         HStack(spacing: 8) {
             Image(systemName: isError ? "exclamationmark.circle.fill" : "checkmark.circle.fill")
-                .foregroundColor(isError ? .red : .green)
+                .foregroundColor(isError ? Palette.stateFail : Palette.stateCommit)
             Text(message)
                 .font(.system(size: 14, weight: .medium))
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 10)
         .background(
-            RoundedRectangle(cornerRadius: 8)
-                .fill(isError ? Color.red.opacity(0.1) : Color.green.opacity(0.1))
-                .stroke(isError ? Color.red.opacity(0.2) : Color.green.opacity(0.2), lineWidth: 1)
+            RoundedRectangle(cornerRadius: Radius.card, style: .continuous)
+                .fill((isError ? Palette.stateFail : Palette.stateCommit).opacity(0.12))
+                .stroke((isError ? Palette.stateFail : Palette.stateCommit).opacity(0.28), lineWidth: 1)
         )
         .transition(.move(edge: .top).combined(with: .opacity))
     }
@@ -370,6 +390,10 @@ private enum BannerState: Equatable {
 // MARK: - AudioPlayerView
 
 struct AudioPlayerView: View {
+    /// VoiceOver labels for the transport button. Held by `A11yContractTests`.
+    static let playLabel = "Play"
+    static let pauseLabel = "Pause"
+
     let url: URL
     let transcription: Transcription?
     var onInfoTap: (() -> Void)?
@@ -430,9 +454,13 @@ struct AudioPlayerView: View {
                         icon: playerManager.isPlaying ? "pause.fill" : "play.fill",
                         action: { playerManager.isPlaying ? playerManager.pause() : playerManager.play() }
                     )
+                    .help(playerManager.isPlaying ? Self.pauseLabel : Self.playLabel)
+                    .accessibilityLabel(playerManager.isPlaying ? Self.pauseLabel : Self.playLabel)
                     .scaleEffect(isHovering ? 1.05 : 1.0)
                     .onHover { hovering in
-                        withAnimation(Animation.haloExpand) {
+                        // A pointer entering a 32pt circle has no momentum to
+                        // carry, so no spring overshoot here.
+                        withAnimation(Animation.haloPhaseCrossfade) {
                             isHovering = hovering
                         }
                     }
@@ -509,7 +537,8 @@ struct AudioPlayerView: View {
     private func showTemporaryBanner(_ state: BannerState) {
         bannerState = state
         DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
-            withAnimation { bannerState = nil }
+            // Mirror the `.haloExpand` entrance instead of SwiftUI's default.
+            withAnimation(Animation.haloCollapse) { bannerState = nil }
         }
     }
 

@@ -56,10 +56,35 @@ final class SettingsSearchTests: XCTestCase {
         XCTAssertTrue(search.filter("zzz-no-such-setting-zzz").isEmpty)
     }
 
-    // MARK: - Negative anchor: index is section LABELS, not control values
+    // MARK: - Control keywords resolve to the section that owns the control
+
+    func test_controlKeywordMatch_findsTheSectionThatOwnsTheControl() {
+        let search = SettingsSearch()
+
+        let haptics = search.filter("haptic")
+        XCTAssertTrue(haptics.contains { $0.tab == .general && $0.label == "Sound Feedback" },
+                      "a control name must find its section: haptics live in General/Sound Feedback")
+
+        let export = search.filter("export")
+        XCTAssertTrue(export.contains { $0.tab == .advanced && $0.label == "Backup & Restore" },
+                      "export lives in Advanced/Backup & Restore")
+
+        let accessibility = search.filter("accessibility")
+        XCTAssertTrue(accessibility.contains { $0.tab == .general && $0.label == "Permissions" })
+    }
+
+    func test_everySectionCarriesControlKeywords() {
+        for entry in SettingsSearch.index {
+            XCTAssertFalse(entry.keywords.isEmpty,
+                           "\(entry.tab.title)/\(entry.label) must name the controls it holds")
+        }
+    }
+
+    // MARK: - Negative anchor: index is section LABELS + their control
+    // keywords, never one entry per live control value.
 
     func test_index_countEqualsSumOfSectionLabels_notControlValues() {
         XCTAssertEqual(SettingsSearch.index.count, expectedIndexCount,
-                       "index must hold exactly one entry per section label — not per live control value")
+                       "index must hold exactly one entry per section — control names are keywords on that entry, not extra entries")
     }
 }

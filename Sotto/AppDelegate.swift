@@ -61,22 +61,19 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         NSApp.terminate(nil)
     }
 
-    /// Re-prompt for any permission Sotto still lacks, once per launch. Onboarding
-    /// owns first-run prompting, so this only runs after it completes. Microphone
-    /// is prompted only while `.notDetermined` — a `.denied` mic can't be re-shown
-    /// by macOS, and re-asking is what the user's explicit denial rules out.
-    /// Accessibility and Screen Recording re-prompt every launch until granted.
-    /// Deferred one runloop turn so dialogs don't fire before the run loop settles.
+    /// Prompt only for the permission Sotto cannot run without, once per launch.
+    /// Onboarding owns first-run prompting, so this only runs after it completes.
+    /// Microphone is prompted only while `.notDetermined` — a `.denied` mic can't
+    /// be re-shown by macOS, and re-asking is what the user's explicit denial
+    /// rules out. Accessibility and Screen Recording are optional and have a
+    /// "Skip for now" button on their onboarding step, so they are NOT re-asked
+    /// here; the Permissions deep link is the way back in. Deferred one runloop
+    /// turn so the dialog doesn't fire before the run loop settles.
     private func requestMissingPermissionsOnLaunch() {
         guard UserDefaults.standard.bool(forKey: OnboardingState.Key.completed) else { return }
         DispatchQueue.main.async {
             if AVCaptureDevice.authorizationStatus(for: .audio) == .notDetermined {
                 AVCaptureDevice.requestAccess(for: .audio) { _ in }
-            }
-            let axOptions: NSDictionary = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true]
-            _ = AXIsProcessTrustedWithOptions(axOptions)
-            if !CGPreflightScreenCaptureAccess() {
-                CGRequestScreenCaptureAccess()
             }
         }
     }

@@ -60,7 +60,7 @@ struct GeneralTab: View {
     /// `AudioInputSettingsView` (all three modes + device picker + prioritized
     /// add/remove/reorder + refresh/current-device state) is introspectable.
     static func audioInputView() -> AudioInputSettingsView {
-        AudioInputSettingsView()
+        AudioInputSettingsView(isEmbedded: true)
     }
 
     var body: some View {
@@ -104,7 +104,6 @@ struct GeneralTab: View {
                 subtitle: "Input mode, device selection, priority order."
             ) {
                 Self.audioInputView()
-                    .frame(minHeight: 420)
             }
 
         case .soundFeedback:

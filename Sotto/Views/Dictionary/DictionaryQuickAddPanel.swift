@@ -192,9 +192,14 @@ struct DictionaryQuickAddView: View {
             DispatchQueue.main.async { focusedField = .word }
         }
         .onChange(of: mode) { _, newMode in
-            wordInput = ""
-            originalInput = ""
-            replacementInput = ""
+            // A mode switch is a correction, not a reset: carry the typed text
+            // across so the user does not retype what they just said.
+            switch newMode {
+            case .replacement:
+                if originalInput.isEmpty { originalInput = wordInput }
+            case .vocabulary:
+                if wordInput.isEmpty { wordInput = originalInput }
+            }
             errorMessage = nil
             DispatchQueue.main.async {
                 focusedField = newMode == .vocabulary ? .word : .original
@@ -333,6 +338,13 @@ struct DictionaryQuickAddView: View {
             errorMessage = error
             return
         }
+        // The panel vanishes on save, so the toast is the only confirmation the
+        // word landed anywhere.
+        NotificationManager.shared.showNotification(
+            title: "Added “\(input)” to vocabulary",
+            type: .success,
+            duration: 2.0
+        )
         onDismiss()
     }
 
@@ -354,6 +366,11 @@ struct DictionaryQuickAddView: View {
             errorMessage = error
             return
         }
+        NotificationManager.shared.showNotification(
+            title: "Added “\(original)” → “\(replacement)”",
+            type: .success,
+            duration: 2.0
+        )
         onDismiss()
     }
 }
