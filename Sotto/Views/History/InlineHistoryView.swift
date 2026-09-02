@@ -316,32 +316,11 @@ struct InlineHistoryView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
-    /// Unicode key-cap glyphs for the *primary* dictation hotkey (`selectedHotkey1`).
-    /// Single-modifier options collapse to one cap (⌘/⌥/⌃/⇧/fn); `.custom` parses
-    /// the recorded `KeyboardShortcuts.Shortcut`. Empty ⇒ no hotkey bound. Mirrors
-    /// the derivation in `SettingsView.keyComboGlyphs`.
+    /// Unicode key-cap glyphs for the *primary* dictation hotkey
+    /// (`selectedHotkey1`). Empty ⇒ no hotkey bound. Shared with the onboarding
+    /// shortcut step and the first-run reminder toast.
     private var dictationGlyphs: [String] {
-        switch hotkeyManager.selectedHotkey1 {
-        case .none:
-            return []
-        case .custom:
-            guard let s = KeyboardShortcuts.getShortcut(for: .toggleMiniRecorder) else { return [] }
-            var caps: [String] = []
-            let m = s.modifiers
-            if m.contains(.control) { caps.append("⌃") }
-            if m.contains(.option)  { caps.append("⌥") }
-            if m.contains(.shift)   { caps.append("⇧") }
-            if m.contains(.command) { caps.append("⌘") }
-            let modifierGlyphs: Set<Character> = ["⌃", "⌥", "⇧", "⌘"]
-            let keyPart = String(s.description.drop(while: { modifierGlyphs.contains($0) }))
-            if !keyPart.isEmpty { caps.append(keyPart) }
-            return caps
-        case .rightOption, .leftOption:    return ["⌥"]
-        case .leftControl, .rightControl:  return ["⌃"]
-        case .fn:                          return ["fn"]
-        case .rightCommand:                return ["⌘"]
-        case .rightShift:                  return ["⇧"]
-        }
+        HotkeyManager.dictationGlyphs(for: hotkeyManager.selectedHotkey1)
     }
 
     private func openShortcutsSettings() {

@@ -1,11 +1,10 @@
 import SwiftUI
-import KeyboardShortcuts
 
 struct HotkeyStepView: View {
     let onContinue: () -> Void
 
-    @State private var shortcut: String = "⌥ SPACE"
-    @State private var isUnbound: Bool = true
+    @State private var glyphs: [String] = []
+    @State private var spokenShortcut: String = ""
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -56,13 +55,12 @@ struct HotkeyStepView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
         .onAppear {
-            if let bound = KeyboardShortcuts.getShortcut(for: .toggleMiniRecorder) {
-                shortcut = bound.description
-                isUnbound = false
-            } else {
-                shortcut = "⌥ SPACE"
-                isUnbound = true
-            }
+            // Teach the binding that actually fires — the stored option, which is
+            // Right Command on a clean install. Never a literal combo that is
+            // bound to nothing.
+            let option = HotkeyManager.storedDictationHotkey
+            glyphs = HotkeyManager.dictationGlyphs(for: option)
+            spokenShortcut = glyphs.isEmpty ? "" : option.displayName
         }
     }
 
@@ -70,11 +68,11 @@ struct HotkeyStepView: View {
         HStack {
             Spacer()
             VStack(spacing: 8) {
-                Text(shortcut)
-                    .font(.mono(24, weight: .semibold))
-                    .foregroundColor(Palette.inkPrimary)
-                if isUnbound {
-                    Button("Configure") {
+                if glyphs.isEmpty {
+                    Text("No shortcut set")
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundColor(Palette.inkSecondary)
+                    Button("Set a dictation shortcut") {
                         NotificationCenter.default.post(
                             name: .navigateToDestination,
                             object: nil,
@@ -84,6 +82,11 @@ struct HotkeyStepView: View {
                     .buttonStyle(.plain)
                     .font(.system(size: 11, weight: .regular))
                     .foregroundColor(Palette.phosphor)
+                } else {
+                    KeyCombo(keys: glyphs)
+                    Text("press · speak · release")
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundColor(Palette.inkSecondary)
                 }
             }
             .frame(width: 240, height: 88)
@@ -98,6 +101,8 @@ struct HotkeyStepView: View {
             Spacer()
         }
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("Dictation shortcut: \(shortcut)")
+        .accessibilityLabel(glyphs.isEmpty
+            ? "No dictation shortcut set"
+            : "Dictation shortcut: \(spokenShortcut)")
     }
 }
