@@ -33,6 +33,7 @@ struct HistoryStatsBand: View {
         VStack(alignment: .leading, spacing: 5) {
             Text(value)
                 .font(.system(size: 24, weight: .semibold))
+                .tracking(-0.4)
                 .tabularNumbers()
                 .foregroundStyle(Palette.inkPrimary)
             Text(label.uppercased())

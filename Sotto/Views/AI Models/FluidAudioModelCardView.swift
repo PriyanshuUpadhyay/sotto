@@ -33,7 +33,7 @@ struct FluidAudioModelCardView: View {
     }
 
     var body: some View {
-        OnyxSurfaceCard(cornerRadius: 16, padding: 16) {
+        OnyxSurfaceCard(cornerRadius: Radius.control, padding: 16) {
             HStack(alignment: .top, spacing: 16) {
                 VStack(alignment: .leading, spacing: 6) {
                     headerSection
@@ -46,12 +46,11 @@ struct FluidAudioModelCardView: View {
                 actionSection
             }
         }
+        // Selection ring only — OnyxSurfaceCard already strokes its own
+        // hairline, and the radius stays concentric with the card around it.
         .overlay(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .stroke(
-                    isCurrent ? Brand.tint.opacity(0.55) : Theme.separator,
-                    lineWidth: isCurrent ? 1.5 : 1
-                )
+            RoundedRectangle(cornerRadius: Radius.control, style: .continuous)
+                .strokeBorder(Brand.tint.opacity(isCurrent ? 0.55 : 0), lineWidth: 1.5)
         )
     }
 
@@ -59,14 +58,14 @@ struct FluidAudioModelCardView: View {
         HStack(alignment: .firstTextBaseline) {
             Text(model.displayName)
                 .font(.system(size: 13, weight: .semibold))
-                .foregroundColor(Color(.labelColor))
+                .foregroundColor(Palette.inkPrimary)
 
             if model.supportsStreaming && isDownloaded {
                 Toggle("Real-time", isOn: $streamingEnabled)
                     .toggleStyle(.switch)
                     .controlSize(.mini)
                     .font(.system(size: 11, weight: .medium))
-                    .foregroundColor(Color(.secondaryLabelColor))
+                    .foregroundColor(Palette.inkSecondary)
                     .onChange(of: streamingEnabled) { _, newValue in
                         UserDefaults.standard.set(newValue, forKey: streamingDefaultsKey)
                     }
@@ -93,14 +92,14 @@ struct FluidAudioModelCardView: View {
             .fixedSize(horizontal: true, vertical: false)
         }
         .font(.system(size: 11))
-        .foregroundColor(Color(.secondaryLabelColor))
+        .foregroundColor(Palette.inkSecondary)
         .lineLimit(1)
     }
 
     private var descriptionSection: some View {
         Text(model.description)
             .font(.system(size: 11))
-            .foregroundColor(Color(.secondaryLabelColor))
+            .foregroundColor(Palette.inkSecondary)
             .lineLimit(2)
             .fixedSize(horizontal: false, vertical: true)
             .padding(.top, 4)
@@ -113,11 +112,13 @@ struct FluidAudioModelCardView: View {
     private var progressSection: some View {
         Group {
             if isDownloading {
-                let progress = fluidAudioModelManager.downloadProgress[model.name] ?? 0.0
-                ProgressView(value: progress)
-                    .progressViewStyle(LinearProgressViewStyle())
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.top, 8)
+                DownloadProgressView(
+                    modelName: model.name,
+                    downloadProgress: fluidAudioModelManager.downloadProgress,
+                    isTwoPhase: false
+                )
+                .padding(.top, 8)
+                .frame(maxWidth: .infinity, alignment: .leading)
             } else if let downloadError {
                 ModelDownloadErrorLabel(message: downloadError)
                     .padding(.top, 8)
@@ -146,7 +147,7 @@ struct FluidAudioModelCardView: View {
             if isCurrent && isDownloaded {
                 Text("Default Model")
                     .font(.system(size: 12))
-                    .foregroundColor(Color(.secondaryLabelColor))
+                    .foregroundColor(Palette.inkSecondary)
             } else if isCurrent && !isDownloaded {
                 // Selected but UNUSABLE — the key confusing state.
                 ModelStateBadge.selectedNotDownloaded

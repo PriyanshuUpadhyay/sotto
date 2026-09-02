@@ -16,40 +16,36 @@ struct InfoTip: View {
     @State private var isShowingTip: Bool = false
 
     var body: some View {
-        Image(systemName: iconName)
-            .imageScale(iconSize)
-            .foregroundColor(iconColor)
-            .fontWeight(.semibold)
-            .padding(5)
-            .contentShape(Rectangle())
-            .popover(isPresented: $isShowingTip) {
-                VStack(alignment: .leading, spacing: 0) {
-                    if let url = learnMoreLink {
-                        Text(message + " ")
-                            .font(.callout)
-                            .foregroundColor(.secondary)
-                        +
-                        Text("Learn more")
-                            .font(.callout)
-                            .foregroundColor(.accentColor)
-                    } else {
-                        Text(message)
-                            .font(.callout)
-                            .foregroundColor(.secondary)
-                    }
-                }
-                .fixedSize(horizontal: false, vertical: true)
-                .frame(width: width, alignment: .leading)
-                .padding(14)
-                .onTapGesture {
-                    if let url = learnMoreLink {
-                        NSWorkspace.shared.open(url)
-                    }
+        // A Button, not a tappable Image: as an Image it took no key focus and
+        // announced no label, so the explanation was mouse-only.
+        Button {
+            isShowingTip.toggle()
+        } label: {
+            Image(systemName: iconName)
+                .imageScale(iconSize)
+                .foregroundColor(iconColor)
+                .fontWeight(.semibold)
+                .padding(5)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("More information")
+        // Anchored to its source view, which is the origin-aware behavior.
+        .popover(isPresented: $isShowingTip) {
+            VStack(alignment: .leading, spacing: 8) {
+                Text(message)
+                    .font(.callout)
+                    .foregroundColor(.secondary)
+
+                if let url = learnMoreLink {
+                    Link("Learn more", destination: url)
+                        .font(.callout)
                 }
             }
-            .onTapGesture {
-                isShowingTip.toggle()
-            }
+            .fixedSize(horizontal: false, vertical: true)
+            .frame(width: width, alignment: .leading)
+            .padding(14)
+        }
     }
 }
 

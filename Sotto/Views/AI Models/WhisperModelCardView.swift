@@ -20,7 +20,7 @@ struct WhisperModelCardView: View {
     }
     
     var body: some View {
-        OnyxSurfaceCard(cornerRadius: 16, padding: 16) {
+        OnyxSurfaceCard(cornerRadius: Radius.control, padding: 16) {
             HStack(alignment: .top, spacing: 16) {
                 // Main Content
                 VStack(alignment: .leading, spacing: 6) {
@@ -35,12 +35,11 @@ struct WhisperModelCardView: View {
                 actionSection
             }
         }
+        // Selection ring only — OnyxSurfaceCard already strokes its own
+        // hairline, and the radius stays concentric with the card around it.
         .overlay(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .stroke(
-                    isCurrent ? Brand.tint.opacity(0.55) : Theme.separator,
-                    lineWidth: isCurrent ? 1.5 : 1
-                )
+            RoundedRectangle(cornerRadius: Radius.control, style: .continuous)
+                .strokeBorder(Brand.tint.opacity(isCurrent ? 0.55 : 0), lineWidth: 1.5)
         )
     }
 
@@ -48,7 +47,7 @@ struct WhisperModelCardView: View {
         HStack(alignment: .firstTextBaseline) {
             Text(model.displayName)
                 .font(.system(size: 13, weight: .semibold))
-                .foregroundColor(Color(.labelColor))
+                .foregroundColor(Palette.inkPrimary)
             
             Spacer()
         }
@@ -59,20 +58,20 @@ struct WhisperModelCardView: View {
             // Language
             Label(model.language, systemImage: "globe")
                 .font(.system(size: 11))
-                .foregroundColor(Color(.secondaryLabelColor))
+                .foregroundColor(Palette.inkSecondary)
                 .lineLimit(1)
             
             // Size
             Label(model.size, systemImage: "internaldrive")
                 .font(.system(size: 11))
-                .foregroundColor(Color(.secondaryLabelColor))
+                .foregroundColor(Palette.inkSecondary)
                 .lineLimit(1)
             
             // Speed
             HStack(spacing: 3) {
                 Text("Speed")
                     .font(.system(size: 11, weight: .medium))
-                    .foregroundColor(Color(.secondaryLabelColor))
+                    .foregroundColor(Palette.inkSecondary)
                 progressDotsWithNumber(value: model.speed * 10)
             }
             .lineLimit(1)
@@ -82,7 +81,7 @@ struct WhisperModelCardView: View {
             HStack(spacing: 3) {
                 Text("Accuracy")
                     .font(.system(size: 11, weight: .medium))
-                    .foregroundColor(Color(.secondaryLabelColor))
+                    .foregroundColor(Palette.inkSecondary)
                 progressDotsWithNumber(value: model.accuracy * 10)
             }
             .lineLimit(1)
@@ -94,7 +93,7 @@ struct WhisperModelCardView: View {
     private var descriptionSection: some View {
         Text(model.description)
             .font(.system(size: 11))
-            .foregroundColor(Color(.secondaryLabelColor))
+            .foregroundColor(Palette.inkSecondary)
             .lineLimit(2)
             .fixedSize(horizontal: false, vertical: true)
             .padding(.top, 4)
@@ -134,7 +133,7 @@ struct WhisperModelCardView: View {
             if isCurrent && isDownloaded {
                 Text("Default Model")
                     .font(.system(size: 12))
-                    .foregroundColor(Color(.secondaryLabelColor))
+                    .foregroundColor(Palette.inkSecondary)
             } else if isCurrent && !isDownloaded {
                 // Selected but UNUSABLE — the key confusing state. Make it
                 // self-explanatory and one-click-fixable.
@@ -147,7 +146,7 @@ struct WhisperModelCardView: View {
                             .controlSize(.small)
                         Text("Optimizing model for your device...")
                             .font(.system(size: 12))
-                            .foregroundColor(Color(.secondaryLabelColor))
+                            .foregroundColor(Palette.inkSecondary)
                     }
                 } else {
                     ModelStateBadge.downloaded
@@ -198,19 +197,19 @@ struct ImportedWhisperModelCardView: View {
     var setDefaultAction: () -> Void
 
     var body: some View {
-        OnyxSurfaceCard(cornerRadius: 16, padding: 16) {
+        OnyxSurfaceCard(cornerRadius: Radius.control, padding: 16) {
             HStack(alignment: .top, spacing: 16) {
                 VStack(alignment: .leading, spacing: 6) {
                     HStack(alignment: .firstTextBaseline) {
                         Text(model.displayName)
                             .font(.system(size: 13, weight: .semibold))
-                            .foregroundColor(Color(.labelColor))
+                            .foregroundColor(Palette.inkPrimary)
                         Spacer()
                     }
 
                     Text("Imported local model")
                         .font(.system(size: 11))
-                        .foregroundColor(Color(.secondaryLabelColor))
+                        .foregroundColor(Palette.inkSecondary)
                         .lineLimit(2)
                         .fixedSize(horizontal: false, vertical: true)
                         .padding(.top, 4)
@@ -221,7 +220,7 @@ struct ImportedWhisperModelCardView: View {
                     if isCurrent {
                         Text("Default Model")
                             .font(.system(size: 12))
-                            .foregroundColor(Color(.secondaryLabelColor))
+                            .foregroundColor(Palette.inkSecondary)
                     } else if isDownloaded {
                         Button(action: setDefaultAction) {
                             Text("Set as Default")
@@ -254,12 +253,11 @@ struct ImportedWhisperModelCardView: View {
                 }
             }
         }
+        // Selection ring only — OnyxSurfaceCard already strokes its own
+        // hairline, and the radius stays concentric with the card around it.
         .overlay(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .stroke(
-                    isCurrent ? Brand.tint.opacity(0.55) : Theme.separator,
-                    lineWidth: isCurrent ? 1.5 : 1
-                )
+            RoundedRectangle(cornerRadius: Radius.control, style: .continuous)
+                .strokeBorder(Brand.tint.opacity(isCurrent ? 0.55 : 0), lineWidth: 1.5)
         )
     }
 }
@@ -330,7 +328,7 @@ func progressDotsWithNumber(value: Double) -> some View {
         progressDots(value: value)
         Text(String(format: "%.1f", value))
             .font(.system(size: 10, weight: .medium, design: .monospaced))
-            .foregroundColor(Color(.secondaryLabelColor))
+            .foregroundColor(Palette.inkSecondary)
     }
 }
 
@@ -346,9 +344,9 @@ func progressDots(value: Double) -> some View {
 
 func performanceColor(value: Double) -> Color {
     switch value {
-    case 0.8...1.0: return Color(.systemGreen)
-    case 0.6..<0.8: return Color(.systemYellow)
-    case 0.4..<0.6: return Color(.systemOrange)
-    default: return Color(.systemRed)
+    case 0.8...1.0: return Palette.success
+    case 0.6..<0.8: return Palette.warn
+    case 0.4..<0.6: return Palette.stateFail
+    default: return Palette.recRed
     }
 }

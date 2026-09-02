@@ -413,11 +413,14 @@ extension WhisperModelManager: WhisperModelProvider {}
 struct DownloadProgressView: View {
     let modelName: String
     let downloadProgress: [String: Double]
+    /// Whisper downloads in two phases keyed `_main` / `_coreml`; single-phase
+    /// engines (FluidAudio) key their progress on the bare model name.
+    var isTwoPhase: Bool = true
 
     @Environment(\.colorScheme) private var colorScheme
 
     private var mainProgress: Double {
-        downloadProgress[modelName + "_main"] ?? 0
+        downloadProgress[isTwoPhase ? modelName + "_main" : modelName] ?? 0
     }
 
     private var coreMLProgress: Double {
@@ -425,7 +428,7 @@ struct DownloadProgressView: View {
     }
 
     private var supportsCoreML: Bool {
-        !modelName.contains("q5") && !modelName.contains("q8")
+        isTwoPhase && !modelName.contains("q5") && !modelName.contains("q8")
     }
 
     private var totalProgress: Double {

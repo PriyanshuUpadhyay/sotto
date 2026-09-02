@@ -8,7 +8,7 @@ struct NativeAppleModelCardView: View {
     var setDefaultAction: () -> Void
     
     var body: some View {
-        OnyxSurfaceCard(cornerRadius: 16, padding: 16) {
+        OnyxSurfaceCard(cornerRadius: Radius.control, padding: 16) {
             HStack(alignment: .top, spacing: 16) {
                 // Main Content
                 VStack(alignment: .leading, spacing: 6) {
@@ -22,12 +22,11 @@ struct NativeAppleModelCardView: View {
                 actionSection
             }
         }
+        // Selection ring only — OnyxSurfaceCard already strokes its own
+        // hairline, and the radius stays concentric with the card around it.
         .overlay(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .stroke(
-                    isCurrent ? Brand.tint.opacity(0.55) : Theme.separator,
-                    lineWidth: isCurrent ? 1.5 : 1
-                )
+            RoundedRectangle(cornerRadius: Radius.control, style: .continuous)
+                .strokeBorder(Brand.tint.opacity(isCurrent ? 0.55 : 0), lineWidth: 1.5)
         )
     }
 
@@ -35,7 +34,7 @@ struct NativeAppleModelCardView: View {
         HStack(alignment: .firstTextBaseline) {
             Text(model.displayName)
                 .font(.system(size: 13, weight: .semibold))
-                .foregroundColor(Color(.labelColor))
+                .foregroundColor(Palette.inkPrimary)
             
             Spacer()
         }
@@ -46,25 +45,25 @@ struct NativeAppleModelCardView: View {
             // Native Apple
             Label("Native Apple", systemImage: "apple.logo")
                 .font(.system(size: 11))
-                .foregroundColor(Color(.secondaryLabelColor))
+                .foregroundColor(Palette.inkSecondary)
                 .lineLimit(1)
             
             // Language
             Label(model.language, systemImage: "globe")
                 .font(.system(size: 11))
-                .foregroundColor(Color(.secondaryLabelColor))
+                .foregroundColor(Palette.inkSecondary)
                 .lineLimit(1)
             
             // On-Device
             Label("On-Device", systemImage: "checkmark.shield")
                 .font(.system(size: 11))
-                .foregroundColor(Color(.secondaryLabelColor))
+                .foregroundColor(Palette.inkSecondary)
                 .lineLimit(1)
             
             // Requires macOS 26+
             Label("macOS 26+", systemImage: "macbook")
                 .font(.system(size: 11))
-                .foregroundColor(Color(.secondaryLabelColor))
+                .foregroundColor(Palette.inkSecondary)
                 .lineLimit(1)
         }
         .lineLimit(1)
@@ -73,7 +72,7 @@ struct NativeAppleModelCardView: View {
     private var descriptionSection: some View {
         Text(model.description)
             .font(.system(size: 11))
-            .foregroundColor(Color(.secondaryLabelColor))
+            .foregroundColor(Palette.inkSecondary)
             .lineLimit(2)
             .fixedSize(horizontal: false, vertical: true)
             .padding(.top, 4)
@@ -84,7 +83,7 @@ struct NativeAppleModelCardView: View {
             if isCurrent {
                 Text("Default Model")
                     .font(.system(size: 12))
-                    .foregroundColor(Color(.secondaryLabelColor))
+                    .foregroundColor(Palette.inkSecondary)
             } else {
                 Button(action: setDefaultAction) {
                     Text("Set as Default")

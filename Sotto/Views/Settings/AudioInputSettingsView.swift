@@ -100,7 +100,8 @@ struct AudioInputSettingsView: View {
                     )
             }
             .padding()
-            .background(RoundedRectangle(cornerRadius: Radius.panel, style: .continuous).fill(Theme.groupedBackground)).overlay(RoundedRectangle(cornerRadius: Radius.panel, style: .continuous).strokeBorder(Theme.separator, lineWidth: 1))
+            .background(RoundedRectangle(cornerRadius: Radius.control, style: .continuous).fill(Theme.selectedRow))
+            .overlay(RoundedRectangle(cornerRadius: Radius.control, style: .continuous).strokeBorder(Theme.hairline, lineWidth: 1))
         }
     }
 
@@ -188,7 +189,8 @@ struct AudioInputSettingsView: View {
         }
         .frame(maxWidth: .infinity)
         .padding(40)
-        .background(RoundedRectangle(cornerRadius: Radius.panel, style: .continuous).fill(Theme.groupedBackground)).overlay(RoundedRectangle(cornerRadius: Radius.panel, style: .continuous).strokeBorder(Theme.separator, lineWidth: 1))
+        .background(RoundedRectangle(cornerRadius: Radius.control, style: .continuous).fill(Theme.selectedRow))
+            .overlay(RoundedRectangle(cornerRadius: Radius.control, style: .continuous).strokeBorder(Theme.hairline, lineWidth: 1))
     }
     
     private var prioritizedDevicesList: some View {
@@ -313,9 +315,10 @@ struct InputModeCard: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding()
-            .background(RoundedRectangle(cornerRadius: Radius.panel, style: .continuous).fill(Theme.groupedBackground)).overlay(RoundedRectangle(cornerRadius: Radius.panel, style: .continuous).strokeBorder(Theme.separator, lineWidth: 1))
+            .background(RoundedRectangle(cornerRadius: Radius.control, style: .continuous).fill(Theme.selectedRow))
+            .overlay(RoundedRectangle(cornerRadius: Radius.control, style: .continuous).strokeBorder(Theme.hairline, lineWidth: 1))
             .overlay(
-                RoundedRectangle(cornerRadius: Radius.panel, style: .continuous)
+                RoundedRectangle(cornerRadius: Radius.control, style: .continuous)
                     .strokeBorder(Brand.tint.opacity(isSelected ? 0.5 : 0), lineWidth: 1.5)
             )
         }
@@ -360,9 +363,10 @@ struct DeviceSelectionCard: View {
                 }
             }
             .padding()
-            .background(RoundedRectangle(cornerRadius: Radius.panel, style: .continuous).fill(Theme.groupedBackground)).overlay(RoundedRectangle(cornerRadius: Radius.panel, style: .continuous).strokeBorder(Theme.separator, lineWidth: 1))
+            .background(RoundedRectangle(cornerRadius: Radius.control, style: .continuous).fill(Theme.selectedRow))
+            .overlay(RoundedRectangle(cornerRadius: Radius.control, style: .continuous).strokeBorder(Theme.hairline, lineWidth: 1))
             .overlay(
-                RoundedRectangle(cornerRadius: Radius.panel, style: .continuous)
+                RoundedRectangle(cornerRadius: Radius.control, style: .continuous)
                     .strokeBorder(Brand.tint.opacity(isSelected ? 0.5 : 0), lineWidth: 1.5)
             )
         }
@@ -464,6 +468,7 @@ struct DevicePriorityCard: View {
             .buttonStyle(.plain)
         }
         .padding()
-        .background(RoundedRectangle(cornerRadius: Radius.panel, style: .continuous).fill(Theme.groupedBackground)).overlay(RoundedRectangle(cornerRadius: Radius.panel, style: .continuous).strokeBorder(Theme.separator, lineWidth: 1))
+        .background(RoundedRectangle(cornerRadius: Radius.control, style: .continuous).fill(Theme.selectedRow))
+            .overlay(RoundedRectangle(cornerRadius: Radius.control, style: .continuous).strokeBorder(Theme.hairline, lineWidth: 1))
     }
 }
