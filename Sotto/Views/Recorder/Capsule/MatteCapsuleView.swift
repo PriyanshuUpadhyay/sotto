@@ -82,8 +82,13 @@ struct MatteCapsuleView: View {
     /// but the label and VoiceOver still name the actual step.
     let enhancing: Bool
     let reduceMotion: Bool
+    /// Cause of the surfaced failure — rendered in place of "failed" and
+    /// deciding which recovery the chip offers. Nil outside `.fail`.
+    let failure: RecorderUIManager.FailureCode?
     /// `.fail` retry action — wired to the engine retry path by the host.
     let onRetry: () -> Void
+    /// `.fail` fallback when retrying cannot help (no model installed).
+    let onOpenSettings: () -> Void
 
     /// Oscillation target for the recording-dot pulse. Driven explicitly by
     /// `syncPulse` (withAnimation repeatForever on entering `.recording`, a
@@ -110,14 +115,18 @@ struct MatteCapsuleView: View {
          warming: Bool = false,
          enhancing: Bool = false,
          reduceMotion: Bool = false,
-         onRetry: @escaping () -> Void = {}) {
+         failure: RecorderUIManager.FailureCode? = nil,
+         onRetry: @escaping () -> Void = {},
+         onOpenSettings: @escaping () -> Void = {}) {
         self.state = state
         self.elapsed = elapsed
         self.partial = partial
         self.warming = warming
         self.enhancing = enhancing
         self.reduceMotion = reduceMotion
+        self.failure = failure
         self.onRetry = onRetry
+        self.onOpenSettings = onOpenSettings
         let seeded = WordStream(partial: partial)
         _tape = State(initialValue: seeded)
         let width = Self.contentWidth(of: seeded.words, italicLast: state == .recording)
@@ -142,7 +151,7 @@ struct MatteCapsuleView: View {
             }
 
             if state == .fail {
-                retryChip
+                if failure?.isRetryable == false { settingsChip } else { retryChip }
             }
         }
         .padding(.horizontal, 14)
@@ -160,7 +169,8 @@ struct MatteCapsuleView: View {
         .shadow(color: .black.opacity(0.4), radius: 15, x: 0, y: 12)
         .offset(x: revealOffset)
         .accessibilityElement(children: .combine)
-        .accessibilityLabel(StateCue.voiceOverLabel(for: state, enhancing: enhancing))
+        .accessibilityLabel(StateCue.voiceOverLabel(for: state, enhancing: enhancing,
+                                                    failureRetryable: failure?.isRetryable ?? true))
         .onAppear { syncPulse(for: state) }
         .onChange(of: state) { _, newState in syncPulse(for: newState) }
         .onChange(of: reduceMotion) { _, _ in syncPulse(for: state) }
@@ -372,6 +382,28 @@ struct MatteCapsuleView: View {
         .accessibilityHint("Press Command R to retry")
     }
 
+    /// Recovery for a failure a retry cannot fix — the only way out of
+    /// `ERR · NO_MODEL` is installing a model in Settings.
+    private var settingsChip: some View {
+        Button(action: onOpenSettings) {
+            Text("settings")
+                .font(.mono(11, weight: .semibold))
+                .foregroundStyle(Palette.stateFail)
+                .padding(.horizontal, 7)
+                .padding(.vertical, 3)
+                .background(
+                    Capsule(style: .continuous).fill(Palette.mtRaise2)
+                )
+                .overlay(
+                    Capsule(style: .continuous)
+                        .strokeBorder(Palette.stateFail.opacity(0.6), lineWidth: 1)
+                )
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Open Settings")
+        .accessibilityHint("Install a transcription model")
+    }
+
     private var capsuleBody: some View {
         Capsule(style: .continuous).fill(Palette.mtRaise)
     }
@@ -401,7 +433,7 @@ struct MatteCapsuleView: View {
         case .recording:  return Self.timer(elapsed)
         case .processing: return Self.processingLabel(warming: warming, enhancing: enhancing)
         case .commit:     return "pasted"
-        case .fail:       return "failed"
+        case .fail:       return failure?.rawValue ?? "failed"
         case .idleReady:  return "ready"
         }
     }

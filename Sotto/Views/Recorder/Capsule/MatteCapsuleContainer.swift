@@ -74,7 +74,9 @@ struct MatteCapsuleContainer<S: RecorderStateProvider & ObservableObject>: View 
             warming: state == .processing && stateProvider.isWarmingUp,
             enhancing: stateProvider.recordingState == .enhancing,
             reduceMotion: reduceMotion,
-            onRetry: handleRetry
+            failure: activeFailure.map(RecorderUIManager.errorCode(from:)),
+            onRetry: handleRetry,
+            onOpenSettings: handleOpenSettings
         )
     }
 
@@ -126,5 +128,13 @@ struct MatteCapsuleContainer<S: RecorderStateProvider & ObservableObject>: View 
         failedTask?.cancel()
         failureRegistry.acknowledgeCurrent()
         NotificationCenter.default.post(name: .retryRecording, object: nil)
+    }
+
+    /// The `ERR · NO_MODEL` recovery — retrying without a model fails
+    /// identically, so the chip sends the user where the fix is.
+    private func handleOpenSettings() {
+        failedTask?.cancel()
+        failureRegistry.acknowledgeCurrent()
+        SottoWindowCoordinator.shared.open(settingsTab: .models)
     }
 }

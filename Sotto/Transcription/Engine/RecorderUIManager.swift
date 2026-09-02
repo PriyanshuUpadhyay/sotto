@@ -124,7 +124,7 @@ class RecorderUIManager: ObservableObject {
             .sink { [weak self] event in
                 guard let self else { return }
                 if let event {
-                    self.currentErrorCode = Self.errorCode(from: event)
+                    self.currentErrorCode = Self.errorCode(from: event).rawValue
                     self.phase = .failed
                 } else if self.phase == .failed {
                     self.phase = .hidden
@@ -265,13 +265,26 @@ class RecorderUIManager: ObservableObject {
         return String(upper[..<idx])
     }
 
-    private static func errorCode(from event: FailureEvent) -> String {
+    /// Terse cause shown in place of "failed" on the fail capsule, plus
+    /// whether retrying can help: without a model, a retry fails identically,
+    /// so that case must offer Settings instead of ⌘R.
+    enum FailureCode: String {
+        case noModel  = "ERR · NO_MODEL"
+        case noDevice = "ERR · NO_DEVICE"
+        case network  = "ERR · NETWORK"
+        case noAudio  = "ERR · NO_AUDIO"
+        case unknown  = "ERR · UNKNOWN"
+
+        var isRetryable: Bool { self != .noModel }
+    }
+
+    static func errorCode(from event: FailureEvent) -> FailureCode {
         let r = event.reason.uppercased()
-        if r.contains("MODEL")          { return "ERR · NO_MODEL" }
-        if r.contains("DEVICE") || r.contains("MIC") { return "ERR · NO_DEVICE" }
-        if r.contains("NETWORK")        { return "ERR · NETWORK" }
-        if r.contains("AUDIO")          { return "ERR · NO_AUDIO" }
-        return "ERR · UNKNOWN"
+        if r.contains("MODEL")          { return .noModel }
+        if r.contains("DEVICE") || r.contains("MIC") { return .noDevice }
+        if r.contains("NETWORK")        { return .network }
+        if r.contains("AUDIO")          { return .noAudio }
+        return .unknown
     }
 
     func dismissFailedPhase() {

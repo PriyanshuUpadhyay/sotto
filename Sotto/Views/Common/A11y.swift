@@ -19,14 +19,20 @@ enum StateCue {
         }
     }
     /// Spoken VoiceOver label per state. `.processing` covers both pipeline
-    /// steps — `enhancing` picks the one actually running.
-    static func voiceOverLabel(for s: CapsuleState, enhancing: Bool = false) -> String {
+    /// steps — `enhancing` picks the one actually running; `.fail` names the
+    /// recovery the capsule actually offers (⌘R retries, except when no model
+    /// is installed and only Settings can help).
+    static func voiceOverLabel(for s: CapsuleState, enhancing: Bool = false,
+                               failureRetryable: Bool = true) -> String {
         switch s {
         case .idleReady:  return "Ready to record"
         case .recording:  return "Recording"
         case .processing: return enhancing ? "Enhancing" : "Transcribing"
         case .commit:     return "Pasted"
-        case .fail:       return "Failed. Press Command R to retry."
+        case .fail:
+            return failureRetryable
+                ? "Failed. Press Command R to retry."
+                : "Failed. No transcription model installed. Open Settings."
         }
     }
 }
