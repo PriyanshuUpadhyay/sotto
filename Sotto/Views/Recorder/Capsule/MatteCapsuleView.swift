@@ -183,6 +183,10 @@ struct MatteCapsuleView: View {
         .accessibilityElement(children: .combine)
         .accessibilityLabel(StateCue.voiceOverLabel(for: state, enhancing: enhancing,
                                                     failureRetryable: failure?.isRetryable ?? true))
+        // Mirrored crossfade on the state swap only — the frame still never
+        // animates (the mask and the content do), so a ~300pt live pill no
+        // longer becomes a ~110pt "pasted" pill in a single frame.
+        .animation(reduceMotion ? nil : MotionTokens.stateEnter, value: state)
         .onAppear { syncPulse(for: state) }
         .onChange(of: state) { _, newState in syncPulse(for: newState) }
         .onChange(of: reduceMotion) { _, _ in syncPulse(for: state) }
