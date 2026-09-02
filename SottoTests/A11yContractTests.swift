@@ -34,6 +34,32 @@ final class A11yContractTests: XCTestCase {
         }
     }
 
+    // MARK: - Liquid Glass fallbacks
+    //
+    // The recorder family is made of the platform material now, so every
+    // accessibility branch has to land somewhere opaque and legible.
+
+    func testEveryGlassLevelKeepsItsOpaqueMatteFallback() {
+        // Reduce Transparency / Increase Contrast collapse each level back onto
+        // the matte ladder the capsule used before the glass — the code path
+        // stays alive, it is not merely a lighter tint.
+        let opaque = [Palette.mtRaise.resolvedNSColor(), Palette.mtRaise2.resolvedNSColor()]
+        for level in [SottoGlassLevel.capsule, .panel, .chip, .band] {
+            XCTAssertTrue(opaque.contains(level.opaqueFill.resolvedNSColor()),
+                          "\(level) must fall back to an opaque matte surface")
+        }
+    }
+
+    func testOnlyFrostedLevelsCarryInk() {
+        // The contract `MatteContrastTests` depends on: `Palette.ink*` only ever
+        // sits on a frosted level, never on live glass whose composite depends
+        // on the wallpaper behind the window.
+        XCTAssertTrue(SottoGlassLevel.band.isFrost)
+        XCTAssertTrue(SottoGlassLevel.chip.isFrost)
+        XCTAssertFalse(SottoGlassLevel.capsule.isFrost)
+        XCTAssertFalse(SottoGlassLevel.panel.isFrost)
+    }
+
     func testMotionTokensCollapseUnderReduceMotion() {
         // Every animated state + the breathing whisper route through Motion.*,
         // which returns nil under Reduce Motion → an instant state cut.

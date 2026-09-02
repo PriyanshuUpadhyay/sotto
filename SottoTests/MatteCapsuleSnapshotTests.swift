@@ -64,21 +64,32 @@ final class MatteCapsuleSnapshotTests: XCTestCase {
 
     // MARK: - P2.3 · Per-state snapshots (SOTTO_SNAPSHOTS=1)
 
+    /// The capsule is Liquid Glass now, so what sits BEHIND it decides whether
+    /// it reads — one shot per state over a bright and a dark wallpaper tone, in
+    /// both appearances. `ImageRenderer` does not composite the live material
+    /// (see `SnapshotRenderer`), so these shots judge the frosted band, the
+    /// chips, layout and type — never the glass itself.
     @MainActor
     func test_capsule_perState_snapshots() throws {
         try XCTSkipUnless(ProcessInfo.processInfo.environment["SOTTO_SNAPSHOTS"] == "1",
                           "design snapshots: set SOTTO_SNAPSHOTS=1 to render")
+        let backdrops: [(String, Color, ColorScheme)] = [
+            ("dark", Palette.onyxBg, .dark),
+            ("light", Color(white: 0.93), .light),
+        ]
         for state in CapsuleState.allCases {
-            let view = ZStack {
-                Palette.mtCanvas
-                MatteCapsuleView(state: state, elapsed: 12.4, partial: "ship the parser",
-                                 reduceMotion: true, onRetry: {})
+            for (suffix, backdrop, scheme) in backdrops {
+                let view = ZStack {
+                    backdrop
+                    MatteCapsuleView(state: state, elapsed: 12.4, partial: "ship the parser",
+                                     reduceMotion: true, onRetry: {})
+                }
+                .frame(width: 360, height: 120)
+                .environment(\.colorScheme, scheme)
+                let url = try SnapshotRenderer.render(view, name: "capsule_\(state)-\(suffix)")
+                XCTAssertTrue(FileManager.default.fileExists(atPath: url.path))
+                print("SNAPSHOT_WRITTEN \(url.path)")
             }
-            .frame(width: 320, height: 120)
-            .environment(\.colorScheme, .dark)
-            let url = try SnapshotRenderer.render(view, name: "capsule_\(state)")
-            XCTAssertTrue(FileManager.default.fileExists(atPath: url.path))
-            print("SNAPSHOT_WRITTEN \(url.path)")
         }
     }
 
