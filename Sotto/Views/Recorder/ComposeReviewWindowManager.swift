@@ -527,19 +527,6 @@ struct ComposeReviewView: View {
         // runs to many lines, so it gets a soft recess to settle on. A recess,
         // not a frost: the glass already dims what is behind it.
         .sottoGlass(.scrim, in: RoundedRectangle(cornerRadius: Self.nestRadius, style: .continuous))
-        // Enhancing halo — accent breathes behind the nest (mock state 02);
-        // rides the same pulse as the header label.
-        .background(
-            Group {
-                if manager.isEnhancing {
-                    RoundedRectangle(cornerRadius: Radius.inner(of: Radius.panel, inset: 2), style: .continuous)
-                        .fill(Palette.phosphor.opacity(0.12))
-                        .blur(radius: 16)
-                        .padding(-8)
-                        .opacity(enhancingPulse ? 1 : 0)
-                }
-            }
-        )
         .frame(maxWidth: .infinity, alignment: .leading)
         // Measure the rendered text height (matching font + width) and size
         // the editor to it, clamped — so it expands with content.

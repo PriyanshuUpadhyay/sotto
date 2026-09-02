@@ -9,6 +9,11 @@ import SwiftUI
 // Glass lenses the backdrop and lights its own silhouette, so an added stroke
 // only reads as a hard edge the material does not have.
 //
+// One exception, and only one: the recording capsule renders its lens through
+// AppKit (`AppKitGlassCapsule`), because at 38pt the SwiftUI lens never frosted
+// on device. It still falls back HERE under Reduce Transparency / Increase
+// Contrast, and the post-paste ping still uses the `.capsule` level directly.
+//
 // `Glass.regular` is used everywhere. Apple's rule: regular blurs AND adjusts
 // the luminosity of the background so foreground text stays legible, and is the
 // variant for components carrying a significant amount of text; `Glass.clear`
@@ -231,28 +236,5 @@ extension View {
         shadowColor: Color? = nil
     ) -> some View {
         modifier(SottoGlassDepth(shape: shape, glow: glow, level: level, shadowColor: shadowColor))
-    }
-}
-
-// MARK: - Lens shape
-//
-// `glassEffect(in:)` given a `RoundedRectangle` is mapped onto a rectangular
-// effect view with a corner radius, and on device that view painted a faint
-// rectangular tint into the corner pockets outside the radius. A custom shape
-// with the same path is masked as a path instead, which is what the capsule's
-// `TrailingInsetCapsule` already gets. Use this for every rounded lens.
-struct SottoLensRect: InsettableShape {
-    var cornerRadius: CGFloat
-    var insetAmount: CGFloat = 0
-
-    func path(in rect: CGRect) -> Path {
-        Path(roundedRect: rect.insetBy(dx: insetAmount, dy: insetAmount),
-             cornerRadius: max(cornerRadius - insetAmount, 0), style: .continuous)
-    }
-
-    func inset(by amount: CGFloat) -> SottoLensRect {
-        var copy = self
-        copy.insetAmount += amount
-        return copy
     }
 }

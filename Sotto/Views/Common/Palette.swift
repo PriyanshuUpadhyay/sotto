@@ -34,7 +34,15 @@ enum Palette {
     /// dark surface.
     static func adaptive(light: UInt32, lightAlpha: Double,
                          dark: UInt32, darkAlpha: Double) -> Color {
-        Color(nsColor: NSColor(name: nil, dynamicProvider: { appearance in
+        Color(nsColor: adaptiveNSColor(light: light, lightAlpha: lightAlpha,
+                                       dark: dark, darkAlpha: darkAlpha))
+    }
+
+    /// The same token as an `NSColor` — AppKit surfaces (`NSGlassEffectView`'s
+    /// `tintColor`) take one directly and must keep resolving per appearance.
+    static func adaptiveNSColor(light: UInt32, lightAlpha: Double,
+                                dark: UInt32, darkAlpha: Double) -> NSColor {
+        NSColor(name: nil, dynamicProvider: { appearance in
             let isDark = appearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
             let value = isDark ? dark : light
             return NSColor(
@@ -43,7 +51,7 @@ enum Palette {
                 blue: CGFloat(value & 0xff) / 255,
                 alpha: isDark ? darkAlpha : lightAlpha
             )
-        }))
+        })
     }
 
     /// Completion signal. Dark keeps #30D158; Light uses a contrast-safe green.
@@ -180,6 +188,24 @@ enum Palette {
     /// Legibility shadow for ink sitting directly on glass. Opposes the ink, so
     /// it separates the glyphs from the desktop in either appearance.
     static let glassInkShadow = adaptive(light: 0xffffff, dark: 0x000000).opacity(0.5)
+
+    /// Lift for the recording pill's AppKit lens. Untinted regular glass over a
+    /// dark desktop measured within a few luminance points of its own backdrop
+    /// and read as a black pill (owner feedback, then verified on device); this
+    /// is the faint stain that gives the material a body of its own. It stays
+    /// low enough that the pill still lenses the desktop rather than covering
+    /// it, and low enough that ink keeps its ratio over a bright wallpaper.
+    static let glassCapsuleLift = adaptiveNSColor(light: 0x000000, lightAlpha: 0.08,
+                                                  dark: 0xffffff, darkAlpha: 0.22)
+
+    /// Specular rim inside the pill's edge — bright along the top, softer along
+    /// the bottom, the way a Control Center module lights its own silhouette.
+    /// Opposes the appearance, so it is a highlight in Dark and a shade in
+    /// Light; never a flat stroke, always the top-lit gradient.
+    static let glassRimTop = adaptive(light: 0x000000, lightAlpha: 0.28,
+                                      dark: 0xffffff, darkAlpha: 0.42)
+    static let glassRimBottom = adaptive(light: 0x000000, lightAlpha: 0.10,
+                                         dark: 0xffffff, darkAlpha: 0.16)
 
     // MARK: - Ink ladder
     static let inkPrimary = adaptive(light: 0x1d1d1f, dark: 0xe7e7ea)

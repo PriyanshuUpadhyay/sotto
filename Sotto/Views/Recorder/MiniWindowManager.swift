@@ -89,7 +89,11 @@ class MiniWindowManager: ObservableObject {
         deinitializeWindow()
         let metrics = MiniRecorderPanel.calculateWindowMetrics()
         let newPanel = MiniRecorderPanel(contentRect: metrics)
-        let controller = hostingController ?? NSHostingController(rootView: makeView(self))
+        // Always a fresh hosting controller: a Liquid Glass view re-parented from
+        // an old panel into a new one keeps no behind-window backdrop and renders
+        // as an opaque pill (seen on device), so the view tree is rebuilt with the
+        // panel. The rebuild is well under a frame on the hotkey path.
+        let controller = NSHostingController(rootView: makeView(self))
         hostingController = controller
         newPanel.contentView = controller.view
         panel = newPanel

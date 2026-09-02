@@ -139,12 +139,11 @@ struct MatteCapsuleView: View {
         _tapeReveal = State(initialValue: min(Self.tapeWidth, width))
     }
 
-    // No `GlassEffectContainer`: a container CAPTURES each child's glass and
-    // renders the set together in its own layer, so neither the reveal mask nor
-    // the clip below reaches the lens — the pill's glass ran the full reserved
-    // tape width and showed the desktop past the words. Rendering the effect in
-    // place costs the chip morph (the state crossfade still carries the swap)
-    // and buys a lens that is exactly the visible pill in every phase.
+    // The pill's LAYOUT width is its visible width: the tape frame follows
+    // `tapeReveal`, so the lens is a plain `Capsule()` over the real bounds.
+    // Two device findings forced this over the mockup's mask-and-offset trick:
+    // a `GlassEffectContainer` renders the lens outside any `.mask`, and a
+    // custom `Shape` handed to `glassEffect(in:)` renders no material at all.
     var body: some View {
         HStack(spacing: Self.itemSpacing) {
             stateGlyph
@@ -163,7 +162,7 @@ struct MatteCapsuleView: View {
 
             if state == .recording { escHint }
 
-            if liveTape { liveRow }
+            if liveTape, showsLiveRow { liveRow }
 
             if state == .fail {
                 if failure?.isRetryable == false { settingsChip } else { retryChip }
@@ -171,30 +170,18 @@ struct MatteCapsuleView: View {
         }
         .padding(.horizontal, 14)
         .frame(height: 38)
-        // The HStack is the glass view's own content (see `SottoGlassBackground`).
-        // The lens is trailing-inset to the revealed span so the pill's rounded
-        // end is the material's own, not a flat cut made by the reveal mask.
-        .sottoGlass(.capsule,
-                    in: TrailingInsetCapsule(trailing: revealInset),
-                    tint: stateTint)
-        .clipShape(Capsule(style: .continuous))
-        // Mockup's .cap-live technique: the FRAME stays at reserved width (the
-        // tape window is always 220pt in layout) while the VISIBLE surface is
-        // masked to the content width from the trailing edge — mask + offset
-        // animate, the frame never does. `revealOffset` recenters the visible
-        // pill in the oversized frame (translateX(clip/2) in the mockup).
-        .mask(revealMask)
-        // The accent does not sit on the surface, it bleeds through the glass —
-        // painted outside the mask, which would otherwise crop it away.
-        .sottoGlassDepth(in: TrailingInsetCapsule(trailing: revealInset),
-                         glow: glowColor, level: .capsule)
-        .offset(x: revealOffset)
+        // The HStack is the lens's own content (see `AppKitGlassCapsule`), and
+        // the lens rounds itself, so nothing clips the pill here.
+        .sottoCapsuleGlass(tint: stateTint)
+        // Depth only, no state halo: the strip window is far larger than the
+        // pill, so the blurred shadow is never clipped into a square here.
+        .sottoGlassDepth(in: Capsule(), glow: nil, level: .capsule)
         .accessibilityElement(children: .combine)
         .accessibilityLabel(StateCue.voiceOverLabel(for: state, enhancing: enhancing,
                                                     failureRetryable: failure?.isRetryable ?? true))
-        // Mirrored crossfade on the state swap only — the frame still never
-        // animates (the mask and the content do), so a ~300pt live pill no
-        // longer becomes a ~110pt "pasted" pill in a single frame.
+        // Mirrored crossfade on the state swap, so a ~300pt live pill no longer
+        // becomes a ~110pt "pasted" pill in a single frame; word arrivals resize
+        // the tape frame under `MotionTokens.tapeSlide` (see `ingest`).
         .animation(reduceMotion ? nil : MotionTokens.stateEnter, value: state)
         .onAppear { syncPulse(for: state) }
         .onChange(of: state) { _, newState in syncPulse(for: newState) }
@@ -204,35 +191,23 @@ struct MatteCapsuleView: View {
 
     // MARK: - Word tape
 
-    /// The tape window is RESERVED at a fixed width in LAYOUT for the whole
-    /// live stretch so the frame never animates (SwiftUI port rule); the
-    /// visible capsule surface is masked to `tapeReveal` and grows with
-    /// content (mockup .cap-live clip-path technique).
+    /// Widest the tape window gets; beyond it older words ride left on the
+    /// conveyor. The tape FRAME follows `tapeReveal` up to this, so the pill's
+    /// bounds are always exactly its visible surface.
     private static let tapeWidth: CGFloat = 220
     /// Leading fade-out span of the edge mask (the "recency window" edge).
     private static let tapeFade: CGFloat = 28
     /// Inter-word gap — must match the tape HStack spacing (width math).
     private static let wordSpacing: CGFloat = 5
-    /// Leading-cluster HStack spacing before the tape (collapsed by the
-    /// reveal mask while the tape is empty).
+    /// Leading-cluster HStack spacing before the tape.
     private static let itemSpacing: CGFloat = 10
 
     private var liveTape: Bool { state == .recording || state == .processing }
 
-    /// Trailing span of the reserved frame hidden by the reveal mask. Empty
-    /// tape also swallows the HStack gap before it, so the pill hugs
-    /// dot + timer at record start.
-    private var revealInset: CGFloat {
-        guard liveTape else { return 0 }
-        guard tapeReveal > 0 else { return Self.tapeWidth + Self.itemSpacing }
-        return Self.tapeWidth - tapeReveal
-    }
-
-    /// Recenter the visible pill within the oversized frame.
-    private var revealOffset: CGFloat { revealInset / 2 }
-
-    private var revealMask: some View {
-        Capsule(style: .continuous).padding(.trailing, revealInset)
+    /// The live row earns its slot only when it has something to show: the
+    /// mic bars while recording, or words. Otherwise the pill hugs dot + timer.
+    private var showsLiveRow: Bool {
+        (state == .recording && recorder != nil) || tapeReveal > 0
     }
 
     /// The tape face — the user's own words at the SAME size the review
@@ -286,7 +261,7 @@ struct MatteCapsuleView: View {
         .fixedSize(horizontal: true, vertical: false)
         .glassInkShadow()
         .offset(x: min(0, Self.tapeWidth - tapeContentWidth))
-        .frame(width: Self.tapeWidth, height: 28, alignment: .leading)
+        .frame(width: tapeReveal, height: 28, alignment: .leading)
         .clipped()
         .mask(tapeMask)
     }
@@ -295,7 +270,7 @@ struct MatteCapsuleView: View {
     /// dims what is behind it to keep foreground text legible, so a frosted
     /// well here would only be a second sheet of glass inside the first.
     private var liveRow: some View {
-        HStack(spacing: Self.itemSpacing) {
+        HStack(spacing: tapeReveal > 0 ? Self.itemSpacing : 0) {
             if state == .recording, let recorder {
                 MicLevelBars(recorder: recorder, reduceMotion: reduceMotion)
             }
@@ -468,13 +443,6 @@ struct MatteCapsuleView: View {
         }
     }
 
-    /// The halo follows the user's accent, not the state: a red bath around a
-    /// live recording read as an alarm (owner feedback). The glyph and the timer
-    /// still carry the state; only a failure keeps its own colour.
-    private var glowColor: Color {
-        state == .fail ? state.color : Palette.phosphor
-    }
-
     // MARK: - Content derivation
 
     /// The leading mono label: a mm:ss timer while recording, else a terse
@@ -518,28 +486,3 @@ struct MatteCapsuleView: View {
     .environment(\.colorScheme, .dark)
 }
 #endif
-
-/// A capsule whose trailing end sits `trailing` points inside its frame — the
-/// glass lens for a pill whose visible span is masked from the trailing edge.
-private struct TrailingInsetCapsule: InsettableShape {
-    var trailing: CGFloat
-    var insetAmount: CGFloat = 0
-
-    var animatableData: CGFloat {
-        get { trailing }
-        set { trailing = newValue }
-    }
-
-    func path(in rect: CGRect) -> Path {
-        let frame = CGRect(x: rect.minX, y: rect.minY,
-                           width: max(rect.width - trailing, 0), height: rect.height)
-            .insetBy(dx: insetAmount, dy: insetAmount)
-        return Capsule(style: .continuous).path(in: frame)
-    }
-
-    func inset(by amount: CGFloat) -> TrailingInsetCapsule {
-        var copy = self
-        copy.insetAmount += amount
-        return copy
-    }
-}
