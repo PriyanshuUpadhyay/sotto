@@ -425,6 +425,9 @@ struct ComposeReviewView: View {
             .foregroundColor(Palette.inkSecondary)
             .opacity(enhancingPulse ? 0.4 : 1)
             .onAppear {
+                // Reduce Motion keeps the label at full ink rather than parking
+                // it at the dimmed end of the (now absent) oscillation.
+                guard !reduceMotion else { return }
                 withAnimation(Motion.pulse(0.8, reduceMotion: reduceMotion)) {
                     enhancingPulse = true
                 }
