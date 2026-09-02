@@ -74,6 +74,7 @@ struct MatteCapsuleContainer<S: RecorderStateProvider & ObservableObject>: View 
             warming: state == .processing && stateProvider.isWarmingUp,
             enhancing: stateProvider.recordingState == .enhancing,
             reduceMotion: reduceMotion,
+            recorder: recorder,
             failure: activeFailure.map(RecorderUIManager.errorCode(from:)),
             onRetry: handleRetry,
             onOpenSettings: handleOpenSettings

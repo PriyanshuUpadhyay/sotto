@@ -82,6 +82,10 @@ struct MatteCapsuleView: View {
     /// but the label and VoiceOver still name the actual step.
     let enhancing: Bool
     let reduceMotion: Bool
+    /// Forwarded to the `MicLevelBars` LEAF only — never observed here, so the
+    /// meter's ~60Hz publish cannot churn this body (same contract as
+    /// `MatteCapsuleContainer`). Nil in previews / the snapshot harness.
+    let recorder: Recorder?
     /// Cause of the surfaced failure — rendered in place of "failed" and
     /// deciding which recovery the chip offers. Nil outside `.fail`.
     let failure: RecorderUIManager.FailureCode?
@@ -115,6 +119,7 @@ struct MatteCapsuleView: View {
          warming: Bool = false,
          enhancing: Bool = false,
          reduceMotion: Bool = false,
+         recorder: Recorder? = nil,
          failure: RecorderUIManager.FailureCode? = nil,
          onRetry: @escaping () -> Void = {},
          onOpenSettings: @escaping () -> Void = {}) {
@@ -124,6 +129,7 @@ struct MatteCapsuleView: View {
         self.warming = warming
         self.enhancing = enhancing
         self.reduceMotion = reduceMotion
+        self.recorder = recorder
         self.failure = failure
         self.onRetry = onRetry
         self.onOpenSettings = onOpenSettings
@@ -147,6 +153,10 @@ struct MatteCapsuleView: View {
             }
 
             if state == .recording { escHint }
+
+            if state == .recording, let recorder {
+                MicLevelBars(recorder: recorder, reduceMotion: reduceMotion)
+            }
 
             if state == .recording || state == .processing {
                 wordTape
