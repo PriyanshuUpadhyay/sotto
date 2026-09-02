@@ -13,9 +13,11 @@ struct CommandPalette: View {
     @ObservedObject var model: CommandPaletteModel
     let onRun: (PaletteCommand, Bool) -> Void
     let onClose: () -> Void
+    /// Re-sources the model for a new query (the controller re-fetches matching
+    /// transcripts). Nil in previews/snapshots, which drive a fixed source.
+    var onQueryChanged: ((String) -> Void)?
 
     @State private var query: String = ""
-    @State private var debounce: Task<Void, Never>?
     @State private var expanded: Set<String> = []
     @FocusState private var searchFocused: Bool
     @Environment(\.colorSchemeContrast) private var contrast
@@ -51,19 +53,30 @@ struct CommandPalette: View {
                 .focused($searchFocused)
                 .onSubmit { runSelected() }
                 .onChange(of: query) { _, newValue in
-                    debounce?.cancel()
-                    debounce = Task {
-                        try? await Task.sleep(nanoseconds: 250_000_000)
-                        guard !Task.isCancelled else { return }
-                        model.applyQuery(newValue)
-                    }
+                    // No debounce: ranking is pure and synchronous over the
+                    // in-memory source, and a delay would leave ⏎ running the
+                    // previous result set.
+                    onQueryChanged?(newValue)
+                    model.applyQuery(newValue)
                 }
         }
         .padding(.horizontal, 16)
         .frame(height: 52)
     }
 
+    @ViewBuilder
     private var results: some View {
+        if model.results.isEmpty {
+            Text("No matching commands")
+                .font(.mono(13))
+                .foregroundColor(Palette.inkSecondary)
+                .frame(maxWidth: .infinity, minHeight: 72)
+        } else {
+            resultsList
+        }
+    }
+
+    private var resultsList: some View {
         ScrollViewReader { proxy in
             ScrollView {
                 LazyVStack(spacing: 0) {

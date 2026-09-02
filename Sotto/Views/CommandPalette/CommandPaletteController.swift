@@ -35,7 +35,13 @@ final class CommandPaletteController: NSObject {
             CommandPalette(
                 model: model,
                 onRun: { [weak self] cmd, commandHeld in self?.run(cmd, commandHeld: commandHeld) },
-                onClose: { [weak self] in self?.close() }
+                onClose: { [weak self] in self?.close() },
+                onQueryChanged: { [weak self] query in
+                    // Transcript rows come from a SwiftData predicate, so the
+                    // source must be rebuilt for each query — otherwise the
+                    // palette only ever searches the 6 rows fetched at open.
+                    self?.model.setSource(CommandRegistry.all(engine: engine, query: query))
+                }
             )
         }
         .background(Color.black.opacity(0.32).ignoresSafeArea())   // dim backdrop
