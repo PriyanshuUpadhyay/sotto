@@ -1,13 +1,17 @@
 import SwiftUI
 
-/// Motion tokens for the 4 animated HUD states + the breathing whisper.
-/// Every animated surface MUST route through these so Reduce Motion has a
-/// single bypass (`reduceMotion ? nil : <anim>` → an instant state cut).
+/// The Reduce Motion WRAPPER over `MotionTokens` — every animated surface
+/// routes through it so Reduce Motion has a single bypass
+/// (`reduceMotion ? nil : <anim>` → an instant state cut).
+///
+/// The durations below are references, never second copies: `MotionTokens`
+/// (spec §4.3) is the source of truth, so a timing cannot silently drift
+/// between the capsule and the tray.
 enum Motion {
-    static let breatheDuration: Double = 3.0   // whisper idle breathe
-    static let recordPulse: Double = 1.0        // recording dot pulse
-    static let processSweep: Double = 1.3       // processing sweep
-    static let commitHold: Double = 1.5         // commit ✓ hold→fade
+    static let breatheDuration: Double = MotionTokens.breatheDuration
+    static let recordPulse: Double = MotionTokens.pulseDuration
+    static let processSweep: Double = MotionTokens.sweepDuration
+    static let commitHold: Double = MotionTokens.committedHold
 
     static func breathe(reduceMotion: Bool) -> Animation? {
         reduceMotion ? nil : .easeInOut(duration: breatheDuration).repeatForever(autoreverses: true)

@@ -444,10 +444,23 @@ struct MatteCapsuleView: View {
     private var capsuleEdge: some View {
         // State color tints the edge subtly; matte hairline otherwise. Padded
         // to the revealed span so the stroke hugs the VISIBLE right end (a
-        // full-width stroke would be chopped flat by the reveal mask).
-        Capsule(style: .continuous)
-            .strokeBorder(edgeColor, lineWidth: 1)
-            .padding(.trailing, revealInset)
+        // full-width stroke would be chopped flat by the reveal mask) — the
+        // top-edge sheen rides the same padding for the same reason.
+        ZStack {
+            Capsule(style: .continuous)
+                .strokeBorder(edgeColor, lineWidth: 1)
+            // Bright top edge = light catching the material, matching the two
+            // sibling raised surfaces (ReviewTray pill, review card).
+            Capsule(style: .continuous)
+                .strokeBorder(
+                    LinearGradient(colors: [Palette.innerHi, .clear],
+                                   startPoint: .top, endPoint: .center),
+                    lineWidth: 1
+                )
+                .blendMode(.plusLighter)
+                .allowsHitTesting(false)
+        }
+        .padding(.trailing, revealInset)
     }
 
     private var edgeColor: Color {

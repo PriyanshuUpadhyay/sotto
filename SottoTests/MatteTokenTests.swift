@@ -59,7 +59,12 @@ final class MatteTokenTests: XCTestCase {
         // .animation(_, value:) becomes an instant cut.
         XCTAssertNotNil(Motion.breathe(reduceMotion: false))
         XCTAssertNil(Motion.breathe(reduceMotion: true))
-        XCTAssertEqual(Motion.breatheDuration, 3.0, accuracy: 0.001)
+        // Motion mirrors MotionTokens (spec §4.3) rather than carrying its own
+        // copy of each duration.
+        XCTAssertEqual(Motion.breatheDuration, MotionTokens.breatheDuration, accuracy: 0.001)
+        XCTAssertEqual(Motion.recordPulse, MotionTokens.pulseDuration, accuracy: 0.001)
+        XCTAssertEqual(Motion.processSweep, MotionTokens.sweepDuration, accuracy: 0.001)
+        XCTAssertEqual(Motion.commitHold, MotionTokens.committedHold, accuracy: 0.001)
     }
 
     func testThemeMatteAliasesResolveToLadder() {

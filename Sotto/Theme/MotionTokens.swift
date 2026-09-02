@@ -17,7 +17,8 @@ import SwiftUI
 enum MotionTokens {
 
     /// 1.0s red dot pulse (recording).
-    static let pulse: Animation = .easeInOut(duration: 1.0)
+    static let pulseDuration: Double = 1.0
+    static let pulse: Animation = .easeInOut(duration: pulseDuration)
 
     /// 0.8–1.1s staggered bar bounce (recording audio bars).
     /// Caller selects per-bar duration in `[0.8, 1.1]` and `.delay(_:)` offsets
@@ -31,7 +32,8 @@ enum MotionTokens {
     static let sweep: Animation = .linear(duration: sweepDuration)
 
     /// 1.6s violet halo breath (enhancing).
-    static let breathe: Animation = .easeInOut(duration: 1.6)
+    static let breatheDuration: Double = 1.6
+    static let breathe: Animation = .easeInOut(duration: breatheDuration)
 
     /// 1.2s arming border breathe.
     static let arming: Animation = .easeInOut(duration: 1.2)
