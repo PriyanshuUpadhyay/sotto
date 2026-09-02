@@ -339,6 +339,7 @@ struct ComposeReviewView: View {
     @ObservedObject var manager: ComposeReviewWindowManager
 
     @Environment(\.colorSchemeContrast) private var contrast
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     /// Auto-grows with content between `minEditorHeight` and `maxEditorHeight`;
     /// scrolls beyond the max.
     @State private var editorHeight: CGFloat = 220
@@ -424,7 +425,7 @@ struct ComposeReviewView: View {
             .foregroundColor(Palette.inkSecondary)
             .opacity(enhancingPulse ? 0.4 : 1)
             .onAppear {
-                withAnimation(.easeInOut(duration: 0.8).repeatForever(autoreverses: true)) {
+                withAnimation(Motion.pulse(0.8, reduceMotion: reduceMotion)) {
                     enhancingPulse = true
                 }
             }
