@@ -425,8 +425,8 @@ struct ComposeReviewView: View {
                 versionToggle
             }
         }
-        .font(.microlabel(9))
-        .tracking(1.0)
+        .font(.microlabel(10))
+        .tracking(1.1)
     }
 
     private var enhancingLabel: some View {
@@ -526,8 +526,8 @@ struct ComposeReviewView: View {
             .frame(height: editorHeight)
             if let tag = nestTag {
                 Text(tag)
-                    .font(.microlabel(9))
-                    .tracking(1.2)
+                    .font(.microlabel(10))
+                    .tracking(1.3)
                     .foregroundColor(Palette.inkSecondary)
             }
         }
@@ -622,8 +622,8 @@ struct ComposeReviewView: View {
             }
             Spacer(minLength: 0)
         }
-        .font(.microlabel(9))
-        .tracking(0.8)
+        .font(.microlabel(10))
+        .tracking(0.9)
     }
 
     /// Keycap + label pair (mockup 03 `.keycap`) — the same chip recipe as

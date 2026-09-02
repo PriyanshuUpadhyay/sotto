@@ -125,8 +125,8 @@ struct ReviewTray: View {
                 .lineLimit(1)
                 .truncationMode(.tail)
         }
-        .font(.microlabel(9))
-        .tracking(1.0)
+        .font(.microlabel(10))
+        .tracking(1.1)
         .textCase(.uppercase)
     }
 
@@ -152,8 +152,8 @@ struct ReviewTray: View {
                 Image(systemName: icon)
                     .font(.system(size: 9, weight: .semibold))
                 Text(label.uppercased())
-                    .font(.microlabel(9))
-                    .tracking(1.0)
+                    .font(.microlabel(10))
+                    .tracking(1.1)
             }
             .foregroundColor(Palette.inkSecondary)
             .padding(.horizontal, 6)
