@@ -59,6 +59,14 @@ struct ShortcutsTab: View {
     /// construction; `SettingsShortcutsTabTests` asserts this equality.
     static var renderedSections: [ShortcutsTabSection] { ShortcutsTabSection.allCases }
 
+    /// The primary card's status badge. "None" is the state where the user
+    /// cannot start a recording at all, so it must not read "1 active".
+    static func primaryShortcutStatus(
+        _ option: HotkeyManager.HotkeyOption
+    ) -> (text: String, tone: SettingsSectionHeader.StatusTone) {
+        option == .none ? ("None", .warning) : ("1 active", .neutral)
+    }
+
     /// The raw names that hold a binding right now — the initial value of
     /// `boundNames`, read once at mount.
     private static func currentlyBoundNames() -> Set<String> {
@@ -107,8 +115,8 @@ struct ShortcutsTab: View {
                 iconTint: Brand.tint,
                 title: "Shortcuts",
                 subtitle: "Trigger recording from anywhere.",
-                statusText: hotkeyManager.selectedHotkey1 == .none ? "None" : "1 active",
-                statusTone: hotkeyManager.selectedHotkey1 == .none ? .warning : .neutral
+                statusText: Self.primaryShortcutStatus(hotkeyManager.selectedHotkey1).text,
+                statusTone: Self.primaryShortcutStatus(hotkeyManager.selectedHotkey1).tone
             ) {
                 SettingsRow(
                     iconSystemName: "1.circle",

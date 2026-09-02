@@ -92,4 +92,22 @@ final class SettingsShortcutsTabTests: XCTestCase {
         XCTAssertEqual(Set(sections), Set(expected))
         XCTAssertEqual(sections.count, expected.count, "no duplicate / missing shortcut binding")
     }
+    // MARK: - Status badges report the real state
+
+    /// "1 active" next to a shortcut set to None is the one state where an
+    /// honest badge matters most: the user cannot start a recording at all.
+    func test_primaryShortcutStatus_reportsNoneAsAWarning() {
+        let none = ShortcutsTab.primaryShortcutStatus(.none)
+        XCTAssertEqual(none.text, "None")
+        XCTAssertEqual(none.tone, .warning)
+    }
+
+    func test_primaryShortcutStatus_reportsABoundOptionAsActive() {
+        for option in HotkeyManager.HotkeyOption.allCases where option != .none {
+            let status = ShortcutsTab.primaryShortcutStatus(option)
+            XCTAssertEqual(status.text, "1 active", "\(option) is a real binding")
+            XCTAssertEqual(status.tone, .neutral)
+        }
+    }
+
 }
