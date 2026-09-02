@@ -8,12 +8,16 @@ enum CommandRegistry {
 
     // MARK: Pure builders
 
+    /// One row per indexed section, across EVERY sidebar destination — the
+    /// index now spans the whole window (Dictionary and Models included), so
+    /// this is the palette's single navigation list. The subtitle names the
+    /// sidebar row the result lands on, not a rail that no longer exists.
     static func navigationCommands(index: [SettingsSearchResult]) -> [PaletteCommand] {
         index.map { entry in
             PaletteCommand(
                 id: "nav:\(entry.id)",
                 title: entry.label,
-                subtitle: "\(entry.tab.title) · Settings",
+                subtitle: SottoWindowTab(settingsTab: entry.tab).title,
                 systemImage: "arrow.right.circle",
                 category: .navigate,
                 requiresFocusRestore: false,
@@ -21,28 +25,6 @@ enum CommandRegistry {
                     // Staged + posted AFTER the window opens (the old
                     // post-then-open order was lossy pre-mount).
                     SottoWindowCoordinator.shared.open(settingsSection: entry.tab, label: entry.label)
-                }
-            )
-        }
-    }
-
-    /// Dictionary navigation: one row per VocabularyTab section, opening the
-    /// window's Dictionary destination (its one home) rather than a Settings
-    /// rail row. Built from the section descriptor, so a section cannot be
-    /// added or dropped without this list following it.
-    static func dictionaryCommands(
-        sections: [VocabularyTab.VocabularyTabSection] = VocabularyTab.VocabularyTabSection.allCases
-    ) -> [PaletteCommand] {
-        sections.map { section in
-            PaletteCommand(
-                id: "nav:dictionary:\(section.searchLabel)",
-                title: section.searchLabel,
-                subtitle: "Dictionary",
-                systemImage: "arrow.right.circle",
-                category: .navigate,
-                requiresFocusRestore: false,
-                run: {
-                    SottoWindowCoordinator.shared.open(dictionarySection: section.searchLabel)
                 }
             )
         }
@@ -146,7 +128,7 @@ enum CommandRegistry {
 
         // Prompt switching was removed when enhancement collapsed to a single
         // fixed prompt, so the palette no longer offers prompt-switch commands.
-        let nav = navigationCommands(index: SettingsSearch.index) + dictionaryCommands()
+        let nav = navigationCommands(index: SettingsSearch.index)
 
         let transcripts = transcriptCommands(
             rows: fetchTranscriptRows(from: ctx, matching: query, limit: 6)

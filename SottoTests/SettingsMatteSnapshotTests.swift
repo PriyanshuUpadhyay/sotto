@@ -3,51 +3,54 @@ import SwiftUI
 @testable import Sotto
 
 final class SettingsMatteSnapshotTests: XCTestCase {
-    // The matte rail selection no longer paints the row Brand.tint with black
-    // text; it uses mtRaise2 fill + phosphor glyph + inkPrimary label.
-    func testRailSelectionFillIsMatteNotAccent() {
+    // The window's ONE selection language: the selected sidebar row is a matte
+    // mtRaise2 fill + a phosphor tick and label, never a Brand.tint-filled row.
+    func testSidebarSelectionFillIsMatteNotAccent() {
         XCTAssertEqual(
-            SettingsRailRowStyle.selectedFill.resolvedNSColor(),
+            SottoSidebarRowStyle.selectedFill.resolvedNSColor(),
             Palette.mtRaise2.resolvedNSColor()
         )
         XCTAssertEqual(
-            SettingsRailRowStyle.selectedGlyph.resolvedNSColor(),
+            SottoSidebarRowStyle.selectedLabel.resolvedNSColor(),
             Palette.phosphor.resolvedNSColor()
         )
         XCTAssertNotEqual(
-            SettingsRailRowStyle.selectedFill.resolvedNSColor(),
+            SottoSidebarRowStyle.selectedFill.resolvedNSColor(),
             Brand.tint.resolvedNSColor()
         )
     }
 
     // Idle/hover stay matte (no accent fill on unselected rows).
-    func testRailIdleAndHoverAreMatte() {
-        XCTAssertEqual(SettingsRailRowStyle.label.resolvedNSColor(), Palette.inkPrimary.resolvedNSColor())
+    func testSidebarIdleAndHoverAreMatte() {
         XCTAssertEqual(
-            SettingsRailRowStyle.idleLabel.resolvedNSColor(),
+            SottoSidebarRowStyle.hoverLabel.resolvedNSColor(),
+            Palette.inkPrimary.resolvedNSColor()
+        )
+        XCTAssertEqual(
+            SottoSidebarRowStyle.idleLabel.resolvedNSColor(),
             Palette.inkSecondary.resolvedNSColor()
         )
-        XCTAssertEqual(SettingsRailRowStyle.hoverFill.resolvedNSColor(), Palette.mtRaise.resolvedNSColor())
+        XCTAssertEqual(SottoSidebarRowStyle.hoverFill.resolvedNSColor(), Palette.mtRaise.resolvedNSColor())
     }
 
-    // MARK: - Snapshots (gated; rail selected+idle + a representative pane)
+    // MARK: - Snapshots (gated; sidebar selected+idle + a representative pane)
 
     @MainActor
-    func test_settings_rail_snapshot() throws {
+    func test_sidebar_snapshot() throws {
         try XCTSkipUnless(ProcessInfo.processInfo.environment["SOTTO_SNAPSHOTS"] == "1",
                           "design snapshots: set SOTTO_SNAPSHOTS=1 to render")
         let view = ZStack {
             Theme.canvas
-            VStack(spacing: 4) {
-                ForEach(SettingsTab.allCases) { tab in
-                    SettingsRailRow(tab: tab, isSelected: tab == .general) {}
+            VStack(spacing: 2) {
+                ForEach(SottoWindowTab.allCases, id: \.self) { tab in
+                    SottoSidebarRow(tab: tab, isSelected: tab == .general) {}
                 }
             }
             .padding(10)
         }
-        .frame(width: 210, height: 320)
+        .frame(width: 200, height: 320)
         .environment(\.colorScheme, .dark)
-        let url = try SnapshotRenderer.render(view, name: "settings_rail")
+        let url = try SnapshotRenderer.render(view, name: "sotto_sidebar")
         XCTAssertTrue(FileManager.default.fileExists(atPath: url.path))
         print("SNAPSHOT_WRITTEN \(url.path)")
     }

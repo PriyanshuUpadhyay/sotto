@@ -8,6 +8,7 @@ final class SettingsRoutingTests: XCTestCase {
     private func capturedTab(routing destination: String) -> (pending: SottoWindowTab?, posted: SettingsTab?) {
         let coordinator = SottoWindowCoordinator.shared
         coordinator.pendingTab = nil
+        coordinator.pendingSettingsTarget = nil
         // No-op opener so routing never depends on a real window, and the
         // headless test host's activation suppression keeps focus untouched.
         coordinator.registerOpener { _ in }
@@ -24,18 +25,20 @@ final class SettingsRoutingTests: XCTestCase {
         return (coordinator.pendingTab, posted)
     }
 
-    func test_routeSettings_stagesInWindowSettingsTab_andPostsGeneral() {
+    /// Settings is no longer a destination of its own — the deep link lands on
+    /// the General sidebar row.
+    func test_routeSettings_selectsGeneralSidebarRow() {
         let result = capturedTab(routing: "Settings")
-        XCTAssertEqual(result.pending, .settings)
+        XCTAssertEqual(result.pending, .general)
         XCTAssertEqual(result.posted, .general)
     }
 
-    /// Models is a first-class window destination (2026-07 revamp): the legacy
-    /// settings-tab deep link lands on the window's Models tab, no tab post.
-    func test_routeAIModels_stagesModelsWindowTab_andPostsNothing() {
+    /// The legacy settings-tab deep link for Models lands on the Models sidebar
+    /// row, which now sits under the SETTINGS group header.
+    func test_routeAIModels_selectsModelsSidebarRow() {
         let result = capturedTab(routing: "AI Models")
         XCTAssertEqual(result.pending, .models)
-        XCTAssertNil(result.posted)
+        XCTAssertEqual(result.posted, .models)
     }
 
     /// The destination→action mapping is locked: route()'s side effect changed,

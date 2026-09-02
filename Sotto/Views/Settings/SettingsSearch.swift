@@ -24,11 +24,12 @@ struct SettingsSearch {
     static let index: [SettingsSearchResult] = buildIndex()
 
     private static func buildIndex() -> [SettingsSearchResult] {
-        // No Models or Vocabulary entries: both graduated to first-class window
-        // destinations and are no longer Settings rail rows, so neither is
-        // reachable from the Settings search field. The command palette reaches
-        // Dictionary through `CommandRegistry.dictionaryCommands` instead.
+        // Every sidebar destination is indexed, in sidebar order: the flat
+        // sidebar has no second layer, so one search field answers for the
+        // whole window — Dictionary and Models included.
         var entries: [SettingsSearchResult] = []
+        entries += VocabularyTab.VocabularyTabSection.allCases.map { SettingsSearchResult(tab: .vocabulary, label: $0.searchLabel, keywords: $0.searchKeywords) }
+        entries += ModelsTab.ModelsTabSection.allCases.map { SettingsSearchResult(tab: .models, label: $0.searchLabel, keywords: $0.searchKeywords) }
         entries += GeneralTab.GeneralTabSection.allCases.map { SettingsSearchResult(tab: .general, label: $0.searchLabel, keywords: $0.searchKeywords) }
         entries += ShortcutsTab.ShortcutsTabSection.allCases.map { SettingsSearchResult(tab: .shortcuts, label: $0.searchLabel, keywords: $0.searchKeywords) }
         entries += AdvancedTab.AdvancedTabSection.allCases.map { SettingsSearchResult(tab: .advanced, label: $0.searchLabel, keywords: $0.searchKeywords) }
@@ -49,16 +50,19 @@ struct SettingsSearch {
         }
     }
 
-    /// Whether a whole tab survives the current query — true when the tab itself
-    /// matches or any of its sections do. Used to narrow the sidebar.
-    func matches(_ tab: SettingsTab) -> Bool {
+    /// Whether a sidebar destination survives the current query — true when the
+    /// destination's own title matches or any of its sections do. Used to narrow
+    /// the sidebar.
+    func matches(_ tab: SottoWindowTab) -> Bool {
         let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return true }
-        return filter(trimmed).contains { $0.tab == tab }
+        if tab.title.localizedCaseInsensitiveContains(trimmed) { return true }
+        guard let settingsTab = tab.settingsTab else { return false }
+        return filter(trimmed).contains { $0.tab == settingsTab }
     }
 
-    func filteredTabs() -> [SettingsTab] {
-        SettingsTab.allCases.filter(matches)
+    func filteredTabs() -> [SottoWindowTab] {
+        SottoWindowTab.allCases.filter(matches)
     }
 }
 
@@ -77,6 +81,7 @@ extension GeneralTab.GeneralTabSection {
         case .launchAtLogin: return "Launch at Login"
         case .hideDock: return "Hide Dock Icon"
         case .permissionsStatus: return "Permissions"
+        case .appearance: return "Appearance"
         }
     }
 
@@ -87,6 +92,7 @@ extension GeneralTab.GeneralTabSection {
         case .launchAtLogin: return ["startup", "start automatically", "login item"]
         case .hideDock: return ["dock icon", "menu bar only"]
         case .permissionsStatus: return ["accessibility", "screen recording", "microphone access"]
+        case .appearance: return ["theme", "accent", "color", "colour", "dark", "light", "reduced motion"]
         }
     }
 }
@@ -118,6 +124,13 @@ extension ModelsTab.ModelsTabSection {
         switch self {
         case .transcription: return "Transcription Models"
         case .enhancement: return "Enhancement"
+        }
+    }
+
+    var searchKeywords: [String] {
+        switch self {
+        case .transcription: return ["whisper", "parakeet", "download", "on-device", "speech"]
+        case .enhancement: return ["ai", "rewrite", "prompt", "cleanup", "provider"]
         }
     }
 }

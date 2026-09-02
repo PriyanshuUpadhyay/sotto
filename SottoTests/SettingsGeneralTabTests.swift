@@ -37,11 +37,11 @@ final class SettingsGeneralTabTests: XCTestCase {
         let cases = Set(GeneralTab.GeneralTabSection.allCases)
         let required: Set<GeneralTab.GeneralTabSection> = [
             .audioInput, .soundFeedback,
-            .launchAtLogin, .hideDock, .permissionsStatus,
+            .launchAtLogin, .hideDock, .permissionsStatus, .appearance,
         ]
         XCTAssertEqual(
             cases, required,
-            "GeneralTab descriptor must be exactly the 5 required sections; diff: \(cases.symmetricDifference(required))"
+            "GeneralTab descriptor must be exactly the 6 required sections; diff: \(cases.symmetricDifference(required))"
         )
     }
 
@@ -72,6 +72,7 @@ final class SettingsGeneralTabTests: XCTestCase {
         XCTAssertEqual(byKey[.soundFeedback], ["isSoundFeedbackEnabled", "isSystemMuteEnabled"])
         XCTAssertEqual(byKey[.hideDock], ["IsMenuBarOnly"])
         XCTAssertEqual(byKey[.launchAtLogin], ["LaunchAtLogin"])
+        XCTAssertEqual(byKey[.appearance], ["SottoAppearanceChoice", "SottoAccentChoice"])
     }
 
     /// Every migrated persisted control must have a binding entry.
@@ -79,7 +80,7 @@ final class SettingsGeneralTabTests: XCTestCase {
         let bound = Set(GeneralTab.migratedBindings.map(\.section))
         for section: GeneralTab.GeneralTabSection in [
             .audioInput, .soundFeedback,
-            .hideDock, .launchAtLogin,
+            .hideDock, .launchAtLogin, .appearance,
         ] {
             XCTAssertTrue(bound.contains(section),
                           "missing migrated binding for \(section)")

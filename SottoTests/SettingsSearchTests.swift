@@ -6,10 +6,12 @@ final class SettingsSearchTests: XCTestCase {
 
     // The sum of every indexed tab's section cases — the only legitimate size
     // of a label/section index. v1 must NOT index deeper than this (no
-    // per-control value entries). Models and Vocabulary are excluded: both live
-    // in the window sidebar, not the Settings rail.
+    // per-control value entries). The sidebar is flat, so ONE search field
+    // answers for every destination: Dictionary and Models are indexed too.
     private var expectedIndexCount: Int {
-        GeneralTab.GeneralTabSection.allCases.count
+        VocabularyTab.VocabularyTabSection.allCases.count
+            + ModelsTab.ModelsTabSection.allCases.count
+            + GeneralTab.GeneralTabSection.allCases.count
             + ShortcutsTab.ShortcutsTabSection.allCases.count
             + AdvancedTab.AdvancedTabSection.allCases.count
     }
@@ -37,11 +39,48 @@ final class SettingsSearchTests: XCTestCase {
         XCTAssertTrue(audio.contains { $0.tab == .general && $0.label.localizedCaseInsensitiveContains("audio") })
     }
 
-    /// Dictionary is a window sidebar destination, so it is NOT reachable from
-    /// the Settings search field — the command palette reaches it instead.
-    func test_index_holdsNoVocabularyEntries() {
-        XCTAssertFalse(SettingsSearch.index.contains { $0.tab == .vocabulary },
-                       "Vocabulary sections must not be indexed — Dictionary lives in the window sidebar, not the Settings rail")
+    /// The sidebar search spans every destination: a vocabulary query finds the
+    /// Dictionary row's sections, and a model query finds the Models page.
+    func test_index_holdsEveryDestination() {
+        for tab in SettingsTab.allCases {
+            XCTAssertTrue(SettingsSearch.index.contains { $0.tab == tab },
+                          "\(tab.title) must be indexed — the flat sidebar has one search field for the whole window")
+        }
+    }
+
+    func test_vocabularyQuery_findsTheDictionarySections() {
+        let search = SettingsSearch()
+        XCTAssertTrue(search.filter("replacement").contains { $0.tab == .vocabulary && $0.label == "Word Replacements" })
+        XCTAssertTrue(search.filter("um").contains { $0.tab == .vocabulary && $0.label == "Filler Words" })
+    }
+
+    func test_modelQuery_findsTheModelsPage() {
+        let search = SettingsSearch()
+        XCTAssertTrue(search.filter("whisper").contains { $0.tab == .models && $0.label == "Transcription Models" })
+    }
+
+    // MARK: - Sidebar narrowing spans the whole window
+
+    func test_filteredTabs_emptyQuery_isEverySidebarRow() {
+        XCTAssertEqual(SettingsSearch(query: "").filteredTabs(), SottoWindowTab.allCases)
+        XCTAssertEqual(SettingsSearch(query: "  ").filteredTabs(), SottoWindowTab.allCases)
+    }
+
+    func test_filteredTabs_narrowsToTheRowThatOwnsTheMatch() {
+        XCTAssertEqual(SettingsSearch(query: "replacement").filteredTabs(), [.dictionary])
+        XCTAssertEqual(SettingsSearch(query: "whisper").filteredTabs(), [.models])
+        XCTAssertEqual(SettingsSearch(query: "haptic").filteredTabs(), [.general])
+        XCTAssertEqual(SettingsSearch(query: "export").filteredTabs(), [.advanced])
+    }
+
+    /// History carries no indexed sections, so it survives only on its own name.
+    func test_filteredTabs_matchesADestinationByItsOwnTitle() {
+        XCTAssertEqual(SettingsSearch(query: "history").filteredTabs(), [.history])
+        XCTAssertTrue(SettingsSearch(query: "dictionary").filteredTabs().contains(.dictionary))
+    }
+
+    func test_filteredTabs_unmatchedQuery_isEmpty() {
+        XCTAssertTrue(SettingsSearch(query: "zzz-no-such-setting-zzz").filteredTabs().isEmpty)
     }
 
     // MARK: - Case-insensitive

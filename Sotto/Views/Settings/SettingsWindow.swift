@@ -1,4 +1,5 @@
 import SwiftUI
+import AppKit
 
 enum SettingsTab: String, CaseIterable, Identifiable {
     case general
@@ -30,8 +31,25 @@ enum SettingsTab: String, CaseIterable, Identifiable {
     }
 }
 
+/// The app's `Settings` scene (⌘, / the Settings menu item). Settings is no
+/// longer a surface of its own — every page is a row in the main window's flat
+/// sidebar — so this scene just forwards to the General row and closes.
 struct SettingsWindow: View {
+    /// The side effect the scene performs when it appears, factored out so the
+    /// forwarding is unit-testable without a scene.
+    @MainActor
+    static func openMainWindowOnGeneral() {
+        SottoWindowCoordinator.shared.open(settingsTab: .general)
+    }
+
     var body: some View {
-        SettingsContentView()
+        Color.clear
+            .frame(width: 1, height: 1)
+            // WindowAccessor, not onAppear: the empty scene window has to be
+            // closed once AppKit has actually created it.
+            .background(WindowAccessor { window in
+                Self.openMainWindowOnGeneral()
+                window.close()
+            })
     }
 }

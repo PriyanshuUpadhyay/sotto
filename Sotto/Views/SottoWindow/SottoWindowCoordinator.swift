@@ -29,16 +29,11 @@ final class SottoWindowCoordinator: ObservableObject {
     }
 
     /// Staged Settings target, mirroring `pendingTab`: the .selectSettingsTab /
-    /// .selectSettingsSection notifications are lossy when the Sotto window's
-    /// SettingsContentView isn't mounted yet, so `open(settingsTab:)` /
-    /// `open(settingsSection:label:)` stage here and the IN-WINDOW instance
-    /// consumes it on mount. One value — latest wins, no contradictory state.
+    /// .selectSettingsSection notifications are lossy when SottoWindowView
+    /// isn't mounted yet, so `open(settingsTab:)` / `open(settingsSection:)`
+    /// stage here and the window consumes it on mount. One value — latest wins,
+    /// no contradictory state.
     var pendingSettingsTarget: PendingSettingsTarget?
-
-    /// Staged Dictionary section jump, mirroring `pendingSettingsTarget`: the
-    /// .selectSettingsSection notification is equally lossy when the window's
-    /// Dictionary destination isn't mounted yet.
-    var pendingDictionarySection: String?
 
     private var opener: ((String) -> Void)?
 
@@ -48,13 +43,12 @@ final class SottoWindowCoordinator: ObservableObject {
         self.opener = opener
     }
 
-    /// Open Settings targeting a specific tab. Stages the target for a not-yet-
-    /// mounted in-window SettingsContentView AND posts the notification for a
-    /// mounted one (the in-window receiver clears the staged value so it isn't
-    /// applied twice).
+    /// Open the sidebar row a Settings routing key names. Stages the target for
+    /// a not-yet-mounted window AND posts the notification for a mounted one
+    /// (the window clears the staged value so it isn't applied twice).
     func open(settingsTab: SettingsTab) {
         pendingSettingsTarget = .tab(settingsTab)
-        open(tab: .settings)
+        open(tab: SottoWindowTab(settingsTab: settingsTab))
         NotificationCenter.default.post(
             name: .selectSettingsTab,
             object: nil,
@@ -62,11 +56,11 @@ final class SottoWindowCoordinator: ObservableObject {
         )
     }
 
-    /// Open Settings and jump to a section (command-palette navigation).
-    /// Same staging + post pattern as `open(settingsTab:)`.
+    /// Open a sidebar row and jump to one of its sections (command-palette
+    /// navigation). Same staging + post pattern as `open(settingsTab:)`.
     func open(settingsSection tab: SettingsTab, label: String) {
         pendingSettingsTarget = .section(tab: tab, label: label)
-        open(tab: .settings)
+        open(tab: SottoWindowTab(settingsTab: tab))
         NotificationCenter.default.post(
             name: .selectSettingsSection,
             object: nil,
@@ -74,27 +68,11 @@ final class SottoWindowCoordinator: ObservableObject {
         )
     }
 
-    /// Open the window's Dictionary destination and jump to one of its
-    /// sections (command-palette navigation). Same staging + post pattern as
-    /// `open(settingsSection:label:)`.
-    func open(dictionarySection label: String) {
-        pendingDictionarySection = label
-        open(tab: .dictionary)
-        NotificationCenter.default.post(
-            name: .selectSettingsSection,
-            object: nil,
-            userInfo: ["tab": SettingsTab.vocabulary, "label": label]
-        )
-    }
-
     func open(tab: SottoWindowTab, activate: Bool = true) {
-        // Navigating anywhere but Settings invalidates a staged Settings
-        // target — otherwise it survives and fires on the next manual visit.
-        if tab != .settings {
+        // Navigating to a different row invalidates a staged target —
+        // otherwise it survives and fires on the next manual visit.
+        if let staged = pendingSettingsTarget, SottoWindowTab(settingsTab: staged.tab) != tab {
             pendingSettingsTarget = nil
-        }
-        if tab != .dictionary {
-            pendingDictionarySection = nil
         }
         pendingTab = tab
         let shouldActivate = activate && !AppRuntimeMode.isHeadlessTest
@@ -126,12 +104,6 @@ final class SottoWindowCoordinator: ObservableObject {
     func route(destination: String) {
         switch Self.routingAction(for: destination) {
         case .openSettings(let tab):
-            // Models graduated to a first-class window destination (2026-07
-            // revamp) — the legacy settings-tab deep link lands there instead.
-            if tab == .models {
-                open(tab: .models)
-                return
-            }
             open(settingsTab: tab)
         case .openSottoWindow(let tab):
             open(tab: tab)

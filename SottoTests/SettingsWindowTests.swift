@@ -20,6 +20,19 @@ final class SettingsWindowTests: XCTestCase {
         )
     }
 
+    /// ⌘, / the Settings menu item is a shortcut to the main window's General
+    /// row — the Settings scene hosts no surface of its own any more.
+    func test_settingsScene_forwardsToTheGeneralSidebarRow() {
+        let coordinator = SottoWindowCoordinator.shared
+        coordinator.pendingTab = nil
+        coordinator.pendingSettingsTarget = nil
+        coordinator.registerOpener { _ in }
+
+        SettingsWindow.openMainWindowOnGeneral()
+
+        XCTAssertEqual(coordinator.pendingTab, .general)
+    }
+
     // MARK: - Crash regression guard
     //
     // The Settings sidebar previously used `.searchable(placement: .sidebar)`.
@@ -27,12 +40,13 @@ final class SettingsWindowTests: XCTestCase {
     // during AppKit's cursor-rect display cycle, throwing an uncaught NSException
     // that whisper.framework's global terminate handler turned into an abort —
     // a hard crash the moment Settings opened. The fix removes the search field.
-    // This guard fails if a search field is reintroduced into SettingsWindow.
+    // This guard fails if a search field is reintroduced into a settings surface
+    // or into the window sidebar that now carries the search box.
     //
     // It is a SOURCE scan because the failure is a display-cycle/run-loop crash
     // that cannot be reproduced in a headless unit test.
 
-    private func settingsSurfaceSource(_ relativePath: String, from filePath: String = #filePath) throws -> String {
+    private func surfaceSource(_ relativePath: String, from filePath: String = #filePath) throws -> String {
         let url = URL(fileURLWithPath: filePath)
             .deletingLastPathComponent()   // SottoTests/
             .deletingLastPathComponent()   // repo root
@@ -40,41 +54,48 @@ final class SettingsWindowTests: XCTestCase {
         return try String(contentsOf: url, encoding: .utf8)
     }
 
-    private func settingsWindowSource(from filePath: String = #filePath) throws -> String {
-        try settingsSurfaceSource("Sotto/Views/Settings/SettingsWindow.swift", from: filePath)
+    private func sottoWindowSource(from filePath: String = #filePath) throws -> String {
+        try surfaceSource("Sotto/Views/SottoWindow/SottoWindowView.swift", from: filePath)
     }
 
-    private func settingsContentSource(from filePath: String = #filePath) throws -> String {
-        try settingsSurfaceSource("Sotto/Views/Settings/SettingsContentView.swift", from: filePath)
-    }
-
-    func test_settingsWindow_hasNoSearchableSearchField() throws {
-        // No `.searchable` anywhere in the Settings surface — neither the thin
-        // SettingsWindow wrapper nor the SettingsContentView body that now hosts
-        // the controls.
-        for source in [try settingsWindowSource(), try settingsContentSource()] {
+    func test_settingsSurfaces_haveNoSearchableSearchField() throws {
+        for source in [
+            try surfaceSource("Sotto/Views/Settings/SettingsWindow.swift"),
+            try sottoWindowSource(),
+        ] {
             XCTAssertFalse(
                 source.contains(".searchable"),
-                "The Settings surface must not use `.searchable` — its NSSearchField re-enters layout during the AppKit display cycle and aborts the app when Settings opens."
+                "The settings surfaces must not use `.searchable` — its NSSearchField re-enters layout during the AppKit display cycle and aborts the app."
             )
         }
     }
 
-    // SettingsWindow is a thin wrapper; the container lives in
-    // SettingsContentView, which W4 Bet C flattened from a TabView into a custom
-    // onyx rail (SettingsRailRow). The hard safety rule is unchanged: NSView-
-    // backed controls (KeyboardShortcuts.Recorder, NSSearchField) re-enter layout
-    // fatally inside a NavigationSplitView hosted in the Settings scene, so the
-    // container must NOT be a NavigationSplitView.
-    func test_settingsWindow_usesCustomRailNotNavigationSplitView() throws {
-        let source = try settingsContentSource()
+    /// The window hosts its destinations in the hand-built flat sidebar
+    /// (`SottoSidebarRow` + an exhaustive content switch). The hard safety rule
+    /// is unchanged: NSView-backed controls (KeyboardShortcuts.Recorder,
+    /// NSSearchField) re-enter layout fatally inside a NavigationSplitView, so
+    /// the container must NOT be one.
+    func test_window_usesCustomSidebarNotNavigationSplitView() throws {
+        let source = try sottoWindowSource()
         XCTAssertTrue(
-            source.contains("SettingsRailRow"),
-            "SettingsContentView must host its tabs in the custom onyx rail (SettingsRailRow)."
+            source.contains("SottoSidebarRow"),
+            "SottoWindowView must host its destinations in the custom flat sidebar (SottoSidebarRow)."
         )
         XCTAssertFalse(
             source.contains("NavigationSplitView"),
-            "SettingsContentView must not use NavigationSplitView — NSView-backed controls (KeyboardShortcuts.Recorder, NSSearchField) re-enter layout and abort the app inside it."
+            "SottoWindowView must not use NavigationSplitView — NSView-backed controls (KeyboardShortcuts.Recorder, NSSearchField) re-enter layout and abort the app inside it."
         )
+    }
+
+    /// There is exactly ONE navigation layer: no Settings rail survives.
+    func test_noSecondNavigationLayer() throws {
+        let source = try sottoWindowSource()
+        XCTAssertFalse(source.contains("SettingsRailRow"),
+                       "The Settings rail is gone — its pages are sidebar rows.")
+        XCTAssertTrue(source.contains("GeneralTab"), "The sidebar must host GeneralTab.")
+        XCTAssertTrue(source.contains("ShortcutsTab"), "The sidebar must host ShortcutsTab.")
+        XCTAssertTrue(source.contains("AdvancedTab"), "The sidebar must host AdvancedTab.")
+        XCTAssertTrue(source.contains("ModelsTab"), "The sidebar must host ModelsTab.")
+        XCTAssertTrue(source.contains("VocabularyTab"), "The sidebar must host VocabularyTab.")
     }
 }

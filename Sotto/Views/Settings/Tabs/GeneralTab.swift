@@ -34,6 +34,9 @@ struct GeneralTab: View {
         case soundFeedback
         case launchAtLogin
         case hideDock
+        // Appearance moved here when the Settings rail was flattened into the
+        // window sidebar — it was the rail's one non-SettingsTab page.
+        case appearance
     }
 
     struct MigratedBinding {
@@ -51,6 +54,8 @@ struct GeneralTab: View {
         .init(section: .soundFeedback,      settingsKey: "isSystemMuteEnabled"),     // MediaController.isSystemMuteEnabled
         .init(section: .hideDock,           settingsKey: "IsMenuBarOnly"),           // MenuBarManager.isMenuBarOnly
         .init(section: .launchAtLogin,      settingsKey: "LaunchAtLogin"),           // LaunchAtLogin library
+        .init(section: .appearance,         settingsKey: "SottoAppearanceChoice"),   // AppearanceStore.choice
+        .init(section: .appearance,         settingsKey: "SottoAccentChoice"),       // AccentStore.choice
     ]
 
     /// The exact, ordered list the body's `ForEach` renders from. It IS
@@ -186,6 +191,9 @@ struct GeneralTab: View {
 
         case .permissionsStatus:
             PermissionsStatusStrip(source: permissions)
+
+        case .appearance:
+            AppearanceSettingsView()
         }
     }
 }
