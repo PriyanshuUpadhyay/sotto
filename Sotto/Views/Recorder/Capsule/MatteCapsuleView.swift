@@ -112,6 +112,9 @@ struct MatteCapsuleView: View {
     /// Revealed tape span, ratcheted (grows with content, never shrinks
     /// mid-dictation) and clamped to `tapeWidth`; resets when the tape empties.
     @State private var tapeReveal: CGFloat
+    /// Morph identity for the capsule's glass and the chips that come and go
+    /// with the phase — a chip melts out of the body instead of popping.
+    @Namespace private var glassNamespace
 
     init(state: CapsuleState,
          elapsed: TimeInterval = 0,
@@ -141,6 +144,15 @@ struct MatteCapsuleView: View {
     }
 
     var body: some View {
+        // One container so the capsule body and the chips that come and go with
+        // the phase are the SAME glass — adjacent lenses blend, and a chip
+        // morphs out of the body instead of popping.
+        GlassEffectContainer(spacing: Self.glassBlendSpacing) {
+            capsuleContent
+        }
+    }
+
+    private var capsuleContent: some View {
         HStack(spacing: Self.itemSpacing) {
             stateGlyph
 
@@ -153,17 +165,12 @@ struct MatteCapsuleView: View {
                     // Transcription is the longest wait in the product — the
                     // label sweeps so it cannot read as a freeze.
                     .modifier(SweepHighlight(active: state == .processing && !reduceMotion))
+                    .glassInkShadow()
             }
 
             if state == .recording { escHint }
 
-            if state == .recording, let recorder {
-                MicLevelBars(recorder: recorder, reduceMotion: reduceMotion)
-            }
-
-            if state == .recording || state == .processing {
-                wordTape
-            }
+            if liveTape { liveRow }
 
             if state == .fail {
                 if failure?.isRetryable == false { settingsChip } else { retryChip }
@@ -180,6 +187,9 @@ struct MatteCapsuleView: View {
         // animate, the frame never does. `revealOffset` recenters the visible
         // pill in the oversized frame (translateX(clip/2) in the mockup).
         .mask(revealMask)
+        // The accent does not sit on the surface, it bleeds through the glass —
+        // painted outside the mask, which would otherwise crop it away.
+        .sottoGlassGlow(state.color, level: .capsule)
         // Floating object → soft drop shadow (spec §1: shadows only on floating).
         .shadow(color: .black.opacity(0.4), radius: 15, x: 0, y: 12)
         .offset(x: revealOffset)
@@ -210,6 +220,17 @@ struct MatteCapsuleView: View {
     /// Leading-cluster HStack spacing before the tape (collapsed by the
     /// reveal mask while the tape is empty).
     private static let itemSpacing: CGFloat = 10
+
+    /// Blend distance between the capsule's glass and the chips riding on it.
+    private static let glassBlendSpacing: CGFloat = 12
+    /// Concentric radius for the frosted band inside the capsule
+    /// (Liquid Glass concentricity: inner = outer − inset).
+    private static let bandInset: CGFloat = 5
+    private static let bandRadius: CGFloat = Radius.inner(of: Radius.capsule, inset: bandInset)
+    /// How far the band runs past the leading edge of the bars, and the share of
+    /// its width the leading dissolve occupies.
+    private static let bandLeadIn: CGFloat = 8
+    private static let bandFadeFraction: CGFloat = 0.045
 
     private var liveTape: Bool { state == .recording || state == .processing }
 
@@ -282,6 +303,40 @@ struct MatteCapsuleView: View {
         .frame(width: Self.tapeWidth, height: 28, alignment: .leading)
         .clipped()
         .mask(tapeMask)
+    }
+
+    /// Mic bars + tape ride ONE frosted band — the only region of the capsule
+    /// that carries the user's own words, so it trades the glass's refraction
+    /// for a composite that is legible over any desktop.
+    private var liveRow: some View {
+        HStack(spacing: Self.itemSpacing) {
+            if state == .recording, let recorder {
+                MicLevelBars(recorder: recorder, reduceMotion: reduceMotion)
+            }
+            wordTape
+        }
+        .background(band)
+    }
+
+    /// The band runs a little past the leading edge of the bars and dissolves
+    /// there, so its left end reads as a fade rather than a cut. The trailing
+    /// end keeps its full weight — the newest word lands on it.
+    private var band: some View {
+        Color.clear
+            .sottoGlass(.band,
+                        in: RoundedRectangle(cornerRadius: Self.bandRadius, style: .continuous))
+            .padding(.leading, -Self.bandLeadIn)
+            .mask(
+                LinearGradient(
+                    stops: [
+                        .init(color: .clear, location: 0),
+                        .init(color: .black, location: Self.bandFadeFraction),
+                        .init(color: .black, location: 1),
+                    ],
+                    startPoint: .leading, endPoint: .trailing
+                )
+            )
+            .allowsHitTesting(false)
     }
 
     private func wordText(_ word: StreamedWord) -> some View {
@@ -371,6 +426,7 @@ struct MatteCapsuleView: View {
             .font(.system(size: 14, weight: .semibold))
             .foregroundStyle(state.color)
             .opacity(glyphDimmed ? 0.45 : 1.0)
+            .glassInkShadow()
             .accessibilityHidden(true)
     }
 
@@ -400,8 +456,8 @@ struct MatteCapsuleView: View {
             .fixedSize()
             .padding(.horizontal, 6)
             .padding(.vertical, 2.5)
-            .background(Capsule(style: .continuous).fill(Palette.mtRaise2))
-            .overlay(Capsule(style: .continuous).strokeBorder(Palette.mtLine, lineWidth: 1))
+            .sottoGlass(.chip, in: Capsule(style: .continuous),
+                        id: "capsule.esc", namespace: glassNamespace)
             .accessibilityHidden(true)
     }
 
@@ -412,9 +468,8 @@ struct MatteCapsuleView: View {
                 .foregroundStyle(Palette.stateFail)
                 .padding(.horizontal, 7)
                 .padding(.vertical, 3)
-                .background(
-                    Capsule(style: .continuous).fill(Palette.mtRaise2)
-                )
+                .sottoGlass(.chip, in: Capsule(style: .continuous), interactive: true,
+                            id: "capsule.retry", namespace: glassNamespace)
                 .overlay(
                     Capsule(style: .continuous)
                         .strokeBorder(Palette.stateFail.opacity(0.6), lineWidth: 1)
@@ -434,9 +489,8 @@ struct MatteCapsuleView: View {
                 .foregroundStyle(Palette.stateFail)
                 .padding(.horizontal, 7)
                 .padding(.vertical, 3)
-                .background(
-                    Capsule(style: .continuous).fill(Palette.mtRaise2)
-                )
+                .sottoGlass(.chip, in: Capsule(style: .continuous), interactive: true,
+                            id: "capsule.settings", namespace: glassNamespace)
                 .overlay(
                     Capsule(style: .continuous)
                         .strokeBorder(Palette.stateFail.opacity(0.6), lineWidth: 1)
@@ -447,30 +501,27 @@ struct MatteCapsuleView: View {
         .accessibilityHint("Install a transcription model")
     }
 
+    /// The capsule is made of the platform's Liquid Glass; the material, its
+    /// top-edge highlight and its inner shadow all live in `.sottoGlass`. Padded
+    /// to the revealed span so the glass SHAPE is the visible pill — masking a
+    /// full-width lens would crop its own refracted edge.
     private var capsuleBody: some View {
-        Capsule(style: .continuous).fill(Palette.mtRaise)
+        Color.clear
+            .sottoGlass(.capsule, in: Capsule(style: .continuous),
+                        id: Self.bodyGlassID, namespace: glassNamespace)
+            .padding(.trailing, revealInset)
     }
+
+    private static let bodyGlassID = "capsule.body"
 
     private var capsuleEdge: some View {
         // State color tints the edge subtly; matte hairline otherwise. Padded
         // to the revealed span so the stroke hugs the VISIBLE right end (a
-        // full-width stroke would be chopped flat by the reveal mask) — the
-        // top-edge sheen rides the same padding for the same reason.
-        ZStack {
-            Capsule(style: .continuous)
-                .strokeBorder(edgeColor, lineWidth: 1)
-            // Bright top edge = light catching the material, matching the two
-            // sibling raised surfaces (ReviewTray pill, review card).
-            Capsule(style: .continuous)
-                .strokeBorder(
-                    LinearGradient(colors: [Palette.innerHi, .clear],
-                                   startPoint: .top, endPoint: .center),
-                    lineWidth: 1
-                )
-                .blendMode(.plusLighter)
-                .allowsHitTesting(false)
-        }
-        .padding(.trailing, revealInset)
+        // full-width stroke would be chopped flat by the reveal mask). The
+        // top-edge highlight is part of the material now (`.sottoGlass`).
+        Capsule(style: .continuous)
+            .strokeBorder(edgeColor, lineWidth: 1)
+            .padding(.trailing, revealInset)
     }
 
     private var edgeColor: Color {
