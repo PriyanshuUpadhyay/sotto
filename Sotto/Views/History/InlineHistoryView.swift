@@ -30,6 +30,9 @@ struct InlineHistoryView: View {
     @State private var hasMoreContent = true
     @State private var lastTimestamp: Date?
     @State private var isViewCurrentlyVisible = false
+    /// Every row the current search matches, not just the loaded page — "Select
+    /// All" and ⌘A select all of them, so the control has to say so.
+    @State private var totalMatchingCount = 0
 
     // Keyboard-first navigation cursor (distinct from checkbox selection + expansion).
     @State private var focusedId: UUID?
@@ -76,6 +79,19 @@ struct InlineHistoryView: View {
         }
 
         descriptor.fetchLimit = pageSize
+        return descriptor
+    }
+
+    /// Unpaginated twin of `cursorQueryDescriptor` — the scope "Select All" and
+    /// ⌘A actually cover. Used with `fetchCount`, so no rows are materialised.
+    private func matchingCountDescriptor() -> FetchDescriptor<Transcription> {
+        var descriptor = FetchDescriptor<Transcription>()
+        if !searchText.isEmpty {
+            descriptor.predicate = #Predicate<Transcription> { transcription in
+                transcription.text.localizedStandardContains(searchText) ||
+                (transcription.enhancedText?.localizedStandardContains(searchText) ?? false)
+            }
+        }
         return descriptor
     }
 
@@ -221,7 +237,7 @@ struct InlineHistoryView: View {
                 .buttonStyle(.plain)
                 .foregroundColor(.secondary)
             } else {
-                Button("Select All") {
+                Button("Select All (\(totalMatchingCount))") {
                     Task { await selectAllTranscriptions() }
                 }
                 .font(.system(size: 12, weight: .medium))
@@ -602,6 +618,7 @@ struct InlineHistoryView: View {
             displayedTranscriptions = items.filter { $0.id != pendingDeletion?.id }
             lastTimestamp = items.last?.timestamp
             hasMoreContent = items.count == pageSize
+            totalMatchingCount = (try? modelContext.fetchCount(matchingCountDescriptor())) ?? items.count
         } catch {
             print("Error loading transcriptions: \(error)")
         }
