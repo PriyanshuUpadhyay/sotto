@@ -16,6 +16,7 @@ struct SottoMenuBarContent: View {
     @EnvironmentObject var transcriptionModelManager: TranscriptionModelManager
     @EnvironmentObject var menuBarManager: MenuBarManager
     @EnvironmentObject var enhancementService: AIEnhancementService
+    @EnvironmentObject var updaterViewModel: UpdaterViewModel
 
     @Query(
         sort: [SortDescriptor(\Transcription.timestamp, order: .reverse)]
@@ -47,6 +48,12 @@ struct SottoMenuBarContent: View {
                 )
             }
             .keyboardShortcut(",", modifiers: .command)
+
+            // The app menu's copy of this item is only visible while a Sotto
+            // window is in front; the dropdown is where a menu-bar-only user
+            // actually looks.
+            Button("Check for Updates…", action: updaterViewModel.checkForUpdates)
+                .disabled(!updaterViewModel.canCheckForUpdates)
 
             Divider()
 

@@ -456,6 +456,7 @@ struct SottoApp: App {
                 .environmentObject(transcriptionModelManager)
                 .environmentObject(menuBarManager)
                 .environmentObject(enhancementService)
+                .environmentObject(updaterViewModel)
                 .modelContainer(container)
         } label: {
             // SwiftUI `Image(nsImage:)` so MenuBarExtra renders a real glyph;
