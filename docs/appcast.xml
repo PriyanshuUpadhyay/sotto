@@ -3,14 +3,14 @@
     <channel>
         <title>Sotto</title>
         <item>
-            <title>0.1.0</title>
-            <pubDate>Tue, 01 Sep 2026 13:58:38 +0530</pubDate>
+            <title>0.2.0</title>
+            <pubDate>Thu, 03 Sep 2026 11:17:57 +0530</pubDate>
             <link>https://github.com/PriyanshuUpadhyay/sotto</link>
-            <sparkle:version>1</sparkle:version>
-            <sparkle:shortVersionString>0.1.0</sparkle:shortVersionString>
+            <sparkle:version>2</sparkle:version>
+            <sparkle:shortVersionString>0.2.0</sparkle:shortVersionString>
             <sparkle:minimumSystemVersion>26.0</sparkle:minimumSystemVersion>
             <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <enclosure url="https://github.com/PriyanshuUpadhyay/sotto/releases/download/v0.1.0/Sotto-0.1.0.dmg" length="15405569" type="application/octet-stream" sparkle:edSignature="TfNW9Q4/UVonW0IXaabGT4dz0mwOptvNKBhhskKB+MVsp98O1YYWLGrFhRQqX787f5Uj6C7Iv38mXNMMEYMyBg=="/>
+            <enclosure url="https://github.com/PriyanshuUpadhyay/sotto/releases/download/v0.2.0/Sotto-0.2.0.dmg" length="15698138" type="application/octet-stream" sparkle:edSignature="IDMNT9UHYv6/aO5oDZyyWuu5Ase0Ism16oQ/f39GgIk0yrHvjvS0FOrprGQYZfLhSC69VGEEHfllZx+/D2BNCA=="/>
         </item>
     </channel>
 </rss>
