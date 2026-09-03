@@ -130,3 +130,7 @@ scripts/dmg/background.tiff
 
 # Silero VAD model — fetched by `make setup` (see BUILDING.md), MIT, not vendored
 Sotto/Resources/models/*.bin
+
+# Enhancement eval — local (untracked) dictation set and run outputs
+eval/data/local/
+eval/results/

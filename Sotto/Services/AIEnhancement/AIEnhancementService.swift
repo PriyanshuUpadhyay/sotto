@@ -4,7 +4,7 @@ import AppKit
 import os
 
 /// Outcome of the post-enhancement repair guard for the most recent enhance.
-enum EnhancementGuardOutcome: String {
+enum EnhancementGuardOutcome: String, CaseIterable {
     case notRun                 // guard skipped (empty input)
     case none                   // first pass was clean — no repair needed
     case retryRecovered         // first pass suspect; hardened retry recovered it
@@ -457,7 +457,7 @@ class AIEnhancementService: ObservableObject {
             let result = try await aiService.enhanceWithAFM(systemPrompt: systemMessage, userPrompt: formattedText, transcriptChars: text.count, callKind: callKind, generation: generation)
             await MainActor.run { self.lastEnhancementModelUsed = AIProvider.resolved().modelIdentifier }
             let cleaned = AIEnhancementOutputFilter.filter(Self.stripPreamble(result))
-            return VerbatimWordGuard.restore(raw: text, output: cleaned)
+            return TranscriptPrepass.finish(TranscriptPrepass.emphasis(TranscriptPrepass.contractions(TranscriptPrepass.lineBreaks(TranscriptPrepass.clean(VerbatimWordGuard.restore(raw: text, output: cleaned))))))
         } catch is CancellationError {
             throw CancellationError()
         } catch {
