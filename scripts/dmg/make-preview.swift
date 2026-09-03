@@ -1,8 +1,10 @@
 #!/usr/bin/env swift
 // Renders an OFFSCREEN preview of the installer window as a clean recipient
 // (no toolbar, hidden helper files) would see it: the brand background +
-// the real Sotto icon, the real Applications folder icon, and labels, inside
-// a slim title-bar window chrome. No screen capture, no focus steal.
+// the real Sotto icon, the real Applications folder icon, and labels drawn
+// the way macOS 26 Finder draws them on a picture background (dark text,
+// centred 83 pt below the icon), inside a 32 pt title-bar window chrome. No
+// screen capture, no focus steal.
 // Usage: swift make-preview.swift /path/to/Sotto.app  ->  preview.png
 import AppKit
 
@@ -10,7 +12,7 @@ let appPath = CommandLine.arguments.count > 1 ? CommandLine.arguments[1] : ""
 let dir = URL(fileURLWithPath: CommandLine.arguments[0]).deletingLastPathComponent().path
 
 let W: CGFloat = 640, H: CGFloat = 400
-let titleH: CGFloat = 28
+let titleH: CGFloat = 32
 let total = NSSize(width: W, height: H + titleH)
 
 func centerImage(_ img: NSImage, finderX: CGFloat, finderY: CGFloat, side: CGFloat) {
@@ -20,16 +22,15 @@ func centerImage(_ img: NSImage, finderX: CGFloat, finderY: CGFloat, side: CGFlo
     img.draw(in: NSRect(x: finderX - side/2, y: cy - side/2, width: side, height: side),
              from: .zero, operation: .sourceOver, fraction: 1)
 }
-func label(_ s: String, finderX: CGFloat, topCG: CGFloat) {
+func label(_ s: String, finderX: CGFloat, finderY: CGFloat) {
     let p = NSMutableParagraphStyle(); p.alignment = .center
     let a: [NSAttributedString.Key: Any] = [
-        .font: NSFont(name: "Avenir Next", size: 12) ?? NSFont.systemFont(ofSize: 12),
-        .foregroundColor: NSColor.white, .paragraphStyle: p,
-        .shadow: { let s = NSShadow(); s.shadowColor = .black; s.shadowBlurRadius = 3; s.shadowOffset = .zero; return s }(),
+        .font: NSFont.systemFont(ofSize: 12),
+        .foregroundColor: NSColor(white: 0.16, alpha: 1), .paragraphStyle: p,
     ]
     let str = NSAttributedString(string: s, attributes: a)
     let sz = str.size()
-    str.draw(at: NSPoint(x: finderX - sz.width/2, y: topCG - sz.height))
+    str.draw(at: NSPoint(x: finderX - sz.width/2, y: (H - finderY) - sz.height/2))
 }
 
 let rep = NSBitmapImageRep(
@@ -56,9 +57,10 @@ do {
         .draw(in: NSRect(x: 0, y: H + 6, width: W, height: 18))
 }
 
-// content background
+// content background: the art is taller than the window, anchored to its top
 if let bg = NSImage(contentsOfFile: "\(dir)/background.png") {
-    bg.draw(in: NSRect(x: 0, y: 0, width: W, height: H), from: .zero, operation: .copy, fraction: 1)
+    bg.draw(in: NSRect(x: 0, y: H - bg.size.height, width: W, height: bg.size.height),
+            from: .zero, operation: .copy, fraction: 1)
 }
 
 // real icons
@@ -68,9 +70,9 @@ if let app = NSImage(contentsOfFile: "\(appPath)/Contents/Resources/AppIcon.icns
 let appsIcon = NSWorkspace.shared.icon(forFile: "/Applications")
 centerImage(appsIcon, finderX: 475, finderY: 205, side: 128)
 
-// labels under icons (icon bottom in CG ≈ (H-205)-64 = 131)
-label("Sotto", finderX: 165, topCG: 131 - 6)
-label("Applications", finderX: 475, topCG: 131 - 6)
+// labels centred on the plates painted into the background
+label("Sotto", finderX: 165, finderY: 288)
+label("Applications", finderX: 475, finderY: 288)
 
 NSGraphicsContext.restoreGraphicsState()
 let out = CommandLine.arguments.count > 2 ? CommandLine.arguments[2] : "\(dir)/preview.png"

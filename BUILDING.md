@@ -10,6 +10,11 @@ Before you begin, ensure you have:
 - Swift (latest version recommended)
 - Git (for cloning repositories)
 
+For `make dmg` and `make release` only:
+- [uv](https://docs.astral.sh/uv/) (`brew install uv`). The packaging script runs
+  `dmgbuild` through `uvx` to write the installer window layout; nothing is
+  installed into the project.
+
 For `make acceptance` only:
 - Babashka (`bb`)
 - A JDK on `PATH`. `acceptance/bb.edn` declares a Maven dependency, and
@@ -47,6 +52,9 @@ make dev
 - `make run` - Launch the built Sotto app
 - `make reload` - Rebuild, kill the running instance, relaunch (dev loop)
 - `make test` - Run the unit test suite headlessly (non-activating)
+- `make dmg` - Package the local build into `dist/Sotto.dmg` (see [Distributing a DMG](#distributing-a-dmg))
+- `make release` - Build and sign a release DMG plus its Sparkle appcast in `dist/releases`
+- `make publish` - Upload what `make release` prepared (`make publish NOTES=path/to/notes.md`)
 - `make dev` - Build and run (ideal for development workflow)
 - `make all` - Complete build process (default)
 - `make clean` - Remove build artifacts and dependencies
@@ -116,6 +124,30 @@ The `make local` command uses:
 - `LOCAL_BUILD` Swift compilation flag for conditional code paths
 
 Your normal `make all` / `make build` commands are completely unaffected.
+
+## Distributing a DMG
+
+`make dmg` packages the `make local` app into `dist/Sotto.dmg` with the
+drag-to-Applications installer window. The window layout (no toolbar or tab
+bar, icon positions, background, volume icon) is written straight into the
+volume's `.DS_Store` by `dmgbuild` from `scripts/dmg/settings.py`, so the
+result does not depend on the Finder settings of the Mac that built it. The
+artwork comes from `scripts/dmg/make-background.swift` and is re-rendered
+whenever that file is newer than `scripts/dmg/background.png`.
+
+The app is signed with the self-signed local certificate, not an Apple
+Developer ID, so macOS blocks the first launch on another Mac. Tell
+recipients to:
+
+1. Open the DMG and drag Sotto onto the Applications folder shown.
+2. Open Sotto from Applications. When macOS says it cannot verify the app, go to
+   System Settings > Privacy & Security, scroll to Security, and click
+   **Open Anyway**. Terminal fallback if that button does not appear:
+   `xattr -dr com.apple.quarantine /Applications/Sotto.app`
+3. Grant Accessibility and Input Monitoring when asked.
+
+Updates after that arrive through the in-app updater and need no repeat of
+step 2.
 
 ---
 
