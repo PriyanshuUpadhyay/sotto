@@ -133,3 +133,7 @@ Sotto/Resources/models/*.bin
 # implement-skill ledgers and scratch specs (never committed)
 .agent-ledgers/
 .scratch/
+
+# Enhancement eval — local (untracked) dictation set and run outputs
+eval/data/local/
+eval/results/

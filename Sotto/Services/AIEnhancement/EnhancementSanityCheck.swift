@@ -64,30 +64,14 @@ enum EnhancementSanityCheck {
         !(skipWhenClean && isLikelyClean(raw))
     }
 
-    /// Model-free last-resort cleanup of the raw transcript. Safe and minimal:
-    /// trims, collapses whitespace, drops standalone fillers, collapses an
-    /// immediate duplicate word, capitalizes the first letter, ensures terminal
-    /// punctuation. Never reorders, never paraphrases — so it can never produce
-    /// an answer. Used by the runtime repair guard (Task 4) when the LLM output
-    /// is rejected twice.
+    /// Model-free last-resort cleanup of the raw transcript: the shared
+    /// `TranscriptPrepass` (whitespace, standalone fillers, immediately
+    /// repeated words and phrases) plus the two things only this path needs —
+    /// a capitalized first letter and terminal punctuation. Never reorders,
+    /// never paraphrases — so it can never produce an answer. Used by the
+    /// runtime repair guard (Task 4) when the LLM output is rejected twice.
     static func deterministicCleanup(_ raw: String) -> String {
-        var s = raw.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !s.isEmpty else { return "" }
-
-        while s.contains("  ") { s = s.replacingOccurrences(of: "  ", with: " ") }
-
-        let fillers: Set<String> = ["um", "uh", "er", "erm", "hmm", "uhm"]
-        let punct = CharacterSet(charactersIn: ",.!?;:")
-        var kept: [String] = []
-        var prevBare = ""
-        for word in s.split(separator: " ", omittingEmptySubsequences: true).map(String.init) {
-            let bare = word.lowercased().trimmingCharacters(in: punct)
-            if fillers.contains(bare) { continue }
-            if !bare.isEmpty && bare == prevBare { continue }   // immediate duplicate
-            kept.append(word)
-            prevBare = bare
-        }
-        s = kept.joined(separator: " ")
+        var s = TranscriptPrepass.clean(raw)
         guard !s.isEmpty else { return "" }
 
         s.replaceSubrange(s.startIndex...s.startIndex, with: String(s[s.startIndex]).uppercased())

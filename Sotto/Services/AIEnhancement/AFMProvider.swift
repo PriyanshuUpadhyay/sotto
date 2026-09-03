@@ -5,6 +5,19 @@ import os
 import FoundationModels
 #endif
 
+#if canImport(FoundationModels)
+/// Guided-generation output shape. One field, so the model's only legal answer
+/// is the cleaned transcript — a conversational preamble or a sign-off has
+/// nowhere to go. `stripPreamble` still runs downstream, now as a belt for the
+/// plain-text path and for a model that ignores the schema.
+@available(macOS 26.0, *)
+@Generable
+struct CleanedTranscript {
+    @Guide(description: "The transcript, cleaned. The same words, nothing added and nothing explained.")
+    var cleaned: String
+}
+#endif
+
 /// On-device LLM provider using Apple's Foundation Models framework (AFM).
 /// Available on macOS 26+ with Apple Intelligence enabled.
 ///
@@ -149,6 +162,16 @@ actor AFMProvider {
 
     // MARK: - Enhance (with timing telemetry)
 
+    /// Guided generation (`@Generable`) is OFF by default: constraining the
+    /// answer to a JSON string field costs the terminal punctuation and the
+    /// leading capital, which measured as -12 points of exact match on the
+    /// enhancement eval. The path stays behind the defaults key so the eval can
+    /// switch it back on (`make eval GUIDED=true`) and re-check that verdict.
+    nonisolated static var guidedGenerationEnabled: Bool {
+        UserDefaults.standard.object(forKey: "EnhancementGuidedGeneration") as? Bool ?? false
+    }
+
+
     /// Returns the cleaned-up text; the dispatch site
     /// (`AIEnhancementService.makeRequest`) applies `AIEnhancementOutputFilter`
     /// + `stripPreamble`. This is the only enhance path — there is no fallback
@@ -264,16 +287,34 @@ actor AFMProvider {
             // would be recorded as a silent `.success` truncation. Wall-clock is
             // already bounded by the per-call enhancement deadline.
             let options = GenerationOptions(sampling: .greedy)
-            // Streaming path so we can capture TTFT. Each emitted snapshot is
-            // a cumulative slice (Apple's `ResponseStream<String>.Snapshot`
-            // contract); `.content` is the full text generated so far.
-            let stream = session.streamResponse(to: userPrompt, options: options)
-            for try await snapshot in stream {
-                if Task.isCancelled { break }
-                if firstChunkAt == nil {
-                    firstChunkAt = Date().timeIntervalSince(genStart)
+            // Streaming in both modes so TTFT stays measurable. Each emitted
+            // snapshot is a cumulative slice (Apple's `ResponseStream.Snapshot`
+            // contract); `.content` is everything generated so far.
+            //
+            // `includeSchemaInPrompt: false` — the schema is a single string
+            // field the instructions already describe, and spelling it out
+            // would add prefill to every call, which is what this path is
+            // meant to reduce.
+            if Self.guidedGenerationEnabled {
+                let stream = session.streamResponse(
+                    to: userPrompt, generating: CleanedTranscript.self,
+                    includeSchemaInPrompt: false, options: options)
+                for try await snapshot in stream {
+                    if Task.isCancelled { break }
+                    if firstChunkAt == nil {
+                        firstChunkAt = Date().timeIntervalSince(genStart)
+                    }
+                    output = snapshot.content.cleaned ?? output
                 }
-                output = snapshot.content
+            } else {
+                let stream = session.streamResponse(to: userPrompt, options: options)
+                for try await snapshot in stream {
+                    if Task.isCancelled { break }
+                    if firstChunkAt == nil {
+                        firstChunkAt = Date().timeIntervalSince(genStart)
+                    }
+                    output = snapshot.content
+                }
             }
             try Task.checkCancellation()
             let genElapsed = Date().timeIntervalSince(genStart)

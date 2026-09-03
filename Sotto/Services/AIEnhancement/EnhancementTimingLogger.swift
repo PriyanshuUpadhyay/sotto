@@ -101,7 +101,18 @@ actor EnhancementTimingLogger {
 
     /// Resolves the CSV destination URL. Creates the parent directory if
     /// missing. `nonisolated` so UI can call it without awaiting the actor.
+    ///
+    /// `SOTTO_TIMINGS_DIR` redirects the whole CSV family elsewhere — the eval
+    /// harness runs in the app's own test host, so without this its rows would
+    /// land in the user's real Application Support timings file.
     nonisolated static func csvURL() -> URL {
+        // `getenv`, not `ProcessInfo.environment`, so a `setenv` made inside the
+        // running process (the eval harness does this) is seen too.
+        if let raw = getenv("SOTTO_TIMINGS_DIR"), let override = String(validatingCString: raw), !override.isEmpty {
+            let dir = URL(fileURLWithPath: override, isDirectory: true)
+            try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+            return dir.appendingPathComponent("enhancement-timings.csv")
+        }
         let appSupport = (try? FileManager.default.url(
             for: .applicationSupportDirectory,
             in: .userDomainMask, appropriateFor: nil, create: true
