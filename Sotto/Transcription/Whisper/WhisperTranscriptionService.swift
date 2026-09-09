@@ -54,12 +54,13 @@ class WhisperTranscriptionService: TranscriptionService {
         // Read audio data
         let data = try readAudioSamples(audioURL)
 
-        // Set prompt
+        let selectedLanguage = UserDefaults.standard.string(forKey: "SelectedLanguage") ?? "auto"
         let currentPrompt = UserDefaults.standard.string(forKey: "TranscriptionPrompt") ?? ""
         await whisperContext.setPrompt(currentPrompt)
-
-        // Transcribe
-        let success = await whisperContext.fullTranscribe(samples: data)
+        // whisper.cpp has no Hinglish code: force "hi" and let the Latin-script prompt steer the output script.
+        // English-only models force "en" inside whisper.cpp, so no per-model check is needed here.
+        let language = selectedLanguage == "hinglish" ? "hi" : selectedLanguage
+        let success = await whisperContext.fullTranscribe(samples: data, language: language)
 
         guard success else {
             logger.error("❌ Core transcription engine failed (whisper_full).")

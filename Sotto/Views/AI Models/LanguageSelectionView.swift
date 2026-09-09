@@ -8,7 +8,7 @@ enum LanguageDisplayMode {
 
 struct LanguageSelectionView: View {
     @ObservedObject var transcriptionModelManager: TranscriptionModelManager
-    @AppStorage("SelectedLanguage") private var selectedLanguage: String = "en"
+    @AppStorage("SelectedLanguage") private var selectedLanguage: String = "auto"
     // Add display mode parameter with full as the default
     var displayMode: LanguageDisplayMode = .full
     @ObservedObject var whisperPrompt: WhisperPrompt
@@ -30,14 +30,12 @@ struct LanguageSelectionView: View {
         guard let currentModel = transcriptionModelManager.currentTranscriptionModel else {
             return false
         }
-        return currentModel.isMultilingualModel
+        return currentModel.supportedLanguages.count > 1
     }
 
     private func languageSelectionDisabled() -> Bool {
-        guard let provider = transcriptionModelManager.currentTranscriptionModel?.provider else {
-            return false
-        }
-        return provider == .fluidAudio
+        transcriptionModelManager.currentTranscriptionModel?.provider == .fluidAudio
+            && isMultilingualModel()
     }
 
     // Function to get current model's supported languages
@@ -87,7 +85,7 @@ struct LanguageSelectionView: View {
                                 .font(.caption)
                                 .foregroundColor(.secondary)
 
-                            Text("The transcription language is automatically detected by the model.")
+                            Text("Parakeet detects the language itself. It does not support Hindi or Hinglish; select a Whisper model for those.")
                                 .font(.caption)
                                 .foregroundColor(.secondary)
                         }
@@ -97,31 +95,32 @@ struct LanguageSelectionView: View {
                             Picker("Select Language", selection: $selectedLanguage) {
                                 ForEach(
                                     currentModel.supportedLanguages.sorted(by: {
-                                        if $0.key == "auto" { return true }
-                                        if $1.key == "auto" { return false }
-                                        return $0.value < $1.value
+                                        $0.value < $1.value
                                     }), id: \.key
                                 ) { key, value in
                                     Text(value).tag(key)
                                 }
                             }
                             .pickerStyle(MenuPickerStyle())
-                            .onChange(of: selectedLanguage) { oldValue, newValue in
+                            .onChange(of: selectedLanguage) { _, newValue in
                                 updateLanguage(newValue)
+                            }
+                            .onAppear {
+                                if currentModel.supportedLanguages[selectedLanguage] == nil {
+                                    updateLanguage("auto")
+                                }
                             }
 
                             Text("Current model: \(currentModel.displayName)")
                                 .font(.caption)
                                 .foregroundColor(.secondary)
 
-                            Text(
-                                "This model supports multiple languages. Select a specific language or auto-detect(if available)"
-                            )
-                            .font(.caption)
-                            .foregroundColor(.secondary)
+                            Text("English, Hinglish, or Multilingual (auto-detect).")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
                         }
                     } else {
-                        // For English-only models, force set language to English
+                        // Display English without overwriting the preferred language for other models.
                         VStack(alignment: .leading, spacing: 8) {
                             Text("Language: English")
                                 .font(.subheadline)
@@ -136,10 +135,6 @@ struct LanguageSelectionView: View {
                             )
                             .font(.caption)
                             .foregroundColor(.secondary)
-                        }
-                        .onAppear {
-                            // Ensure English is set when viewing English-only model
-                            updateLanguage("en")
                         }
                     }
                 } else {
@@ -167,9 +162,7 @@ struct LanguageSelectionView: View {
                 Menu {
                     ForEach(
                         getCurrentModelLanguages().sorted(by: {
-                            if $0.key == "auto" { return true }
-                            if $1.key == "auto" { return false }
-                            return $0.value < $1.value
+                            $0.value < $1.value
                         }), id: \.key
                     ) { key, value in
                         Button {
@@ -199,10 +192,6 @@ struct LanguageSelectionView: View {
                         .foregroundColor(.secondary)
                 }
                 .disabled(true)
-                .onAppear {
-                    // Ensure English is set for English-only models
-                    updateLanguage("en")
-                }
             }
         }
     }

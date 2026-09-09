@@ -32,8 +32,9 @@ struct TranscriptionRegistryIntegrationTests {
         let loader = TranscriptionRegistryLoader()
         let manifestEntries = loader.entries()
         let mapped = manifestEntries.compactMap(TranscriptionModelMapper.map)
-        #expect(manifestEntries.count == 11,
-                "v1 manifest non-cloud entries (nemotron-streaming-en-0.6b + parakeet-tdt-ctc-110m + cohere-transcribe-03-2026 added as experimental)")
+        #expect(manifestEntries.count == 7)
+        #expect(manifestEntries.filter(\.is_experimental).map(\.id) == ["parakeet-unified-0.6b"],
+                "keep Realtime while removing the extra experimental models")
         #expect(manifestEntries.contains(where: { $0.id == "parakeet-unified-0.6b" }),
                 "manifest must include the Parakeet Unified entry")
         #expect(mapped.count == manifestEntries.count,

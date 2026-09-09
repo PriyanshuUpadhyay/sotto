@@ -113,40 +113,6 @@
       "notes": "Multilingual variant of Parakeet V2."
     },
     {
-      "id": "parakeet-realtime-eou-120m",
-      "family": "parakeet",
-      "display_name": "Parakeet Realtime (EOU)",
-      "description": "NVIDIA Parakeet Realtime EOU 120M — purpose-built for streaming dictation with 80–160 ms latency and built-in end-of-utterance detection.",
-      "framework": "fluidaudio_coreml",
-      "weights": {
-        "size_gb": 0.25,
-        "source_url": "https://huggingface.co/FluidInference/parakeet-realtime-eou-120m-coreml",
-        "checksum_sha256": null
-      },
-      "license": "CC-BY-4.0",
-      "license_url": "https://creativecommons.org/licenses/by/4.0/",
-      "languages": ["en"],
-      "is_multilingual": false,
-      "wer": {},
-      "wer_source": "Realtime variant — accuracy traded for latency; WER not benchmarked here.",
-      "rtf_p50": {
-        "m_base_16gb": null,
-        "m_pro_32gb": null
-      },
-      "rtf_p50_source": "FluidAudio: 80–160 ms streaming latency, 80 ms chunk processing on Apple Silicon.",
-      "first_token_ms_p50": 120,
-      "peak_ram_mb": 400,
-      "supports_streaming": true,
-      "supports_word_timestamps": true,
-      "supports_translation": false,
-      "min_macos": "14.0",
-      "is_default": false,
-      "is_experimental": true,
-      "is_deprecated": false,
-      "release_date": "2026-05-04",
-      "notes": "Streaming dictation default candidate. Built-in <EOU> token. Requires FluidAudio SDK on a revision that recognizes this model id; EOU-token plumbing for true streaming UX is a follow-up."
-    },
-    {
       "id": "parakeet-unified-0.6b",
       "family": "parakeet",
       "display_name": "Parakeet Unified",
@@ -179,74 +145,6 @@
       "is_deprecated": false,
       "release_date": "2026-06-13",
       "notes": "Unified Parakeet backend powering both batch and true streaming dictation via FluidAudio's UnifiedAsrManager / StreamingUnifiedAsrManager (int8 encoder)."
-    },
-    {
-      "id": "nemotron-streaming-en-0.6b",
-      "family": "nemotron",
-      "display_name": "Nemotron Speech Streaming",
-      "description": "NVIDIA Nemotron Speech Streaming EN 0.6B (int8 CoreML via FluidAudio) — chunked-attention streaming ASR tuned for low-latency dictation on Apple Silicon.",
-      "framework": "fluidaudio_coreml",
-      "weights": {
-        "size_gb": 0.6,
-        "source_url": "https://huggingface.co/FluidInference/nemotron-speech-streaming-en-0.6b-coreml",
-        "checksum_sha256": null
-      },
-      "license": "CC-BY-4.0",
-      "license_url": "https://creativecommons.org/licenses/by/4.0/",
-      "languages": ["en"],
-      "is_multilingual": false,
-      "wer": {},
-      "wer_source": "Streaming variant — accuracy traded for latency; WER not benchmarked here.",
-      "rtf_p50": {
-        "m_base_16gb": null,
-        "m_pro_32gb": null
-      },
-      "rtf_p50_source": "FluidAudio Nemotron streaming; per-device RTF unmeasured in this manifest.",
-      "first_token_ms_p50": 560,
-      "peak_ram_mb": 800,
-      "supports_streaming": true,
-      "supports_word_timestamps": true,
-      "supports_translation": false,
-      "min_macos": "14.0",
-      "is_default": false,
-      "is_experimental": true,
-      "is_deprecated": false,
-      "release_date": "2026-06-01",
-      "notes": "Streaming-only in Sotto via FluidAudio's StreamingNemotronAsrManager (int8 encoder, 560 ms chunk tier). Requires Apple Silicon (ANE)."
-    },
-    {
-      "id": "parakeet-tdt-ctc-110m",
-      "family": "parakeet",
-      "display_name": "Parakeet TDT-CTC 110M",
-      "description": "NVIDIA Parakeet TDT-CTC 110M (CoreML via FluidAudio) — compact hybrid TDT+CTC batch model; a fast, low-RAM English baseline.",
-      "framework": "fluidaudio_coreml",
-      "weights": {
-        "size_gb": 0.11,
-        "source_url": "https://huggingface.co/FluidInference/parakeet-tdt-ctc-110m-coreml",
-        "checksum_sha256": null
-      },
-      "license": "CC-BY-4.0",
-      "license_url": "https://creativecommons.org/licenses/by/4.0/",
-      "languages": ["en"],
-      "is_multilingual": false,
-      "wer": {},
-      "wer_source": "Compact 110M variant — per-set WER not benchmarked here.",
-      "rtf_p50": {
-        "m_base_16gb": null,
-        "m_pro_32gb": null
-      },
-      "rtf_p50_source": "FluidAudio TDT-CTC 110M; per-device RTF unmeasured in this manifest.",
-      "first_token_ms_p50": null,
-      "peak_ram_mb": 300,
-      "supports_streaming": false,
-      "supports_word_timestamps": true,
-      "supports_translation": false,
-      "min_macos": "14.0",
-      "is_default": false,
-      "is_experimental": true,
-      "is_deprecated": false,
-      "release_date": "2026-06-01",
-      "notes": "Standard FluidAudio batch decode via AsrManager (AsrModelVersion.tdtCtc110m)."
     },
     {
       "id": "ggml-large-v3",
@@ -351,37 +249,6 @@
       "is_deprecated": false,
       "release_date": "2024-10-01",
       "notes": "Quantized (q5_0) Turbo variant; smaller weights, slightly lower accuracy."
-    },
-    {
-      "id": "cohere-transcribe-03-2026",
-      "family": "cohere",
-      "display_name": "Cohere Transcribe",
-      "description": "Cohere Transcribe (03-2026) — experimental multilingual encoder-decoder ASR (14 languages) running on-device via FluidAudio's CoreML CoherePipeline. Batch transcription only.",
-      "framework": "fluidaudio_coreml",
-      "weights": {
-        "size_gb": 0.9,
-        "source_url": "https://huggingface.co/FluidInference/cohere-transcribe-03-2026-coreml",
-        "checksum_sha256": null
-      },
-      "license": "CC-BY-NC-4.0",
-      "license_url": "https://creativecommons.org/licenses/by-nc/4.0/",
-      "languages": ["en", "multi"],
-      "is_multilingual": true,
-      "wer": {},
-      "wer_source": "Not benchmarked in this manifest; experimental integration.",
-      "rtf_p50": {},
-      "rtf_p50_source": "Unmeasured on Apple Silicon; encoder-decoder with a 35 s sliding window.",
-      "first_token_ms_p50": null,
-      "peak_ram_mb": null,
-      "supports_streaming": false,
-      "supports_word_timestamps": false,
-      "supports_translation": false,
-      "min_macos": "14.0",
-      "is_default": false,
-      "is_experimental": true,
-      "is_deprecated": false,
-      "release_date": "2026-03-01",
-      "notes": "Experimental batch-only model via FluidAudio's CoherePipeline (q8 encoder + v2 ANE decoder). 35 s window with 5 s-overlap sliding for long audio. No streaming provider."
     }
   ]
 }

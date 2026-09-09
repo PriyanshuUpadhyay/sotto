@@ -19,6 +19,7 @@ struct ModelsTab: View {
     @State private var isPreparingAcousticModel = false
     @State private var acousticBoostingError: String?
     @State private var isRunningTranscriptionEval = false
+    @State private var modelSearchText = ""
 
     // Delete-confirmation alert for the per-tier transcription cards.
     @State private var isShowingDeleteAlert = false
@@ -108,30 +109,28 @@ struct ModelsTab: View {
                 iconSystemName: "waveform",
                 iconTint: Brand.tint,
                 title: "Transcription",
-                subtitle: "Pick a quality tier. Download, then select to use it."
+                subtitle: "Search by model or language. Download a model, then select it to use it."
             ) {
                 VStack(alignment: .leading, spacing: 16) {
-                    ForEach(TranscriptionTier.allCases) { tier in
-                        tierRow(for: tier)
-                    }
-                }
-            }
+                    TextField("Search models or languages", text: $modelSearchText)
+                        .textFieldStyle(.roundedBorder)
+                        .accessibilityLabel("Search transcription models")
 
-            SettingsCard(
-                iconSystemName: "testtube.2",
-                iconTint: Brand.tint,
-                title: "Experimental models",
-                subtitle: "Additional local ASR candidates from the bundled registry."
-            ) {
-                VStack(alignment: .leading, spacing: 16) {
-                    ForEach(experimentalModels, id: \.name) { model in
-                        experimentalModelRow(for: model)
+                    ForEach(matchingModels, id: \.name) { model in
+                        if let tier = TranscriptionTier(modelId: model.name) {
+                            tierRow(for: tier, model: model)
+                        } else {
+                            modelCard(for: model)
+                        }
                     }
 
-                    if experimentalModels.isEmpty {
-                        Text("No additional experimental models are available on this macOS version.")
+                    if matchingModels.isEmpty {
+                        Text("No models match. Try another name or language.")
                             .font(.ui(11))
                             .foregroundColor(Palette.inkSecondary)
+                        Button("Clear search") {
+                            modelSearchText = ""
+                        }
                     }
                 }
             }
@@ -197,16 +196,24 @@ struct ModelsTab: View {
         }
     }
 
-    private var experimentalModels: [any TranscriptionModel] {
-        let tierModelIds = Set(TranscriptionTier.allCases.map { $0.modelId })
-        return transcriptionModelManager.allAvailableModels.filter { model in
-            guard !tierModelIds.contains(model.name) else { return false }
+    private var catalogModels: [any TranscriptionModel] {
+        let models = transcriptionModelManager.allAvailableModels.filter { model in
             if model.provider == .nativeApple {
                 if #available(macOS 26, *) { return true }
                 return false
             }
             return true
         }
+        let tiers = TranscriptionTier.allCases.compactMap { tier in
+            models.first { $0.name == tier.modelId }
+        }
+        return tiers + models.filter { TranscriptionTier(modelId: $0.name) == nil }
+    }
+
+    private var matchingModels: [any TranscriptionModel] {
+        TranscriptionModelSearch.results(
+            in: catalogModels, query: modelSearchText
+        )
     }
 
     private var acousticBoostingCaption: String {
@@ -232,8 +239,7 @@ struct ModelsTab: View {
         }
     }
 
-    @ViewBuilder
-    private func tierRow(for tier: TranscriptionTier) -> some View {
+    private func tierRow(for tier: TranscriptionTier, model: any TranscriptionModel) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 8) {
                 Text(tier.title.uppercased())
@@ -246,29 +252,6 @@ struct ModelsTab: View {
                 Spacer(minLength: 0)
             }
 
-            if let model = transcriptionModelManager.allAvailableModels.first(where: { $0.name == tier.modelId }) {
-                modelCard(for: model)
-            } else {
-                Text("Model unavailable")
-                    .font(.ui(11))
-                    .foregroundColor(Palette.inkSecondary)
-            }
-        }
-    }
-
-    @ViewBuilder
-    private func experimentalModelRow(for model: any TranscriptionModel) -> some View {
-        if model.provider == .nativeApple {
-            if #available(macOS 26, *) {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("Experimental Apple Speech path. This is useful as a native baseline, but docs currently flag it as experimental and it may not work yet.")
-                        .font(.ui(11))
-                        .foregroundColor(Palette.inkSecondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                    modelCard(for: model)
-                }
-            }
-        } else {
             modelCard(for: model)
         }
     }
@@ -349,7 +332,7 @@ struct ModelsTab: View {
                     VStack(alignment: .leading, spacing: 2) {
                         Text("Clean up transcripts with AI")
                             .font(.ui(12, weight: .semibold))
-                        Text("Removes fillers and adds punctuation while preserving your wording. Off pastes the raw transcript.")
+                        Text("Removes fillers and adds punctuation in languages supported by Apple Intelligence. Hindi is not supported. Off pastes the raw transcript.")
                             .font(.ui(11))
                             .foregroundColor(Palette.inkSecondary)
                             .fixedSize(horizontal: false, vertical: true)

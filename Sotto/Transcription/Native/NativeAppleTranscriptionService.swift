@@ -11,24 +11,7 @@ import Speech
 class NativeAppleTranscriptionService: TranscriptionService {
     private let logger = Logger(subsystem: OSLogSubsystems.app, category: "NativeAppleTranscriptionService")
     
-    /// Maps simple language codes to Apple's BCP-47 locale format
-    private func mapToAppleLocale(_ simpleCode: String) -> String {
-        let mapping = [
-            "en": "en-US",
-            "es": "es-ES", 
-            "fr": "fr-FR",
-            "de": "de-DE",
-            "ar": "ar-SA",
-            "it": "it-IT",
-            "ja": "ja-JP",
-            "ko": "ko-KR",
-            "pt": "pt-BR",
-            "yue": "yue-CN",
-            "zh": "zh-CN"
-        ]
-        return mapping[simpleCode] ?? "en-US"
-    }
-    
+
     enum ServiceError: Error, LocalizedError {
         case unsupportedOS
         case transcriptionFailed
@@ -62,17 +45,13 @@ class NativeAppleTranscriptionService: TranscriptionService {
             throw ServiceError.unsupportedOS
         }
         
-        // Feature gated: SpeechAnalyzer/SpeechTranscriber are future APIs.
-        // Enable by defining ENABLE_NATIVE_SPEECH_ANALYZER in build settings once building against macOS 26+ SDKs.
-        #if canImport(Speech) && ENABLE_NATIVE_SPEECH_ANALYZER
+        #if canImport(Speech)
         logger.notice("Starting Apple native transcription with SpeechAnalyzer.")
         
         let audioFile = try AVAudioFile(forReading: audioURL)
         
-        // Get the user's selected language in simple format and convert to BCP-47 format
-        let selectedLanguage = UserDefaults.standard.string(forKey: "SelectedLanguage") ?? "en"
-        let appleLocale = mapToAppleLocale(selectedLanguage)
-        let locale = Locale(identifier: appleLocale)
+        // Apple Speech offers English only (see LanguageDictionary).
+        let locale = Locale(identifier: "en-US")
 
         // Check for locale support and asset installation status using proper BCP-47 format
         let supportedLocales = await SpeechTranscriber.supportedLocales
@@ -97,7 +76,7 @@ class NativeAppleTranscriptionService: TranscriptionService {
         let logMessage = """
         
         --- Native Speech Transcription ---
-        Selected Language: '\(selectedLanguage)' → Apple Locale: '\(locale.identifier(.bcp47))'
+        Selected Language: 'en' → Apple Locale: '\(locale.identifier(.bcp47))'
         Status: \(statusMessage)
         ------------------------------------
         Supported Locales: [\(supportedIdentifiers)]
@@ -145,11 +124,9 @@ class NativeAppleTranscriptionService: TranscriptionService {
     
     
     
-    // Forward-compatibility: Use Any here because SpeechTranscriber is only available in future macOS SDKs.
-    // This avoids referencing an unavailable SDK symbol while keeping the method shape for later adoption.
     @available(macOS 26, *)
     private func ensureModelIsAvailable(for transcriber: SpeechTranscriber, locale: Locale) async throws {
-        #if canImport(Speech) && ENABLE_NATIVE_SPEECH_ANALYZER
+        #if canImport(Speech)
         let installedLocales = await SpeechTranscriber.installedLocales
         let isInstalled = installedLocales.map({ $0.identifier(.bcp47) }).contains(locale.identifier(.bcp47))
 

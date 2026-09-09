@@ -21,7 +21,7 @@ enum AppDefaults {
             "IsTextFormattingEnabled": true,
             "IsVADEnabled": true,
             "RemoveFillerWords": true,
-            "SelectedLanguage": "en",
+            "SelectedLanguage": "auto",
             "AppendTrailingSpace": true,
 
             // Cleanup

@@ -128,7 +128,7 @@ struct ImportedWhisperModel: TranscriptionModel {
         self.name = fileBaseName
         self.displayName = fileBaseName
         self.description = "Imported local model"
-        self.isMultilingualModel = true
-        self.supportedLanguages = LanguageDictionary.forProvider(isMultilingual: true, provider: .whisper)
+        self.isMultilingualModel = !fileBaseName.hasSuffix(".en") && !fileBaseName.contains(".en-")
+        self.supportedLanguages = LanguageDictionary.forProvider(isMultilingual: isMultilingualModel, provider: .whisper)
     }
 }

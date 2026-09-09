@@ -201,7 +201,10 @@ class WhisperModelManager: ObservableObject {
     }
 
     func downloadModel(_ model: WhisperModel) async {
+        guard !availableModels.contains(where: { $0.name == model.name }),
+              downloadProgress[model.name + "_main"] == nil else { return }
         guard let url = URL(string: model.downloadURL) else { return }
+        downloadProgress[model.name + "_main"] = 0
         downloadErrors.removeValue(forKey: model.name)
         await performModelDownload(model, url)
     }

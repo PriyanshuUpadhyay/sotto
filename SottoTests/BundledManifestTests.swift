@@ -8,7 +8,7 @@ struct BundledManifestTests {
         let data = try Data(contentsOf: url)
         let manifest = try JSONDecoder().decode(TranscriptionModelManifest.self, from: data)
         #expect(manifest.schema_version == 1)
-        #expect(manifest.models.count == 11)
+        #expect(manifest.models.count == 7)
     }
 
     @Test func bundledResourceIsAccessibleFromAppBundle() throws {
