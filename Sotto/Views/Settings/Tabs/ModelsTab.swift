@@ -20,9 +20,14 @@ struct ModelsTab: View {
     @State private var acousticBoostingError: String?
     @State private var isRunningTranscriptionEval = false
     @State private var modelSearchText = ""
+    @AppStorage("EnhancementProvider") private var enhancementProvider = AIProvider.foundationModels.rawValue
+    @AppStorage("EnhancementGGUFModelSlug") private var enhancementGGUFModelSlug = GGUFModelRegistry.curated.first?.slug ?? "s1-mini"
+    @ObservedObject private var ggufDownloadManager = GGUFDownloadManager.shared
+    @State private var downloadedGGUFSlugs: Set<String> = []
 
-    // Delete-confirmation alert for the per-tier transcription cards.
+    // Delete-confirmation / error alert for model cards.
     @State private var isShowingDeleteAlert = false
+    @State private var isDeleteConfirmation = false
     @State private var alertTitle = ""
     @State private var alertMessage = ""
     @State private var deleteActionClosure: () -> Void = {}
@@ -72,12 +77,20 @@ struct ModelsTab: View {
             }
             .background(Theme.canvas)
             .alert(isPresented: $isShowingDeleteAlert) {
-                Alert(
-                    title: Text(alertTitle),
-                    message: Text(alertMessage),
-                    primaryButton: .destructive(Text("Delete"), action: deleteActionClosure),
-                    secondaryButton: .cancel()
-                )
+                if isDeleteConfirmation {
+                    Alert(
+                        title: Text(alertTitle),
+                        message: Text(alertMessage),
+                        primaryButton: .destructive(Text("Delete"), action: deleteActionClosure),
+                        secondaryButton: .cancel()
+                    )
+                } else {
+                    Alert(
+                        title: Text(alertTitle),
+                        message: Text(alertMessage),
+                        dismissButton: .default(Text("OK"))
+                    )
+                }
             }
             .tint(Brand.tint)
             .onReceive(NotificationCenter.default.publisher(for: .selectSettingsSection)) { note in
@@ -260,6 +273,8 @@ struct ModelsTab: View {
         let isWarming = (model as? WhisperModel).map { whisperModel in
             warmupCoordinator.isWarming(modelNamed: whisperModel.name)
         } ?? false
+        let whisperModel = model as? WhisperModel
+        let isPaused = whisperModel.map { whisperModelManager.isPaused($0) } ?? false
 
         return ModelCardView(
             model: model,
@@ -271,6 +286,7 @@ struct ModelsTab: View {
             downloadError: whisperModelManager.downloadErrors[model.name],
             modelURL: whisperModelManager.availableModels.first { $0.name == model.name }?.url,
             isWarming: isWarming,
+            isPaused: isPaused,
             deleteAction: {
                 if let downloadedModel = whisperModelManager.availableModels.first(where: { $0.name == model.name }) {
                     alertTitle = "Delete Model"
@@ -278,6 +294,7 @@ struct ModelsTab: View {
                     deleteActionClosure = {
                         Task { await whisperModelManager.deleteModel(downloadedModel) }
                     }
+                    isDeleteConfirmation = true
                     isShowingDeleteAlert = true
                 }
             },
@@ -287,6 +304,21 @@ struct ModelsTab: View {
             downloadAction: {
                 if let whisperModel = model as? WhisperModel {
                     Task { await whisperModelManager.downloadModel(whisperModel) }
+                }
+            },
+            pauseAction: {
+                if let whisperModel = model as? WhisperModel {
+                    whisperModelManager.pauseDownload(whisperModel)
+                }
+            },
+            resumeAction: {
+                if let whisperModel = model as? WhisperModel {
+                    whisperModelManager.resumeDownload(whisperModel)
+                }
+            },
+            cancelAction: {
+                if let whisperModel = model as? WhisperModel {
+                    whisperModelManager.cancelDownload(whisperModel)
                 }
             }
         )
@@ -315,13 +347,127 @@ struct ModelsTab: View {
 
     // MARK: - Enhancement (flat: level + on-device provider + prompts)
 
+    private func statusText(for model: GGUFModelEntry) -> String {
+        switch ggufDownloadManager.state(for: model.slug) {
+        case .downloading:
+            let pct = Int(ggufDownloadManager.progress(for: model.slug) * 100)
+            return "Downloading… \(pct)%"
+        case .paused:
+            let pct = Int(ggufDownloadManager.progress(for: model.slug) * 100)
+            return "Paused · \(pct)%"
+        case .failed(let err):
+            return "Failed: \(err)"
+        case .idle:
+            return downloadedGGUFSlugs.contains(model.slug) ? "Downloaded" : "Not downloaded"
+        }
+    }
+
+    private func download(_ model: GGUFModelEntry) {
+        ggufDownloadManager.start(model.slug)
+    }
+
+    private func delete(_ model: GGUFModelEntry) {
+        alertTitle = "Delete Model"
+        alertMessage = "Are you sure you want to delete the model '\(model.displayName)'?"
+        deleteActionClosure = {
+            Task {
+                ggufDownloadManager.cancel(model.slug)
+                try? GGUFModelRegistry.deleteModel(model.slug)
+                await MainActor.run {
+                    refreshGGUFStatus()
+                    AIService.resetGGUF()
+                    NotificationCenter.default.post(name: .AppSettingsDidChange, object: nil)
+                }
+            }
+        }
+        isDeleteConfirmation = true
+        isShowingDeleteAlert = true
+    }
+
+    private func use(_ model: GGUFModelEntry) {
+        enhancementGGUFModelSlug = model.slug
+        enhancementProvider = AIProvider.localGGUF.rawValue
+        AIService.resetGGUF()
+        NotificationCenter.default.post(name: .AppSettingsDidChange, object: nil)
+    }
+
+    private func refreshGGUFStatus() {
+        downloadedGGUFSlugs = Set(
+            GGUFModelRegistry.curated.filter { GGUFModelRegistry.isDownloaded($0.slug) }.map(\.slug)
+        )
+    }
+
+    private func ggufModelRow(_ model: GGUFModelEntry) -> some View {
+        let state = ggufDownloadManager.state(for: model.slug)
+        let isDownloaded = downloadedGGUFSlugs.contains(model.slug)
+        let isInUse = (enhancementProvider == AIProvider.localGGUF.rawValue)
+            && (enhancementGGUFModelSlug == model.slug)
+            && isDownloaded
+
+        return HStack(spacing: 8) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(model.displayName)
+                    .font(.ui(11, weight: .medium))
+                    .foregroundColor(Palette.inkSecondary)
+                Text("\(model.diskSize) · \(model.licenseNote) · \(statusText(for: model))")
+                    .font(.ui(11))
+                    .foregroundColor(Palette.inkSecondary)
+            }
+            Spacer()
+            if state == .downloading || state == .paused {
+                ProgressView(value: ggufDownloadManager.progress(for: model.slug), total: 1.0)
+                    .progressViewStyle(.linear)
+                    .frame(width: 80)
+                    .controlSize(.small)
+
+                if state == .downloading {
+                    Button("Pause") {
+                        ggufDownloadManager.pause(model.slug)
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                } else {
+                    Button("Resume") {
+                        ggufDownloadManager.resume(model.slug)
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                }
+
+                Button("Cancel") {
+                    ggufDownloadManager.cancel(model.slug)
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+            } else if isDownloaded {
+                Button(isInUse ? "In use" : "Use") {
+                    use(model)
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.small)
+                Button("Delete") {
+                    delete(model)
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+            } else {
+                Button("Download") {
+                    download(model)
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.small)
+            }
+        }
+        .padding(.top, 4)
+    }
+
     private var enhancementSection: some View {
         VStack(alignment: .leading, spacing: 16) {
             SettingsCard(
                 iconSystemName: "wand.and.stars",
                 iconTint: Brand.tint,
                 title: "Enhancement",
-                subtitle: "Clean transcripts on-device (Apple Foundation Models) before pasting.",
+                subtitle: "Clean transcripts on-device before pasting.",
                 statusText: enhancementService.isEnhancementEnabled ? "On" : "Off",
                 statusTone: enhancementService.isEnhancementEnabled ? .positive : .neutral
             ) {
@@ -340,6 +486,47 @@ struct ModelsTab: View {
                 }
                 .toggleStyle(.switch)
             }
+
+            SettingsCard(
+                iconSystemName: "cpu",
+                iconTint: Brand.tint,
+                title: "Enhancement model",
+                subtitle: "Choose which on-device model cleans your transcripts."
+            ) {
+                VStack(alignment: .leading, spacing: 12) {
+                    Picker("Enhancement model", selection: $enhancementProvider) {
+                        ForEach(AIProvider.allCases, id: \.rawValue) { provider in
+                            Text(provider.rawValue)
+                                .tag(provider.rawValue)
+                        }
+                    }
+                    .labelsHidden()
+                    .onChange(of: enhancementProvider) { _ in
+                        AIService.resetGGUF()
+                        NotificationCenter.default.post(name: .AppSettingsDidChange, object: nil)
+                    }
+                    .onChange(of: enhancementGGUFModelSlug) { _ in
+                        AIService.resetGGUF()
+                        NotificationCenter.default.post(name: .AppSettingsDidChange, object: nil)
+                    }
+
+                    if enhancementProvider == AIProvider.localGGUF.rawValue && !downloadedGGUFSlugs.contains(enhancementGGUFModelSlug) {
+                        Text("Selected local model is not downloaded; falling back to Apple Foundation Models.")
+                            .font(.ui(11))
+                            .foregroundColor(Palette.inkSecondary)
+                    }
+
+                    ForEach(GGUFModelRegistry.curated) { model in
+                        ggufModelRow(model)
+                    }
+                }
+            }
+        }
+        .onAppear {
+            refreshGGUFStatus()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .AppSettingsDidChange)) { _ in
+            refreshGGUFStatus()
         }
     }
 }

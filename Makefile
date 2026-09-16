@@ -2,6 +2,8 @@
 DEPS_DIR := $(HOME)/Sotto-Dependencies
 WHISPER_CPP_DIR := $(DEPS_DIR)/whisper.cpp
 FRAMEWORK_PATH := $(WHISPER_CPP_DIR)/build-apple/whisper.xcframework
+LLAMA_CPP_DIR := $(DEPS_DIR)/llama.cpp
+LLAMA_FRAMEWORK_PATH := $(LLAMA_CPP_DIR)/build-apple/llama.xcframework
 LOCAL_DERIVED_DATA := $(CURDIR)/.local-build
 
 # Silero VAD model: third-party MIT weights, fetched instead of vendored.
@@ -37,7 +39,7 @@ LOCAL_XCODE_FLAGS = -project Sotto.xcodeproj -scheme Sotto -configuration Debug 
 	CODE_SIGN_ENTITLEMENTS=$(CURDIR)/Sotto/Sotto.local.entitlements \
 	SWIFT_ACTIVE_COMPILATION_CONDITIONS='$$(inherited) LOCAL_BUILD'
 
-.PHONY: all clean whisper vad-model setup build local check healthcheck help dev run reload test eval acceptance acceptance-mutate property dmg release publish
+.PHONY: all clean whisper llama vad-model setup build local check healthcheck help dev run reload test eval acceptance acceptance-mutate property dmg release publish
 
 # Default target
 all: check build
@@ -70,6 +72,20 @@ whisper:
 		echo "whisper.xcframework already built in $(DEPS_DIR), skipping build"; \
 	fi
 
+llama:
+	@mkdir -p $(DEPS_DIR)
+	@if [ ! -d "$(LLAMA_FRAMEWORK_PATH)" ]; then \
+		echo "Building llama.xcframework in $(DEPS_DIR)..."; \
+		if [ ! -d "$(LLAMA_CPP_DIR)" ]; then \
+			git clone https://github.com/ggml-org/llama.cpp $(LLAMA_CPP_DIR); \
+		else \
+			(cd $(LLAMA_CPP_DIR) && git pull); \
+		fi; \
+		cd $(LLAMA_CPP_DIR) && ./build-xcframework.sh; \
+	else \
+		echo "llama.xcframework already built in $(DEPS_DIR), skipping build"; \
+	fi
+
 vad-model:
 	@if [ -f "$(VAD_MODEL)" ] && [ "$$(shasum -a 256 "$(VAD_MODEL)" | awk '{print $$1}')" = "$(VAD_MODEL_SHA)" ]; then \
 		echo "VAD model present"; \
@@ -90,8 +106,9 @@ vad-model:
 		echo "VAD model ready"; \
 	fi
 
-setup: whisper vad-model
+setup: whisper llama vad-model
 	@echo "Whisper framework is ready at $(FRAMEWORK_PATH)"
+	@echo "llama framework is ready at $(LLAMA_FRAMEWORK_PATH)"
 	@echo "Please ensure your Xcode project references the framework from this new location."
 
 build: setup
@@ -376,6 +393,7 @@ help:
 	@echo "Available targets:"
 	@echo "  check/healthcheck  Check if required CLI tools are installed"
 	@echo "  whisper            Clone and build whisper.cpp XCFramework"
+	@echo "  llama              Clone and build llama.cpp XCFramework"
 	@echo "  setup              Copy whisper XCFramework to Sotto project"
 	@echo "  build              Build the Sotto Xcode project"
 	@echo "  local              Build for local use (no Apple Developer certificate needed)"

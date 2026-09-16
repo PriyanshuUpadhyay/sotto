@@ -124,7 +124,10 @@ struct FluidAudioModelCardView: View {
                 DownloadProgressView(
                     modelName: model.name,
                     downloadProgress: fluidAudioModelManager.downloadProgress,
-                    isTwoPhase: false
+                    isTwoPhase: false,
+                    onCancel: {
+                        fluidAudioModelManager.cancelDownload(model)
+                    }
                 )
                 .padding(.top, 8)
                 .frame(maxWidth: .infinity, alignment: .leading)

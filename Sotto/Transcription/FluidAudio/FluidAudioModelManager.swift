@@ -88,10 +88,13 @@ class FluidAudioModelManager: ObservableObject {
         parakeetDownloadStates[model.name] ?? false
     }
 
+    private var downloadTasks: [String: Task<Void, Never>] = [:]
+    private var downloadTimers: [String: Timer] = [:]
+
     // MARK: - Download
 
     func downloadFluidAudioModel(_ model: FluidAudioModel) async {
-        if isFluidAudioModelDownloaded(model) {
+        if isFluidAudioModelDownloaded(model) || downloadTasks[model.name] != nil {
             return
         }
 
@@ -100,72 +103,99 @@ class FluidAudioModelManager: ObservableObject {
         downloadProgress[modelName] = 0.0
         downloadErrors.removeValue(forKey: modelName)
 
-        let timer = Timer.scheduledTimer(withTimeInterval: 1.2, repeats: true) { timer in
+        let timer = Timer.scheduledTimer(withTimeInterval: 1.2, repeats: true) { [weak self] _ in
             Task { @MainActor in
+                guard let self = self else { return }
                 if let currentProgress = self.downloadProgress[modelName], currentProgress < 0.9 {
                     self.downloadProgress[modelName] = currentProgress + 0.005
                 }
             }
         }
+        downloadTimers[modelName] = timer
 
-        var didSucceed = false
-        do {
-            if FluidAudioModelManager.isParakeetUnifiedModel(named: modelName) {
-                // loadModels() downloads the bundles into the FluidAudio cache
-                // if missing; load both managers so streaming + batch weights
-                // land, then release them — we only want them on disk.
-                let streamingManager = StreamingUnifiedAsrManager(
-                    encoderPrecision: FluidAudioModelManager.parakeetUnifiedPrecision
-                )
-                try await streamingManager.loadModels()
-                await streamingManager.cleanup()
+        let task = Task {
+            var didSucceed = false
+            do {
+                if FluidAudioModelManager.isParakeetUnifiedModel(named: modelName) {
+                    // loadModels() downloads the bundles into the FluidAudio cache
+                    // if missing; load both managers so streaming + batch weights
+                    // land, then release them — we only want them on disk.
+                    let streamingManager = StreamingUnifiedAsrManager(
+                        encoderPrecision: FluidAudioModelManager.parakeetUnifiedPrecision
+                    )
+                    try await streamingManager.loadModels()
+                    await streamingManager.cleanup()
 
-                let batchManager = UnifiedAsrManager(
-                    encoderPrecision: FluidAudioModelManager.parakeetUnifiedPrecision
-                )
-                try await batchManager.loadModels()
-                await batchManager.cleanup()
-            } else if FluidAudioModelManager.isParakeetEouModel(named: modelName) {
-                let manager = StreamingEouAsrManager(chunkSize: .ms160)
-                try await manager.loadModels(to: FluidAudioModelManager.parakeetEouCacheRootDirectory())
-                await manager.cleanup()
-            } else if FluidAudioModelManager.isNemotronStreamingModel(named: modelName) {
-                let manager = StreamingNemotronAsrManager(
-                    requestedChunkSize: FluidAudioModelManager.nemotronStreamingChunkSize
-                )
-                try await manager.loadModels(to: FluidAudioModelManager.nemotronStreamingCacheRootDirectory())
-                await manager.cleanup()
-            } else if FluidAudioModelManager.isCohereModel(named: modelName) {
-                // CoherePipeline has no manager; download the CoreML bundle into
-                // the shared FluidAudio models root, then load it lazily at
-                // transcribe time.
-                try await ModelHub.download(
-                    .cohereTranscribeCoreml,
-                    to: FluidAudioModelManager.fluidAudioModelsRootDirectory())
-            } else {
-                guard let version = FluidAudioModelManager.knownAsrVersion(for: modelName) else {
-                    throw SottoEngineError.unsupportedFluidAudioModel(modelName)
+                    let batchManager = UnifiedAsrManager(
+                        encoderPrecision: FluidAudioModelManager.parakeetUnifiedPrecision
+                    )
+                    try await batchManager.loadModels()
+                    await batchManager.cleanup()
+                } else if FluidAudioModelManager.isParakeetEouModel(named: modelName) {
+                    let manager = StreamingEouAsrManager(chunkSize: .ms160)
+                    try await manager.loadModels(to: FluidAudioModelManager.parakeetEouCacheRootDirectory())
+                    await manager.cleanup()
+                } else if FluidAudioModelManager.isNemotronStreamingModel(named: modelName) {
+                    let manager = StreamingNemotronAsrManager(
+                        requestedChunkSize: FluidAudioModelManager.nemotronStreamingChunkSize
+                    )
+                    try await manager.loadModels(to: FluidAudioModelManager.nemotronStreamingCacheRootDirectory())
+                    await manager.cleanup()
+                } else if FluidAudioModelManager.isCohereModel(named: modelName) {
+                    // CoherePipeline has no manager; download the CoreML bundle into
+                    // the shared FluidAudio models root, then load it lazily at
+                    // transcribe time.
+                    try await ModelHub.download(
+                        .cohereTranscribeCoreml,
+                        to: FluidAudioModelManager.fluidAudioModelsRootDirectory())
+                } else {
+                    guard let version = FluidAudioModelManager.knownAsrVersion(for: modelName) else {
+                        throw SottoEngineError.unsupportedFluidAudioModel(modelName)
+                    }
+                    _ = try await AsrModels.downloadAndLoad(version: version)
+                    _ = try await VadManager()
                 }
-                _ = try await AsrModels.downloadAndLoad(version: version)
-                _ = try await VadManager()
+                UserDefaults.standard.set(true, forKey: self.parakeetDefaultsKey(for: modelName))
+                self.downloadProgress[modelName] = 1.0
+                didSucceed = true
+            } catch {
+                if (error as? CancellationError) == nil {
+                    UserDefaults.standard.set(false, forKey: self.parakeetDefaultsKey(for: modelName))
+                    self.downloadErrors[modelName] = error.localizedDescription
+                    self.logger.error("❌ FluidAudio download failed for \(modelName, privacy: .public): \(error.localizedDescription, privacy: .public)")
+                }
             }
-            UserDefaults.standard.set(true, forKey: parakeetDefaultsKey(for: modelName))
-            downloadProgress[modelName] = 1.0
-            didSucceed = true
-        } catch {
-            UserDefaults.standard.set(false, forKey: parakeetDefaultsKey(for: modelName))
-            downloadErrors[modelName] = error.localizedDescription
-            logger.error("❌ FluidAudio download failed for \(modelName, privacy: .public): \(error.localizedDescription, privacy: .public)")
+
+            timer.invalidate()
+            self.downloadTimers.removeValue(forKey: modelName)
+            self.parakeetDownloadStates[modelName] = false
+            self.downloadProgress[modelName] = nil
+            self.downloadTasks.removeValue(forKey: modelName)
+
+            self.onModelsChanged?()
+            if didSucceed {
+                self.onModelDownloaded?(modelName)
+            }
         }
 
-        timer.invalidate()
+        downloadTasks[modelName] = task
+        await task.value
+    }
+
+    func cancelDownload(_ model: FluidAudioModel) {
+        let modelName = model.name
+        downloadTasks[modelName]?.cancel()
+        downloadTasks.removeValue(forKey: modelName)
+        downloadTimers[modelName]?.invalidate()
+        downloadTimers.removeValue(forKey: modelName)
         parakeetDownloadStates[modelName] = false
-        downloadProgress[modelName] = nil
+        downloadProgress.removeValue(forKey: modelName)
+        downloadErrors.removeValue(forKey: modelName)
 
-        onModelsChanged?()
-        if didSucceed {
-            onModelDownloaded?(modelName)
+        if let cacheDirectory = cacheDirectory(for: modelName) {
+            try? FileManager.default.removeItem(at: cacheDirectory)
         }
+        onModelsChanged?()
     }
 
     // MARK: - Delete

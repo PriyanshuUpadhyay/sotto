@@ -450,14 +450,71 @@ class AIEnhancementService: ObservableObject {
         let callKind: EnhancementTimingLogger.CallKind =
             generation < 0 ? .import : (hardened ? .hardenedRetry : .primary)
 
-        guard #available(macOS 26.0, *) else {
-            throw EnhancementError.customError("Apple Foundation Models requires macOS 26 or later.")
+        let provider = AIProvider.resolved()
+        let rawResult: String
+
+        if provider == .localGGUF {
+            let ggufResult: String
+            do {
+                ggufResult = try await aiService.enhanceWithGGUF(
+                    systemPrompt: systemMessage,
+                    userPrompt: text,
+                    transcriptChars: text.count,
+                    callKind: callKind,
+                    generation: generation
+                )
+                await MainActor.run { self.lastEnhancementModelUsed = AIProvider.localGGUF.modelIdentifier }
+            } catch is CancellationError {
+                throw CancellationError()
+            } catch let error as GGUFProvider.ProviderError {
+                logger.error("🦾 GGUF enhance failed: \(error.localizedDescription, privacy: .public) — falling back to AFM")
+                guard #available(macOS 26.0, *) else {
+                    throw EnhancementError.customError("GGUF failed (\(error.localizedDescription)) and Apple Foundation Models is unavailable.")
+                }
+                ggufResult = try await performAFMCall(
+                    systemPrompt: systemMessage,
+                    userPrompt: formattedText,
+                    transcriptChars: text.count,
+                    callKind: callKind,
+                    generation: generation
+                )
+                await MainActor.run { self.lastEnhancementModelUsed = "apple-on-device (fallback)" }
+            }
+            rawResult = ggufResult
+        } else {
+            guard #available(macOS 26.0, *) else {
+                throw EnhancementError.customError("Apple Foundation Models requires macOS 26 or later.")
+            }
+            rawResult = try await performAFMCall(
+                systemPrompt: systemMessage,
+                userPrompt: formattedText,
+                transcriptChars: text.count,
+                callKind: callKind,
+                generation: generation
+            )
+            await MainActor.run { self.lastEnhancementModelUsed = AIProvider.foundationModels.modelIdentifier }
         }
+
+        let cleaned = AIEnhancementOutputFilter.filter(Self.stripPreamble(rawResult))
+        return TranscriptPrepass.finish(TranscriptPrepass.emphasis(TranscriptPrepass.contractions(TranscriptPrepass.lineBreaks(TranscriptPrepass.clean(VerbatimWordGuard.restore(raw: text, output: cleaned))))))
+    }
+
+    @available(macOS 26.0, *)
+    private func performAFMCall(
+        systemPrompt: String,
+        userPrompt: String,
+        transcriptChars: Int,
+        callKind: EnhancementTimingLogger.CallKind,
+        generation: Int
+    ) async throws -> String {
         do {
-            let result = try await aiService.enhanceWithAFM(systemPrompt: systemMessage, userPrompt: formattedText, transcriptChars: text.count, callKind: callKind, generation: generation)
-            await MainActor.run { self.lastEnhancementModelUsed = AIProvider.resolved().modelIdentifier }
-            let cleaned = AIEnhancementOutputFilter.filter(Self.stripPreamble(result))
-            return TranscriptPrepass.finish(TranscriptPrepass.emphasis(TranscriptPrepass.contractions(TranscriptPrepass.lineBreaks(TranscriptPrepass.clean(VerbatimWordGuard.restore(raw: text, output: cleaned))))))
+            return try await aiService.enhanceWithAFM(
+                systemPrompt: systemPrompt,
+                userPrompt: userPrompt,
+                transcriptChars: transcriptChars,
+                callKind: callKind,
+                generation: generation
+            )
         } catch is CancellationError {
             throw CancellationError()
         } catch {
@@ -763,39 +820,31 @@ class AIEnhancementService: ObservableObject {
         )
     }
 
-    /// Fire-and-forget Apple Foundation Models warm-up. Errors swallowed.
+    /// Fire-and-forget enhancement warm-up. Errors swallowed.
     func warmAFMIfAvailable(source: String) async {
+        if AIProvider.resolved() == .localGGUF {
+            await aiService.warmGGUF(source: source)
+            return
+        }
         if #available(macOS 26.0, *) {
             guard AFMProvider.isAvailable else { return }
             await aiService.warmAFM(source: source)
         }
     }
 
-    /// Warm AFM for the NEXT enhance specifically — builds the prospective
-    /// system INSTRUCTIONS (stable content only, no volatile context) via the
-    /// SAME path `enhance(...)` uses, then primes a reusable AFM session so
-    /// the instruction prefill is already cached. Stability is what makes the
-    /// warm key match the real enhance call later in this dictation.
-    /// `generation` is tagged onto the warmed session (`AFMProvider`) so a
-    /// consume attempt from a DIFFERENT dictation can never claim it, even if
-    /// the (now-stable) instruction string happens to match by coincidence.
+    /// Warm enhancement for the NEXT enhance specifically.
     func warmAFMForNextEnhance(source: String, generation: Int) async {
         guard generation == dictationGeneration else { return }
+        if AIProvider.resolved() == .localGGUF {
+            await aiService.warmGGUF(source: source)
+            return
+        }
         if #available(macOS 26.0, *) {
             guard AFMProvider.isAvailable else { return }
             let instructions = await getSystemInstructions()
             guard generation == dictationGeneration else { return }
             await aiService.warmAFM(instructions: instructions, source: source, generation: generation)
         }
-    }
-
-    /// Human-readable label for the Active Path indicator in the Enhancement
-    /// settings. Reflects AFM availability.
-    var activeLocalPathDescription: String {
-        if #available(macOS 26.0, *) {
-            return AFMProvider.availabilityDescription()
-        }
-        return "Apple Foundation Models (requires macOS 26)"
     }
 
     func clearCapturedContexts() {

@@ -13,7 +13,6 @@ final class LocalOnlyProvidersTests: XCTestCase {
     }
 
     func testAIProviderIsExactlyOnDeviceSet() {
-        // Enhancement collapsed to a single on-device path: Apple Foundation Models.
-        XCTAssertEqual(Set(AIProvider.allCases), Set([AIProvider.foundationModels]))
+        XCTAssertEqual(Set(AIProvider.allCases), Set([AIProvider.foundationModels, .localGGUF]))
     }
 }

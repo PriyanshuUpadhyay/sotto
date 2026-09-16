@@ -11,11 +11,15 @@ struct ModelCardView: View {
     let downloadError: String?
     let modelURL: URL?
     let isWarming: Bool
+    var isPaused: Bool = false
 
     // Actions
     var deleteAction: () -> Void
     var setDefaultAction: () -> Void
     var downloadAction: () -> Void
+    var pauseAction: (() -> Void)? = nil
+    var resumeAction: (() -> Void)? = nil
+    var cancelAction: (() -> Void)? = nil
     var body: some View {
         Group {
             switch model.provider {
@@ -29,9 +33,13 @@ struct ModelCardView: View {
                         downloadError: downloadError,
                         modelURL: modelURL,
                         isWarming: isWarming,
+                        isPaused: isPaused,
                         deleteAction: deleteAction,
                         setDefaultAction: setDefaultAction,
-                        downloadAction: downloadAction
+                        downloadAction: downloadAction,
+                        pauseAction: pauseAction,
+                        resumeAction: resumeAction,
+                        cancelAction: cancelAction
                     )
                 } else if let importedModel = model as? ImportedWhisperModel {
                     ImportedWhisperModelCardView(

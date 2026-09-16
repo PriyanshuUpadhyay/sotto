@@ -60,10 +60,24 @@ class WhisperModelManager: ObservableObject {
     /// Last download failure per model name. Set when a download throws,
     /// cleared when a new attempt starts.
     @Published var downloadErrors: [String: String] = [:]
+    @Published var pausedModels: Set<String> = []
     @Published var whisperContext: WhisperContext?
     @Published var isModelLoaded = false
     @Published var loadedWhisperModel: WhisperModelFile?
     @Published var isModelLoading = false
+
+    private var downloadTasks: [String: Task<Void, Never>] = [:]
+    private var activeDownloadTasks: [String: URLSessionDownloadTask] = [:]
+    private var resumeData: [String: Data] = [:]
+
+    func isDownloading(_ model: WhisperModel) -> Bool {
+        (downloadProgress.keys.contains(model.name + "_main") || downloadProgress.keys.contains(model.name + "_coreml"))
+        && !pausedModels.contains(model.name)
+    }
+
+    func isPaused(_ model: WhisperModel) -> Bool {
+        pausedModels.contains(model.name)
+    }
 
     let modelsDirectory: URL
     let whisperPrompt = WhisperPrompt()
@@ -132,6 +146,53 @@ class WhisperModelManager: ObservableObject {
 
     // MARK: - Model Download & Management
 
+    func pauseDownload(_ model: WhisperModel) {
+        guard isDownloading(model) else { return }
+        pausedModels.insert(model.name)
+        for (key, task) in activeDownloadTasks where key.hasPrefix(model.name) {
+            task.cancel { [weak self] data in
+                Task { @MainActor in
+                    if let data {
+                        self?.resumeData[key] = data
+                    }
+                }
+            }
+        }
+        downloadTasks[model.name]?.cancel()
+        downloadTasks.removeValue(forKey: model.name)
+    }
+
+    func resumeDownload(_ model: WhisperModel) {
+        guard pausedModels.contains(model.name) else { return }
+        pausedModels.remove(model.name)
+        Task {
+            await downloadModel(model)
+        }
+    }
+
+    func cancelDownload(_ model: WhisperModel) {
+        pausedModels.remove(model.name)
+        downloadTasks[model.name]?.cancel()
+        downloadTasks.removeValue(forKey: model.name)
+        for (key, task) in activeDownloadTasks where key.hasPrefix(model.name) {
+            task.cancel()
+        }
+        activeDownloadTasks.removeValue(forKey: model.name + "_main")
+        activeDownloadTasks.removeValue(forKey: model.name + "_coreml")
+        resumeData.removeValue(forKey: model.name + "_main")
+        resumeData.removeValue(forKey: model.name + "_coreml")
+        downloadProgress.removeValue(forKey: model.name + "_main")
+        downloadProgress.removeValue(forKey: model.name + "_coreml")
+        downloadErrors.removeValue(forKey: model.name)
+
+        let destinationURL = modelsDirectory.appendingPathComponent(model.filename)
+        try? FileManager.default.removeItem(at: destinationURL)
+        let zipPath = modelsDirectory.appendingPathComponent("\(model.name)-encoder.mlmodelc.zip")
+        try? FileManager.default.removeItem(at: zipPath)
+        let coreMLDestination = modelsDirectory.appendingPathComponent("\(model.name)-encoder.mlmodelc")
+        try? FileManager.default.removeItem(at: coreMLDestination)
+    }
+
     private func downloadFileWithProgress(from url: URL, progressKey: String) async throws -> Data {
         let destinationURL = modelsDirectory.appendingPathComponent(UUID().uuidString)
 
@@ -144,8 +205,14 @@ class WhisperModelManager: ObservableObject {
                 }
             }
 
-            let task = URLSession.shared.downloadTask(with: url) { tempURL, response, error in
+            let resume = self.resumeData.removeValue(forKey: progressKey)
+            let task: URLSessionDownloadTask
+            let completion: (URL?, URLResponse?, Error?) -> Void = { [weak self] tempURL, response, error in
+                Task { @MainActor in
+                    self?.activeDownloadTasks.removeValue(forKey: progressKey)
+                }
                 if let error = error {
+                    try? FileManager.default.removeItem(at: destinationURL)
                     finishOnce(.failure(error))
                     return
                 }
@@ -153,6 +220,7 @@ class WhisperModelManager: ObservableObject {
                 guard let httpResponse = response as? HTTPURLResponse,
                       (200...299).contains(httpResponse.statusCode),
                       let tempURL = tempURL else {
+                    try? FileManager.default.removeItem(at: destinationURL)
                     finishOnce(.failure(URLError(.badServerResponse)))
                     return
                 }
@@ -167,10 +235,16 @@ class WhisperModelManager: ObservableObject {
                 }
             }
 
+            if let resume = resume {
+                task = URLSession.shared.downloadTask(withResumeData: resume, completionHandler: completion)
+            } else {
+                task = URLSession.shared.downloadTask(with: url, completionHandler: completion)
+            }
+            self.activeDownloadTasks[progressKey] = task
             task.resume()
 
             var lastUpdateTime = Date()
-            var lastProgressValue: Double = 0
+            var lastProgressValue: Double = self.downloadProgress[progressKey] ?? 0
 
             let observation = task.progress.observe(\.fractionCompleted) { progress, _ in
                 let currentTime = Date()
@@ -190,6 +264,8 @@ class WhisperModelManager: ObservableObject {
             Task {
                 await withTaskCancellationHandler {
                     observation.invalidate()
+                    task.cancel()
+                    try? FileManager.default.removeItem(at: destinationURL)
                     if finished.exchange(true, ordering: .acquiring) == false {
                         continuation.resume(throwing: CancellationError())
                     }
@@ -202,11 +278,20 @@ class WhisperModelManager: ObservableObject {
 
     func downloadModel(_ model: WhisperModel) async {
         guard !availableModels.contains(where: { $0.name == model.name }),
-              downloadProgress[model.name + "_main"] == nil else { return }
+              downloadTasks[model.name] == nil else { return }
         guard let url = URL(string: model.downloadURL) else { return }
-        downloadProgress[model.name + "_main"] = 0
+        if downloadProgress[model.name + "_main"] == nil && downloadProgress[model.name + "_coreml"] == nil {
+            downloadProgress[model.name + "_main"] = 0
+        }
         downloadErrors.removeValue(forKey: model.name)
-        await performModelDownload(model, url)
+        pausedModels.remove(model.name)
+
+        let task = Task {
+            await performModelDownload(model, url)
+            self.downloadTasks.removeValue(forKey: model.name)
+        }
+        downloadTasks[model.name] = task
+        await task.value
     }
 
     private func performModelDownload(_ model: WhisperModel, _ url: URL) async {
@@ -220,6 +305,7 @@ class WhisperModelManager: ObservableObject {
 
             availableModels.append(whisperModel)
             self.downloadProgress.removeValue(forKey: model.name + "_main")
+            self.downloadProgress.removeValue(forKey: model.name + "_coreml")
 
             onModelsChanged?()
             onModelDownloaded?(model.name)
@@ -233,10 +319,12 @@ class WhisperModelManager: ObservableObject {
     }
 
     private func downloadMainModel(_ model: WhisperModel, from url: URL) async throws -> WhisperModelFile {
+        let destinationURL = modelsDirectory.appendingPathComponent(model.filename)
+        if FileManager.default.fileExists(atPath: destinationURL.path) && resumeData[model.name + "_main"] == nil {
+            return WhisperModelFile(name: model.name, url: destinationURL)
+        }
         let progressKeyMain = model.name + "_main"
         let data = try await downloadFileWithProgress(from: url, progressKey: progressKeyMain)
-
-        let destinationURL = modelsDirectory.appendingPathComponent(model.filename)
         try data.write(to: destinationURL)
 
         return WhisperModelFile(name: model.name, url: destinationURL)
@@ -301,6 +389,14 @@ class WhisperModelManager: ObservableObject {
     }
 
     private func handleModelDownloadError(_ model: WhisperModel, _ error: Error) {
+        if pausedModels.contains(model.name) {
+            return
+        }
+        if (error as? CancellationError) != nil || (error as NSError).code == NSURLErrorCancelled {
+            self.downloadProgress.removeValue(forKey: model.name + "_main")
+            self.downloadProgress.removeValue(forKey: model.name + "_coreml")
+            return
+        }
         self.downloadProgress.removeValue(forKey: model.name + "_main")
         self.downloadProgress.removeValue(forKey: model.name + "_coreml")
         self.downloadErrors[model.name] = error.localizedDescription
@@ -419,6 +515,10 @@ struct DownloadProgressView: View {
     /// Whisper downloads in two phases keyed `_main` / `_coreml`; single-phase
     /// engines (FluidAudio) key their progress on the bare model name.
     var isTwoPhase: Bool = true
+    var isPaused: Bool = false
+    var onPause: (() -> Void)? = nil
+    var onResume: (() -> Void)? = nil
+    var onCancel: (() -> Void)? = nil
 
     @Environment(\.colorScheme) private var colorScheme
 
@@ -439,6 +539,9 @@ struct DownloadProgressView: View {
     }
 
     private var downloadPhase: String {
+        if isPaused {
+            return "Paused: \(modelName)"
+        }
         if supportsCoreML && downloadProgress[modelName + "_coreml"] != nil {
             return "Downloading Core ML Model for \(modelName)"
         }
@@ -464,9 +567,26 @@ struct DownloadProgressView: View {
             }
             .frame(height: 6)
 
-            HStack {
+            HStack(spacing: 8) {
+                if let onPause, let onResume {
+                    if isPaused {
+                        Button("Resume", action: onResume)
+                            .buttonStyle(.bordered)
+                            .controlSize(.small)
+                    } else {
+                        Button("Pause", action: onPause)
+                            .buttonStyle(.bordered)
+                            .controlSize(.small)
+                    }
+                }
+                if let onCancel {
+                    Button("Cancel", action: onCancel)
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
+                }
+
                 Spacer()
-                Text("\(Int(totalProgress * 100))%")
+                Text(isPaused ? "Paused · \(Int(totalProgress * 100))%" : "\(Int(totalProgress * 100))%")
                     .font(.system(size: 11, weight: .medium, design: .monospaced))
                     .foregroundColor(Color(.secondaryLabelColor))
             }

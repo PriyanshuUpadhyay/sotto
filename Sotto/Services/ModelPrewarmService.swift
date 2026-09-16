@@ -115,7 +115,14 @@ final class ModelPrewarmService: ObservableObject {
         // W14.B — granular gate: `PrewarmAFMEnhancement` (default true) lets
         // users disable AFM warm specifically without affecting transcription
         // model prewarm. Useful for empirical A/B of cold-vs-warm AFM ttft.
-        if #available(macOS 26.0, *),
+        if AIProvider.resolved() == .localGGUF,
+           UserDefaults.standard.bool(forKey: "PrewarmAFMEnhancement"),
+           let enhancementService {
+            let warmStart = Date()
+            await enhancementService.warmAFMIfAvailable(source: source)
+            let warmDuration = Date().timeIntervalSince(warmStart)
+            logger.notice("GGUF warm completed in \(String(format: "%.2f", warmDuration), privacy: .public)s")
+        } else if #available(macOS 26.0, *),
            AFMProvider.isAvailable,
            UserDefaults.standard.bool(forKey: "PrewarmAFMEnhancement"),
            let enhancementService {
@@ -139,6 +146,11 @@ final class ModelPrewarmService: ObservableObject {
         // Transcription path: prewarm if active model is a local whisper/fluidAudio.
         if let model = transcriptionModelManager.currentTranscriptionModel,
            transcriptionPrewarmable(model) {
+            return true
+        }
+
+        if AIProvider.resolved() == .localGGUF,
+           UserDefaults.standard.bool(forKey: "PrewarmAFMEnhancement") {
             return true
         }
 

@@ -237,6 +237,11 @@ class RecorderUIManager: ObservableObject {
     }
 
     private func beginDoneHold(appName: String?) {
+        // A live dictation owns the panel — ignore paste events and fallback holds while starting or recording.
+        if engine?.recordingState == .starting || engine?.recordingState == .recording {
+            return
+        }
+
         doneHoldTask?.cancel()
         lastPasteAppName = appName
         phase = .done

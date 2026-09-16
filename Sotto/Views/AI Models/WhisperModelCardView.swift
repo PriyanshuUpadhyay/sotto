@@ -9,14 +9,18 @@ struct WhisperModelCardView: View {
     let downloadError: String?
     let modelURL: URL?
     let isWarming: Bool
+    var isPaused: Bool = false
     
     // Actions
     var deleteAction: () -> Void
     var setDefaultAction: () -> Void
     var downloadAction: () -> Void
+    var pauseAction: (() -> Void)? = nil
+    var resumeAction: (() -> Void)? = nil
+    var cancelAction: (() -> Void)? = nil
     private var isDownloading: Bool {
-        downloadProgress.keys.contains(model.name + "_main") || 
-        downloadProgress.keys.contains(model.name + "_coreml")
+        (downloadProgress.keys.contains(model.name + "_main") || 
+         downloadProgress.keys.contains(model.name + "_coreml")) && !isPaused
     }
     
     var body: some View {
@@ -115,10 +119,14 @@ struct WhisperModelCardView: View {
     
     private var progressSection: some View {
         Group {
-            if isDownloading {
+            if isDownloading || isPaused {
                 DownloadProgressView(
                     modelName: model.name,
-                    downloadProgress: downloadProgress
+                    downloadProgress: downloadProgress,
+                    isPaused: isPaused,
+                    onPause: pauseAction,
+                    onResume: resumeAction,
+                    onCancel: cancelAction
                 )
                 .padding(.top, 8)
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -132,14 +140,14 @@ struct WhisperModelCardView: View {
     private var downloadButton: some View {
         Button(action: downloadAction) {
             HStack(spacing: 4) {
-                Text(isDownloading ? "Downloading..." : (downloadError == nil ? "Download" : "Retry"))
+                Text(isDownloading ? "Downloading..." : (isPaused ? "Paused" : (downloadError == nil ? "Download" : "Retry")))
                     .font(.ui(12, weight: .medium))
                 Image(systemName: downloadError == nil ? "arrow.down.circle" : "arrow.clockwise")
                     .font(.system(size: 12, weight: .medium))
             }
         }
         .buttonStyle(LimeFillButtonStyle())
-        .disabled(isDownloading)
+        .disabled(isDownloading || isPaused)
     }
 
     /// The row's readiness, read as one chip. ACTIVE rides on the name, so this

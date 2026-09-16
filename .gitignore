@@ -137,3 +137,4 @@ Sotto/Resources/models/*.bin
 # Enhancement eval — local (untracked) dictation set and run outputs
 eval/data/local/
 eval/results/
+eval/bench/__pycache__/

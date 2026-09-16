@@ -130,7 +130,7 @@ extension ModelsTab.ModelsTabSection {
     var searchKeywords: [String] {
         switch self {
         case .transcription: return ["whisper", "parakeet", "download", "on-device", "speech"]
-        case .enhancement: return ["ai", "rewrite", "prompt", "cleanup", "provider"]
+        case .enhancement: return ["ai", "rewrite", "prompt", "cleanup", "provider", "enhancement model"]
         }
     }
 }
@@ -168,4 +168,3 @@ extension AdvancedTab.AdvancedTabSection {
         }
     }
 }
-
