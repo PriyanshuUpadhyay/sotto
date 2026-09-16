@@ -39,7 +39,7 @@ LOCAL_XCODE_FLAGS = -project Sotto.xcodeproj -scheme Sotto -configuration Debug 
 	CODE_SIGN_ENTITLEMENTS=$(CURDIR)/Sotto/Sotto.local.entitlements \
 	SWIFT_ACTIVE_COMPILATION_CONDITIONS='$$(inherited) LOCAL_BUILD'
 
-.PHONY: all clean whisper llama vad-model setup build local check healthcheck help dev run reload test eval acceptance acceptance-mutate property dmg release publish
+.PHONY: all clean whisper llama ggml-headers vad-model setup build local check healthcheck help dev run reload test eval acceptance acceptance-mutate property dmg release publish
 
 # Default target
 all: check build
@@ -86,6 +86,51 @@ llama:
 		echo "llama.xcframework already built in $(DEPS_DIR), skipping build"; \
 	fi
 
+# Clang merges duplicate C types across modules only when headers are byte-identical,
+# or the build fails with type redefinition errors. Swift calls only whisper_*
+# functions, never ggml, so newer ggml headers from llama are safe in whisper.
+ggml-headers: whisper llama
+	@set -e; \
+	needs_copy=0; \
+	for slice_dir in $(FRAMEWORK_PATH)/*/; do \
+		slice_dir="$${slice_dir%/}"; \
+		slice=$$(basename "$$slice_dir"); \
+		w_hdr=$$(realpath "$$slice_dir/whisper.framework/Headers" 2>/dev/null); \
+		l_hdr=$$(realpath "$(LLAMA_FRAMEWORK_PATH)/$$slice/llama.framework/Headers" 2>/dev/null); \
+		[ -d "$$w_hdr" ] || continue; \
+		[ -d "$$l_hdr" ] || { echo "Error: llama headers not found for slice $$slice: $$l_hdr" >&2; exit 1; }; \
+		for f in "$$l_hdr"/ggml*.h "$$l_hdr"/gguf.h; do \
+			[ -f "$$f" ] || continue; \
+			wf="$$w_hdr/$$(basename "$$f")"; \
+			if [ ! -f "$$wf" ] || ! cmp -s "$$f" "$$wf"; then \
+				needs_copy=1; \
+				break 2; \
+			fi; \
+		done; \
+	done; \
+	if [ "$$needs_copy" -eq 0 ]; then \
+		echo "ggml headers already identical"; \
+		exit 0; \
+	fi; \
+	for slice_dir in $(FRAMEWORK_PATH)/*/; do \
+		slice_dir="$${slice_dir%/}"; \
+		slice=$$(basename "$$slice_dir"); \
+		w_hdr=$$(realpath "$$slice_dir/whisper.framework/Headers" 2>/dev/null); \
+		l_hdr=$$(realpath "$(LLAMA_FRAMEWORK_PATH)/$$slice/llama.framework/Headers" 2>/dev/null); \
+		[ -d "$$w_hdr" ] || continue; \
+		[ -d "$$l_hdr" ] || { echo "Error: llama headers not found for slice $$slice: $$l_hdr" >&2; exit 1; }; \
+		cp -f "$$l_hdr"/ggml*.h "$$l_hdr"/gguf.h "$$w_hdr/"; \
+		for f in "$$l_hdr"/ggml*.h "$$l_hdr"/gguf.h; do \
+			[ -f "$$f" ] || continue; \
+			wf="$$w_hdr/$$(basename "$$f")"; \
+			if ! cmp -s "$$f" "$$wf"; then \
+				echo "Error: ggml header mismatch after copy: $$wf differs from $$f" >&2; \
+				exit 1; \
+			fi; \
+		done; \
+	done; \
+	echo "Synced ggml headers from llama.xcframework to whisper.xcframework"
+
 vad-model:
 	@if [ -f "$(VAD_MODEL)" ] && [ "$$(shasum -a 256 "$(VAD_MODEL)" | awk '{print $$1}')" = "$(VAD_MODEL_SHA)" ]; then \
 		echo "VAD model present"; \
@@ -106,7 +151,7 @@ vad-model:
 		echo "VAD model ready"; \
 	fi
 
-setup: whisper llama vad-model
+setup: whisper llama ggml-headers vad-model
 	@echo "Whisper framework is ready at $(FRAMEWORK_PATH)"
 	@echo "llama framework is ready at $(LLAMA_FRAMEWORK_PATH)"
 	@echo "Please ensure your Xcode project references the framework from this new location."
@@ -394,6 +439,7 @@ help:
 	@echo "  check/healthcheck  Check if required CLI tools are installed"
 	@echo "  whisper            Clone and build whisper.cpp XCFramework"
 	@echo "  llama              Clone and build llama.cpp XCFramework"
+	@echo "  ggml-headers       Sync ggml headers from llama to whisper xcframework"
 	@echo "  setup              Copy whisper XCFramework to Sotto project"
 	@echo "  build              Build the Sotto Xcode project"
 	@echo "  local              Build for local use (no Apple Developer certificate needed)"
