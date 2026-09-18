@@ -1,7 +1,10 @@
 import SwiftUI
 
-// MARK: - Expandable Settings Row (entire row clickable)
+// MARK: - Expandable Settings Row
 
+/// A toggle whose options fold out below it. Native `DisclosureGroup` owns the
+/// expand/collapse click, keyboard and VoiceOver handling; the options only
+/// show while the toggle is on, and turning it on opens them.
 struct ExpandableSettingsRow<Content: View>: View {
     @Binding var isExpanded: Bool
     @Binding var isEnabled: Bool
@@ -10,79 +13,33 @@ struct ExpandableSettingsRow<Content: View>: View {
     var infoURL: String? = nil
     @ViewBuilder let content: () -> Content
 
-    @State private var isHandlingToggleChange = false
-
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            // Main row - entire area is tappable
-            HStack {
-                Toggle(isOn: $isEnabled) {
-                    HStack(spacing: 4) {
-                        Text(label)
-                        if let message = infoMessage {
-                            if let url = infoURL {
-                                InfoTip(message, learnMoreURL: url)
-                            } else {
-                                InfoTip(message)
-                            }
+        DisclosureGroup(isExpanded: Binding(
+            get: { isEnabled && isExpanded },
+            set: { isExpanded = $0 }
+        )) {
+            VStack(alignment: .leading, spacing: 8) {
+                content()
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.top, 8)
+        } label: {
+            Toggle(isOn: $isEnabled) {
+                HStack(spacing: 4) {
+                    Text(label)
+                    if let message = infoMessage {
+                        if let url = infoURL {
+                            InfoTip(message, learnMoreURL: url)
+                        } else {
+                            InfoTip(message)
                         }
                     }
                 }
-
-                Spacer()
-
-                // A real control, not decoration: the row's tap gesture below
-                // publishes no accessibility action and takes no key focus, so
-                // the expanded content would be mouse-only without this.
-                Button {
-                    withAnimation(Animation.haloPhaseCrossfade) {
-                        isExpanded.toggle()
-                    }
-                } label: {
-                    Image(systemName: "chevron.right")
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundColor(.secondary)
-                        .rotationEffect(.degrees(isEnabled && isExpanded ? 90 : 0))
-                        .opacity(isEnabled ? 1 : 0.4)
-                        .padding(4)
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .disabled(!isEnabled)
-                .accessibilityLabel(isExpanded ? "Collapse \(label)" : "Expand \(label)")
-            }
-            .contentShape(Rectangle())
-            .onTapGesture {
-                guard !isHandlingToggleChange else { return }
-                if isEnabled {
-                    withAnimation(Animation.haloPhaseCrossfade) {
-                        isExpanded.toggle()
-                    }
-                }
-            }
-
-            // Expanded content with proper spacing
-            if isEnabled && isExpanded {
-                VStack(alignment: .leading, spacing: 8) {
-                    content()
-                }
-                .padding(.top, 12)
-                .padding(.leading, 4)
-                .transition(.opacity.combined(with: .move(edge: .top)))
             }
         }
-        .animation(Animation.haloPhaseCrossfade, value: isExpanded)
         .onChange(of: isEnabled) { _, newValue in
-            isHandlingToggleChange = true
-            if newValue {
-                withAnimation(Animation.haloPhaseCrossfade) {
-                    isExpanded = true
-                }
-            } else {
-                isExpanded = false
-            }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                isHandlingToggleChange = false
+            withAnimation(Animation.haloPhaseCrossfade) {
+                isExpanded = newValue
             }
         }
     }

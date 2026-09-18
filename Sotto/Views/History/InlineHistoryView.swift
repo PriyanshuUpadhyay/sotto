@@ -1,21 +1,19 @@
 import SwiftUI
 import SwiftData
-import KeyboardShortcuts
 import AppKit
 
+/// History list on native controls: `List(selection:)` owns click, ⌘/⇧-click,
+/// arrow keys and ⌘A; `DisclosureGroup` owns expand/collapse; the Edit menu
+/// commands (Copy, Delete) and the context menu act on the selection.
 struct InlineHistoryView: View {
-    /// The transcript the triptych shell currently has selected (drives the row
-    /// highlight). `nil` when the view is used standalone (no inspector).
-    var selectedID: UUID? = nil
-    /// Emitted when a row is chosen, so the triptych inspector can inspect it.
-    var onSelect: ((Transcription) -> Void)? = nil
-
     @Environment(\.modelContext) private var modelContext
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @EnvironmentObject private var hotkeyManager: HotkeyManager
     @State private var searchText = ""
-    @State private var expandedId: UUID?
-    @State private var selectedTranscriptions: Set<Transcription> = []
+    /// Can hold rows past the loaded page after "Select All", so bulk actions
+    /// fetch by id instead of reading `displayedTranscriptions`.
+    @State private var selection: Set<UUID> = []
+    @State private var expandedIds: Set<UUID> = []
     @State private var showDeleteConfirmation = false
     /// A single-row delete waits out `undoWindowSeconds` before it touches the
     /// database or the audio file: the row hides immediately, an UNDO toast
@@ -23,22 +21,17 @@ struct InlineHistoryView: View {
     /// confirmation instead.
     @State private var pendingDeletion: Transcription?
     @State private var undoWindow: Task<Void, Never>?
-    @State private var isPanelPresented = false
-    @State private var panelTranscriptionId: UUID?
+    @State private var inspectedId: UUID?
     @State private var displayedTranscriptions: [Transcription] = []
     @State private var isLoading = false
     @State private var hasMoreContent = true
     @State private var lastTimestamp: Date?
     @State private var isViewCurrentlyVisible = false
     /// Every row the current search matches, not just the loaded page — "Select
-    /// All" and ⌘A select all of them, so the control has to say so.
+    /// All" selects all of them, so the control has to say so.
     @State private var totalMatchingCount = 0
-
-    // Keyboard-first navigation cursor (distinct from checkbox selection + expansion).
-    @State private var focusedId: UUID?
     @State private var searchDebounce: Task<Void, Never>?
     @FocusState private var searchFocused: Bool
-    @FocusState private var listFocused: Bool
 
     private let exportService = SottoCSVExportService()
     private let pageSize = 20
@@ -82,9 +75,9 @@ struct InlineHistoryView: View {
         return descriptor
     }
 
-    /// Unpaginated twin of `cursorQueryDescriptor` — the scope "Select All" and
-    /// ⌘A actually cover. Used with `fetchCount`, so no rows are materialised.
-    private func matchingCountDescriptor() -> FetchDescriptor<Transcription> {
+    /// Unpaginated twin of `cursorQueryDescriptor` — the scope "Select All"
+    /// actually covers.
+    private func matchingDescriptor() -> FetchDescriptor<Transcription> {
         var descriptor = FetchDescriptor<Transcription>()
         if !searchText.isEmpty {
             descriptor.predicate = #Predicate<Transcription> { transcription in
@@ -95,12 +88,8 @@ struct InlineHistoryView: View {
         return descriptor
     }
 
-    private var allSelected: Bool {
-        !displayedTranscriptions.isEmpty && displayedTranscriptions.allSatisfy { selectedTranscriptions.contains($0) }
-    }
-
-    private var panelTranscription: Transcription? {
-        guard let id = panelTranscriptionId else { return nil }
+    private var inspectedTranscription: Transcription? {
+        guard let id = inspectedId else { return nil }
         return displayedTranscriptions.first { $0.id == id }
     }
 
@@ -114,62 +103,39 @@ struct InlineHistoryView: View {
             if displayedTranscriptions.isEmpty && !isLoading {
                 emptyStateView
             } else {
-                cardListView
+                listView
             }
 
-            if !selectedTranscriptions.isEmpty {
+            if selection.count > 1 {
                 selectionBar
                     .transition(.move(edge: .bottom).combined(with: .opacity))
             }
         }
-        .animation(Animation.haloPhaseCrossfade, value: selectedTranscriptions.isEmpty)
+        .animation(Animation.haloPhaseCrossfade, value: selection.count > 1)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Theme.canvas)
         .background {
-            // Global ⌘F focuses search even when the list isn't the key view.
-            // Scoped to ⌘F only — ⌘C/⌘⌫ stay on the focused list (onKeyPress)
-            // so they don't shadow text-field copy / expanded-text selection.
+            // ⌘F focuses search even when the list isn't the key view.
             Button("") { searchFocused = true }
                 .keyboardShortcut("f", modifiers: .command)
                 .frame(width: 0, height: 0)
                 .opacity(0)
                 .accessibilityHidden(true)
         }
-        .overlay {
-            Color.black.opacity(isPanelPresented ? 0.1 : 0)
-                .ignoresSafeArea()
-                .allowsHitTesting(isPanelPresented)
-                .onTapGesture {
-                    withAnimation(Animation.haloExpand) {
-                        isPanelPresented = false
-                    }
-                }
-                .animation(Animation.haloExpand, value: isPanelPresented)
+        .inspector(isPresented: Binding(
+            get: { inspectedId != nil },
+            set: { if !$0 { inspectedId = nil } }
+        )) {
+            inspectorContent
+                .inspectorColumnWidth(min: 300, ideal: 380)
         }
-        .overlay(alignment: .trailing) {
-            if isPanelPresented {
-                panelContent
-                    .frame(width: 400)
-                    .frame(maxHeight: .infinity)
-                    .background(Theme.Material.panel)
-                    .overlay(alignment: .leading) {
-                        Rectangle()
-                            .fill(Theme.separator)
-                            .frame(width: 1)
-                    }
-                    .shadow(color: .black.opacity(0.08), radius: 8, x: -2, y: 0)
-                    .ignoresSafeArea()
-                    .transition(.move(edge: .trailing))
-            }
-        }
-        .animation(Animation.haloExpand, value: isPanelPresented)
         .alert("Delete Selected Items?", isPresented: $showDeleteConfirmation) {
             Button("Delete", role: .destructive) {
                 deleteSelectedTranscriptions()
             }
             Button("Cancel", role: .cancel) {}
         } message: {
-            Text("This action cannot be undone. Are you sure you want to delete \(selectedTranscriptions.count) item\(selectedTranscriptions.count == 1 ? "" : "s")?")
+            Text("This action cannot be undone. Are you sure you want to delete \(selection.count) item\(selection.count == 1 ? "" : "s")?")
         }
         .onAppear {
             isViewCurrentlyVisible = true
@@ -203,57 +169,35 @@ struct InlineHistoryView: View {
 
     private var selectionBar: some View {
         HStack(spacing: 16) {
-            Text("\(selectedTranscriptions.count) selected")
+            Text("\(selection.count) selected")
                 .font(.system(size: 13, weight: .medium))
                 .tabularNumbers()
                 .foregroundColor(.secondary)
 
             Spacer()
 
-            Button(action: {
-                exportService.exportTranscriptionsToCSV(transcriptions: Array(selectedTranscriptions))
-            }) {
+            Button(action: { exportService.exportTranscriptionsToCSV(transcriptions: transcriptions(for: selection)) }) {
                 Label("Export", systemImage: "square.and.arrow.up")
-                    .font(.system(size: 12, weight: .medium))
             }
-            .buttonStyle(.plain)
-            .foregroundColor(.secondary)
 
-            Button(action: { showDeleteConfirmation = true }) {
+            Button(role: .destructive, action: { showDeleteConfirmation = true }) {
                 Label("Delete", systemImage: "trash")
-                    .font(.system(size: 12, weight: .medium))
             }
-            .buttonStyle(.plain)
-            .foregroundColor(Palette.recRed.opacity(0.8))
 
             Divider()
                 .frame(height: 16)
 
-            if allSelected {
-                Button("Deselect All") {
-                    selectedTranscriptions.removeAll()
-                }
-                .font(.system(size: 12, weight: .medium))
-                .buttonStyle(.plain)
-                .foregroundColor(.secondary)
+            if selection.count < totalMatchingCount {
+                Button("Select All (\(totalMatchingCount))") { selectAllMatching() }
             } else {
-                Button("Select All (\(totalMatchingCount))") {
-                    Task { await selectAllTranscriptions() }
-                }
-                .font(.system(size: 12, weight: .medium))
-                .buttonStyle(.plain)
-                .foregroundColor(.secondary)
+                Button("Deselect All") { selection.removeAll() }
             }
         }
+        .controlSize(.small)
         .padding(.horizontal, 20)
         .padding(.vertical, 10)
-        .background(Theme.Material.chrome)
-        .overlay(alignment: .top) {
-            Rectangle()
-                .fill(Theme.separator)
-                .frame(height: 1)
-        }
-        .shadow(color: Color.black.opacity(0.1), radius: 3, y: -2)
+        .background(.bar)
+        .overlay(alignment: .top) { Divider() }
     }
 
     // MARK: - Empty State
@@ -354,7 +298,7 @@ struct InlineHistoryView: View {
         SottoWindowCoordinator.shared.open(settingsTab: .shortcuts)
     }
 
-    // MARK: - Card List
+    // MARK: - List
 
     /// Day sections over the WHOLE assembled list, so a day that continues past
     /// a "Load More" grows its section instead of repeating its label.
@@ -362,85 +306,59 @@ struct InlineHistoryView: View {
         HistoryDayGrouping.sections(displayedTranscriptions) { $0.timestamp }
     }
 
-    private var cardListView: some View {
+    private var listView: some View {
         ScrollViewReader { proxy in
-            ScrollView {
-                LazyVStack(spacing: 12) {
-                    ForEach(daySections, id: \.day) { section in
-                        Text(HistoryDayGrouping.label(for: section.day))
-                            .font(.microlabel(11))
-                            .tracking(1.2)
-                            .foregroundStyle(Palette.phosphor)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-
+            List(selection: $selection) {
+                ForEach(daySections, id: \.day) { section in
+                    Section(HistoryDayGrouping.label(for: section.day)) {
                         ForEach(section.rows) { transcription in
-                            HistoryCardRow(
+                            HistoryRow(
                                 transcription: transcription,
-                                isExpanded: expandedId == transcription.id,
-                                isChecked: selectedTranscriptions.contains(transcription),
-                                isFocused: focusedId == transcription.id,
-                                isSelected: selectedID == transcription.id,
-                                onToggleExpand: {
-                                    onSelect?(transcription)
-                                    withAnimation(Animation.haloPhaseCrossfade) {
-                                        expandedId = expandedId == transcription.id ? nil : transcription.id
-                                    }
-                                },
-                                onToggleCheck: { toggleSelection(transcription) },
-                                onShowInfo: {
-                                    panelTranscriptionId = transcription.id
-                                    withAnimation(Animation.haloExpand) {
-                                        isPanelPresented = true
-                                    }
-                                },
-                                onExportAudio: {
-                                    exportService.exportTranscriptionsToCSV(transcriptions: [transcription])
-                                },
-                                onDelete: { deleteSingle(transcription) }
+                                isExpanded: expansionBinding(for: transcription.id),
+                                onShowInfo: { inspectedId = transcription.id }
                             )
-                            .cardSurface(isSelected: selectedID == transcription.id)
-                            // Brand focus ring — matches the card radius, distinct
-                            // from hover (fill lift) and checkbox-checked (circular toggle).
-                            .overlay {
-                                RoundedRectangle(cornerRadius: Radius.card, style: .continuous)
-                                    .strokeBorder(Brand.tint, lineWidth: 2)
-                                    .opacity(focusedId == transcription.id ? 1 : 0)
-                            }
-                            .id(transcription.id)
                         }
-                    }
-
-                    if hasMoreContent {
-                        Button(action: {
-                            Task { await loadMoreContent() }
-                        }) {
-                            HStack(spacing: 8) {
-                                if isLoading {
-                                    ProgressView().controlSize(.small)
-                                }
-                                Text(isLoading ? "Loading..." : "Load More")
-                                    .font(.system(size: 13, weight: .medium))
-                                    .foregroundColor(.secondary)
-                            }
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 4)
-                        }
-                        .buttonStyle(.plain)
-                        .disabled(isLoading)
-                        .cardSurface()
                     }
                 }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 12)
+
+                if hasMoreContent {
+                    Button(isLoading ? "Loading…" : "Load More") {
+                        Task { await loadMoreContent() }
+                    }
+                    .disabled(isLoading)
+                    .frame(maxWidth: .infinity)
+                    .selectionDisabled()
+                }
             }
-            .focusable(true)
-            .focused($listFocused)
-            .onKeyPress { keyPress in
-                handleKeyPress(keyPress, proxy: proxy)
+            .listStyle(.inset)
+            .scrollContentBackground(.hidden)
+            .contentMargins(.horizontal, 8, for: .scrollContent)
+            .contentMargins(.vertical, 10, for: .scrollContent)
+            // One panel in the stats cards' surface, inset from the window edges.
+            .background(Theme.panel)
+            .clipShape(RoundedRectangle(cornerRadius: Radius.card, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: Radius.card, style: .continuous)
+                    .strokeBorder(Theme.hairline, lineWidth: 1)
+            )
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .contextMenu(forSelectionType: UUID.self) { ids in
+                rowMenu(for: ids)
+            } primaryAction: { ids in
+                // Double-click or Return on the selection.
+                withAnimation(reduceMotion ? nil : .default) {
+                    expandedIds.formSymmetricDifference(ids)
+                }
             }
+            .onCopyCommand {
+                selection.isEmpty ? [] : [NSItemProvider(object: joinedText(for: selection) as NSString)]
+            }
+            .onDeleteCommand { requestDelete(selection) }
+            .onExitCommand { handleEscape() }
             .onReceive(NotificationCenter.default.publisher(for: .focusTranscription)) { note in
                 guard let id = note.userInfo?["id"] as? UUID else { return }
-                focusedId = id
+                selection = [id]
                 // Defer so the list has the row laid out before we scroll.
                 DispatchQueue.main.async {
                     withAnimation { proxy.scrollTo(id, anchor: .center) }
@@ -449,168 +367,76 @@ struct InlineHistoryView: View {
         }
     }
 
-    // MARK: - Keyboard Navigation
-
-    private func moveFocus(by delta: Int, proxy: ScrollViewProxy) {
-        guard !displayedTranscriptions.isEmpty else { return }
-        let ids = displayedTranscriptions.map { $0.id }
-        let newIndex: Int
-        if let current = focusedId, let ci = ids.firstIndex(of: current) {
-            newIndex = max(0, min(ids.count - 1, ci + delta))
-        } else {
-            newIndex = delta > 0 ? 0 : ids.count - 1
-        }
-        focusedId = ids[newIndex]
-        // Keep the triptych inspector in lock-step with the keyboard cursor: an
-        // arrow move selects the focused transcript so the inspector (⌘I pane)
-        // re-targets it, mirroring a click. No-op when used standalone (onSelect nil).
-        onSelect?(displayedTranscriptions[newIndex])
-        if reduceMotion {
-            proxy.scrollTo(ids[newIndex], anchor: .center)
-        } else {
-            withAnimation(Animation.haloPhaseCrossfade) {
-                proxy.scrollTo(ids[newIndex], anchor: .center)
+    private func expansionBinding(for id: UUID) -> Binding<Bool> {
+        Binding(
+            get: { expandedIds.contains(id) },
+            set: { isExpanded in
+                if isExpanded { expandedIds.insert(id) } else { expandedIds.remove(id) }
             }
+        )
+    }
+
+    @ViewBuilder
+    private func rowMenu(for ids: Set<UUID>) -> some View {
+        if !ids.isEmpty {
+            Button("Copy") { setPasteboard(joinedText(for: ids)) }
+            if ids.count == 1, let id = ids.first,
+               let transcription = displayedTranscriptions.first(where: { $0.id == id }),
+               transcription.enhancedText?.isEmpty == false {
+                Button("Copy Original") { setPasteboard(transcription.text) }
+            }
+            Button("Export…") {
+                exportService.exportTranscriptionsToCSV(transcriptions: transcriptions(for: ids))
+            }
+            if ids.count == 1, let id = ids.first {
+                Button("Show Info") { inspectedId = id }
+            }
+            Divider()
+            Button("Delete", role: .destructive) { requestDelete(ids) }
         }
     }
 
-    private func handleKeyPress(_ keyPress: KeyPress, proxy: ScrollViewProxy) -> KeyPress.Result {
-        let cmd = keyPress.modifiers.contains(.command)
-
-        switch keyPress.key {
-        case .downArrow:
-            moveFocus(by: 1, proxy: proxy)
-            return .handled
-        case .upArrow:
-            moveFocus(by: -1, proxy: proxy)
-            return .handled
-        case .return:
-            guard let id = focusedId else { return .ignored }
-            withAnimation(Animation.haloPhaseCrossfade) {
-                expandedId = expandedId == id ? nil : id
-            }
-            return .handled
-        case .escape:
-            return handleEscape()
-        case .delete:
-            guard cmd else { return .ignored }
-            handleDeleteKey()
-            return .handled
-        default:
-            break
-        }
-
-        guard cmd else { return .ignored }
-        let chars = keyPress.characters.isEmpty ? String(keyPress.key.character) : keyPress.characters
-        switch chars.lowercased() {
-        case "c":
-            copyForKeyboard()
-            return .handled
-        case "a":
-            Task { await selectAllTranscriptions() }
-            return .handled
-        case "f":
-            searchFocused = true
-            return .handled
-        default:
-            return .ignored
-        }
-    }
-
-    private func handleEscape() -> KeyPress.Result {
-        // Topmost dismissible layer first — the info panel owns a scrim and
-        // blocks hit-testing, so it is what the user sees Escape acting on.
-        if isPanelPresented {
-            withAnimation(Animation.haloExpand) {
-                isPanelPresented = false
-            }
-            return .handled
-        }
-        if !searchText.isEmpty {
+    private func handleEscape() {
+        if inspectedId != nil {
+            inspectedId = nil
+        } else if !searchText.isEmpty {
             searchText = ""
-            return .handled
-        }
-        if expandedId != nil {
-            withAnimation(Animation.haloPhaseCrossfade) { expandedId = nil }
-            return .handled
-        }
-        if !selectedTranscriptions.isEmpty || focusedId != nil {
-            selectedTranscriptions.removeAll()
-            focusedId = nil
-            return .handled
-        }
-        return .ignored
-    }
-
-    private func copyForKeyboard() {
-        let pasteboard = NSPasteboard.general
-        pasteboard.clearContents()
-        if !selectedTranscriptions.isEmpty {
-            let joined = selectedTranscriptions
-                .sorted { $0.timestamp > $1.timestamp }
-                .map { $0.enhancedText ?? $0.text }
-                .joined(separator: "\n\n")
-            pasteboard.setString(joined, forType: .string)
-        } else if let id = focusedId,
-                  let transcription = displayedTranscriptions.first(where: { $0.id == id }) {
-            pasteboard.setString(transcription.enhancedText ?? transcription.text, forType: .string)
+        } else if !expandedIds.isEmpty {
+            withAnimation(reduceMotion ? nil : .default) { expandedIds.removeAll() }
+        } else {
+            selection.removeAll()
         }
     }
 
-    private func handleDeleteKey() {
-        if !selectedTranscriptions.isEmpty {
-            showDeleteConfirmation = true
-            return
-        }
-        guard let id = focusedId,
-              let transcription = displayedTranscriptions.first(where: { $0.id == id }) else { return }
-        // Pick the next cursor target BEFORE the delete reloads the list.
-        let ids = displayedTranscriptions.map { $0.id }
-        if let idx = ids.firstIndex(of: id) {
-            if idx < ids.count - 1 {
-                focusedId = ids[idx + 1]
-            } else if idx > 0 {
-                focusedId = ids[idx - 1]
-            } else {
-                focusedId = nil
-            }
-        }
-        deleteSingle(transcription)
+    private func setPasteboard(_ string: String) {
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(string, forType: .string)
     }
 
-    // MARK: - Sliding Panel
-
-    private var panelContent: some View {
-        infoPanelContent
+    private func joinedText(for ids: Set<UUID>) -> String {
+        transcriptions(for: ids)
+            .map { $0.enhancedText ?? $0.text }
+            .joined(separator: "\n\n")
     }
 
-    private var infoPanelContent: some View {
+    // MARK: - Inspector
+
+    private var inspectorContent: some View {
         VStack(spacing: 0) {
-            HStack(spacing: 12) {
+            HStack {
                 Text("Info")
                     .font(.headline)
-                    .fontWeight(.semibold)
                 Spacer()
-                Button(action: {
-                    withAnimation(Animation.haloExpand) {
-                        isPanelPresented = false
-                    }
-                }) {
-                    Image(systemName: "xmark")
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundColor(.secondary)
-                        .padding(6)
-                        .background(Color.secondary.opacity(0.1))
-                        .clipShape(Circle())
-                }
-                .buttonStyle(.plain)
+                Button("Close", systemImage: "xmark") { inspectedId = nil }
+                    .labelStyle(.iconOnly)
+                    .buttonStyle(.borderless)
             }
-            .padding(.horizontal, 20)
+            .padding(.horizontal, 16)
             .padding(.vertical, 12)
-            .overlay(Divider().opacity(0.5), alignment: .bottom)
-            .zIndex(1)
 
-            if let transcription = panelTranscription {
+            Divider()
+
+            if let transcription = inspectedTranscription {
                 TranscriptionInfoPanel(transcription: transcription)
                     .id(transcription.id)
             } else {
@@ -632,7 +458,7 @@ struct InlineHistoryView: View {
             displayedTranscriptions = items.filter { $0.id != pendingDeletion?.id }
             lastTimestamp = items.last?.timestamp
             hasMoreContent = items.count == pageSize
-            totalMatchingCount = (try? modelContext.fetchCount(matchingCountDescriptor())) ?? items.count
+            totalMatchingCount = (try? modelContext.fetchCount(matchingDescriptor())) ?? items.count
         } catch {
             print("Error loading transcriptions: \(error)")
         }
@@ -665,11 +491,35 @@ struct InlineHistoryView: View {
 
     // MARK: - Selection & Deletion
 
-    private func toggleSelection(_ transcription: Transcription) {
-        if selectedTranscriptions.contains(transcription) {
-            selectedTranscriptions.remove(transcription)
+    /// Newest first, including selected rows that are not on a loaded page.
+    private func transcriptions(for ids: Set<UUID>) -> [Transcription] {
+        let idList = Array(ids)
+        let descriptor = FetchDescriptor<Transcription>(
+            predicate: #Predicate { idList.contains($0.id) },
+            sortBy: [SortDescriptor(\.timestamp, order: .reverse)]
+        )
+        return (try? modelContext.fetch(descriptor)) ?? []
+    }
+
+    private func selectAllMatching() {
+        var descriptor = matchingDescriptor()
+        descriptor.propertiesToFetch = [\.id]
+        do {
+            selection = Set(try modelContext.fetch(descriptor).map(\.id))
+        } catch {
+            print("Error selecting all transcriptions: \(error)")
+        }
+    }
+
+    /// One row goes through the undo window; several rows ask first.
+    private func requestDelete(_ ids: Set<UUID>) {
+        guard !ids.isEmpty else { return }
+        if ids.count == 1, let id = ids.first,
+           let transcription = displayedTranscriptions.first(where: { $0.id == id }) {
+            deleteSingle(transcription)
         } else {
-            selectedTranscriptions.insert(transcription)
+            selection = ids
+            showDeleteConfirmation = true
         }
     }
 
@@ -684,23 +534,20 @@ struct InlineHistoryView: View {
             }
         }
 
-        if expandedId == transcription.id {
-            expandedId = nil
-        }
-        if panelTranscriptionId == transcription.id {
-            panelTranscriptionId = nil
-            isPanelPresented = false
+        expandedIds.remove(transcription.id)
+        if inspectedId == transcription.id {
+            inspectedId = nil
         }
 
-        selectedTranscriptions.remove(transcription)
+        selection.remove(transcription.id)
         modelContext.delete(transcription)
     }
 
     private func deleteSelectedTranscriptions() {
-        for transcription in selectedTranscriptions {
+        for transcription in transcriptions(for: selection) {
             performDeletion(for: transcription)
         }
-        selectedTranscriptions.removeAll()
+        selection.removeAll()
 
         Task {
             do {
@@ -721,12 +568,11 @@ struct InlineHistoryView: View {
         // At most one undo window is open — an earlier pending delete stands.
         commitPendingDeletion()
 
-        if expandedId == transcription.id { expandedId = nil }
-        if panelTranscriptionId == transcription.id {
-            panelTranscriptionId = nil
-            isPanelPresented = false
+        expandedIds.remove(transcription.id)
+        if inspectedId == transcription.id {
+            inspectedId = nil
         }
-        selectedTranscriptions.remove(transcription)
+        selection.remove(transcription.id)
 
         pendingDeletion = transcription
         displayedTranscriptions.removeAll { $0.id == transcription.id }
@@ -775,50 +621,14 @@ struct InlineHistoryView: View {
         pendingDeletion = nil
         Task { await loadInitialContent() }
     }
-
-    private func selectAllTranscriptions() async {
-        do {
-            var allDescriptor = FetchDescriptor<Transcription>()
-
-            if !searchText.isEmpty {
-                allDescriptor.predicate = #Predicate<Transcription> { transcription in
-                    transcription.text.localizedStandardContains(searchText) ||
-                    (transcription.enhancedText?.localizedStandardContains(searchText) ?? false)
-                }
-            }
-
-            allDescriptor.propertiesToFetch = [\.id]
-            let allTranscriptions = try modelContext.fetch(allDescriptor)
-            let visibleIds = Set(displayedTranscriptions.map { $0.id })
-
-            await MainActor.run {
-                selectedTranscriptions = Set(displayedTranscriptions)
-
-                for transcription in allTranscriptions {
-                    if !visibleIds.contains(transcription.id) {
-                        selectedTranscriptions.insert(transcription)
-                    }
-                }
-            }
-        } catch {
-            print("Error selecting all transcriptions: \(error)")
-        }
-    }
 }
 
-// MARK: - History Card Row
+// MARK: - History Row
 
-private struct HistoryCardRow: View {
+private struct HistoryRow: View {
     let transcription: Transcription
-    let isExpanded: Bool
-    let isChecked: Bool
-    let isFocused: Bool
-    var isSelected: Bool = false
-    let onToggleExpand: () -> Void
-    let onToggleCheck: () -> Void
+    @Binding var isExpanded: Bool
     let onShowInfo: () -> Void
-    let onExportAudio: () -> Void
-    let onDelete: () -> Void
 
     @State private var selectedTab: TranscriptionTab = .original
 
@@ -831,180 +641,76 @@ private struct HistoryCardRow: View {
         }
     }
 
-    private var hasAudioFile: Bool {
-        if let urlString = transcription.audioFileURL,
-           let url = URL(string: urlString),
-           FileManager.default.fileExists(atPath: url.path) {
-            return true
-        }
-        return false
+    private var audioURL: URL? {
+        guard let urlString = transcription.audioFileURL,
+              let url = URL(string: urlString),
+              FileManager.default.fileExists(atPath: url.path) else { return nil }
+        return url
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            HStack(spacing: 10) {
-                Toggle("Select transcription", isOn: Binding(
-                    get: { isChecked },
-                    set: { _ in onToggleCheck() }
-                ))
-                .toggleStyle(CircularCheckboxStyle())
-                .labelsHidden()
-                .accessibilityLabel("Select transcription")
-
-                // The expand area excludes the checkbox so clicking the checkbox
-                // toggles selection only. The parent ScrollView is `.focusable`
-                // for keyboard nav, which swallows a plain `.onTapGesture` here
-                // (clicks only ever focused the list) — `.simultaneousGesture`
-                // co-recognizes with that focus grab, so a single click both
-                // expands the row AND focuses the list for subsequent keys.
-                HStack(spacing: 10) {
-                    VStack(alignment: .leading, spacing: 4) {
-                        // Time only — the day section header above the run
-                        // already names the day.
-                        Text(transcription.timestamp, format: .dateTime.hour().minute())
-                            .font(.mono(11))
-                            .tabularNumbers()
-                            .foregroundStyle(Palette.inkSecondary)
-
-                        if !isExpanded {
-                            // The user's own words — `Font.transcript` is the
-                            // token for history transcript bodies.
-                            Text(transcription.enhancedText ?? transcription.text)
-                                .font(.transcript(15))
-                                .lineSpacing(3)
-                                .lineLimit(2)
-                                .foregroundStyle(Palette.inkPrimary)
-                        }
-                    }
-
-                    Spacer()
-
-                    Image(systemName: "chevron.right")
-                        .font(.caption2.weight(.semibold))
-                        .foregroundColor(Theme.inkTertiary)
-                        .rotationEffect(.degrees(isExpanded ? 90 : 0))
-                        .animation(Animation.haloPhaseCrossfade, value: isExpanded)
-                }
-                .contentShape(Rectangle())
-                .simultaneousGesture(TapGesture().onEnded { onToggleExpand() })
-            }
-            .contextMenu {
-                Button("Copy Original") {
-                    NSPasteboard.general.clearContents()
-                    NSPasteboard.general.setString(transcription.text, forType: .string)
-                }
-                if let enhanced = transcription.enhancedText, !enhanced.isEmpty {
-                    Button("Copy Enhanced") {
-                        NSPasteboard.general.clearContents()
-                        NSPasteboard.general.setString(enhanced, forType: .string)
-                    }
-                }
-                if hasAudioFile {
-                    Button("Export Audio") { onExportAudio() }
-                }
-                Divider()
-                Button("Delete", role: .destructive) { onDelete() }
-            }
-
-            if isExpanded {
-                expandedContent
-                    .padding(.top, 10)
-            }
+        DisclosureGroup(isExpanded: $isExpanded) {
+            details
+        } label: {
+            summary
         }
-        .accessibilityAddTraits(isFocused ? .isSelected : [])
     }
 
-    // MARK: - Expanded Content
+    private var summary: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            // Time only — the day section header already names the day.
+            Text(transcription.timestamp, format: .dateTime.hour().minute())
+                .font(.mono(11))
+                .tabularNumbers()
+                .foregroundStyle(.secondary)
 
-    private var expandedContent: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            // Tabs
-            if transcription.enhancedText != nil {
-                HStack(spacing: 4) {
-                    ForEach(TranscriptionTab.allCases, id: \.self) { tab in
-                        Button {
-                            withAnimation(Animation.haloPhaseCrossfade) {
-                                selectedTab = tab
-                            }
-                        } label: {
-                            Text(tab.rawValue)
-                                .font(.system(size: 11, weight: .medium))
-                                .foregroundColor(selectedTab == tab ? .primary : .secondary)
-                                .padding(.horizontal, 10)
-                                .padding(.vertical, 4)
-                                .background(
-                                    Capsule()
-                                        .fill(selectedTab == tab ? Theme.groupedBackground : Color.clear)
-                                )
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityAddTraits(selectedTab == tab ? .isSelected : [])
-                    }
-                    Spacer()
-                }
-            }
-
-            ScrollView {
-                Text(displayText)
+            if !isExpanded {
+                Text(transcription.enhancedText ?? transcription.text)
                     .font(.transcript(15))
                     .lineSpacing(3)
-                    .foregroundColor(.primary)
-                    .textSelection(.enabled)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .lineLimit(2)
             }
-            .frame(maxHeight: 350)
-            .overlay(alignment: .bottomTrailing) {
+        }
+        .padding(.vertical, 8)
+        .padding(.leading, 4)
+    }
+
+    private var details: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                if transcription.enhancedText != nil {
+                    Picker("Version", selection: $selectedTab) {
+                        ForEach(TranscriptionTab.allCases, id: \.self) { tab in
+                            Text(tab.rawValue).tag(tab)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                    .labelsHidden()
+                    .fixedSize()
+                }
+                Spacer()
                 CopyIconButton(textToCopy: displayText)
-                    .padding(8)
             }
 
-            if hasAudioFile, let urlString = transcription.audioFileURL,
-               let url = URL(string: urlString) {
-                Divider()
-                AudioPlayerView(url: url, transcription: transcription, onInfoTap: onShowInfo)
-                .padding(.vertical, 4)
+            Text(displayText)
+                .font(.transcript(15))
+                .lineSpacing(3)
+                .textSelection(.enabled)
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+            if let audioURL {
+                AudioPlayerView(url: audioURL, transcription: transcription, onInfoTap: onShowInfo)
+                    .padding(.vertical, 4)
             } else {
                 HStack {
                     Spacer()
-                    Button(action: onShowInfo) {
-                        Image(systemName: "info.circle")
-                            .font(.system(size: 14, weight: .medium))
-                            .foregroundColor(.secondary)
-                    }
-                    .buttonStyle(.plain)
-                    .help("View details")
+                    Button("View details", systemImage: "info.circle", action: onShowInfo)
+                        .labelStyle(.iconOnly)
+                        .buttonStyle(.borderless)
+                        .help("View details")
                 }
             }
         }
-    }
-
-}
-
-// MARK: - Card Surface
-
-/// Native, appearance-adaptive card treatment for History rows: a `panel`
-/// material fill, `Theme.separator` edge, `Radius.card` continuous corners.
-/// Hover lifts the fill with a subtle ink overlay so rows read as interactive.
-private struct CardSurfaceBackground: ViewModifier {
-    var cornerRadius: CGFloat = Radius.card
-    var padding: CGFloat = 14
-    var isSelected: Bool = false
-    @State private var hovering = false
-
-    func body(content: Content) -> some View {
-        let shape = RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-        return content
-            .padding(padding)
-            .background(shape.fill(isSelected ? Theme.selectedRow : Theme.panel))
-            .overlay(shape.fill(Theme.inkPrimary.opacity(hovering && !isSelected ? 0.04 : 0)))
-            .overlay(shape.strokeBorder(isSelected ? Theme.hairlineStrong : Theme.hairline, lineWidth: 1))
-            .onHover { hovering = $0 }
+        .padding(.vertical, 6)
     }
 }
-
-private extension View {
-    func cardSurface(cornerRadius: CGFloat = Radius.card, isSelected: Bool = false) -> some View {
-        modifier(CardSurfaceBackground(cornerRadius: cornerRadius, isSelected: isSelected))
-    }
-}
-

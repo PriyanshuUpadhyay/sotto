@@ -70,16 +70,16 @@ final class SettingsWindowTests: XCTestCase {
         }
     }
 
-    /// The window hosts its destinations in the hand-built flat sidebar
-    /// (`SottoSidebarRow` + an exhaustive content switch). The hard safety rule
-    /// is unchanged: NSView-backed controls (KeyboardShortcuts.Recorder,
-    /// NSSearchField) re-enter layout fatally inside a NavigationSplitView, so
-    /// the container must NOT be one.
-    func test_window_usesCustomSidebarNotNavigationSplitView() throws {
+    /// The window hosts its destinations in a native sidebar `List` beside an
+    /// exhaustive content switch. The hard safety rule is unchanged:
+    /// NSView-backed controls (KeyboardShortcuts.Recorder, NSSearchField)
+    /// re-enter layout fatally inside a NavigationSplitView, so the container
+    /// must NOT be one.
+    func test_window_usesSidebarListNotNavigationSplitView() throws {
         let source = try sottoWindowSource()
         XCTAssertTrue(
-            source.contains("SottoSidebarRow"),
-            "SottoWindowView must host its destinations in the custom flat sidebar (SottoSidebarRow)."
+            source.contains(".listStyle(.sidebar)"),
+            "SottoWindowView must host its destinations in a native sidebar List."
         )
         XCTAssertFalse(
             source.contains("NavigationSplitView"),

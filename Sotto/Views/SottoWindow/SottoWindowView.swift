@@ -163,33 +163,32 @@ struct SottoWindowView: View {
                 .padding(.horizontal, 10)
                 .padding(.bottom, 10)
 
-            ScrollView {
-                VStack(spacing: 2) {
-                    ForEach(topRows, id: \.self) { tab in
-                        sidebarRow(tab)
-                    }
+            // Native sidebar list: click, arrow keys and VoiceOver selection.
+            // No split-view container here — see SettingsWindowTests.
+            List(selection: Binding(
+                get: { model.selectedTab },
+                set: { if let tab = $0 { selectFromSidebar(tab) } }
+            )) {
+                ForEach(topRows, id: \.self) { tab in
+                    Label(tab.title, systemImage: tab.systemImage)
+                }
 
-                    if !settingsRows.isEmpty {
-                        SidebarGroupHeader(title: "Settings")
+                if !settingsRows.isEmpty {
+                    Section("Settings") {
                         ForEach(settingsRows, id: \.self) { tab in
-                            sidebarRow(tab)
+                            Label(tab.title, systemImage: tab.systemImage)
                         }
                     }
-
-                    if visible.isEmpty {
-                        Text("No matches for “\(query)”")
-                            .font(.ui(12))
-                            .foregroundStyle(Palette.inkSecondary)
-                            .fixedSize(horizontal: false, vertical: true)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding(.horizontal, 10)
-                            .padding(.top, 6)
-                    }
                 }
-                .padding(.horizontal, 10)
-            }
 
-            Spacer(minLength: 0)
+                if visible.isEmpty {
+                    Text("No matches for “\(query)”")
+                        .foregroundStyle(.secondary)
+                        .selectionDisabled()
+                }
+            }
+            .listStyle(.sidebar)
+            .scrollContentBackground(.hidden)
 
             MicStatusChip()
                 .padding(.horizontal, 10)
@@ -242,12 +241,6 @@ struct SottoWindowView: View {
                         .strokeBorder(Theme.hairline, lineWidth: 1)
                 )
         )
-    }
-
-    private func sidebarRow(_ tab: SottoWindowTab) -> some View {
-        SottoSidebarRow(tab: tab, isSelected: tab == model.selectedTab) {
-            selectFromSidebar(tab)
-        }
     }
 
     // MARK: - Selection + section jumps
@@ -357,103 +350,9 @@ struct HistoryDestinationView: View {
     }
 }
 
-// MARK: - Sidebar row
-
-/// One labeled destination in the sidebar. Selected = `selectedRow` fill +
-/// accent-tinted icon/label + a small accent tick on the left edge; idle is
-/// `inkSecondary`, hover lifts to a faint matte fill. The window's ONE selection
-/// language — there is no second rail to disagree with.
-struct SottoSidebarRow: View {
-    let tab: SottoWindowTab
-    let isSelected: Bool
-    let action: () -> Void
-    @State private var isHovering = false
-
-    var body: some View {
-        Button(action: action) {
-            HStack(spacing: 10) {
-                Image(systemName: tab.systemImage)
-                    .font(.system(size: 13, weight: .medium))
-                    .frame(width: 18)
-                Text(tab.title)
-                    .font(.ui(13.5, weight: .medium))
-                Spacer(minLength: 0)
-            }
-            .foregroundStyle(labelColor)
-            .padding(.leading, 14)
-            .padding(.trailing, 10)
-            .padding(.vertical, 8)
-            .background(
-                RoundedRectangle(cornerRadius: Radius.control, style: .continuous)
-                    .fill(rowFill)
-            )
-            .overlay(alignment: .leading) {
-                if isSelected {
-                    RoundedRectangle(cornerRadius: 1)
-                        .fill(Palette.phosphor)
-                        .frame(width: 2, height: 16)
-                        .padding(.leading, 3)
-                }
-            }
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(RowPressStyle())
-        .onHover { isHovering = $0 }
-        .accessibilityLabel(tab.title)
-        .accessibilityAddTraits(isSelected ? .isSelected : [])
-    }
-
-    private var labelColor: Color {
-        if isSelected { return SottoSidebarRowStyle.selectedLabel }
-        return isHovering ? SottoSidebarRowStyle.hoverLabel : SottoSidebarRowStyle.idleLabel
-    }
-
-    private var rowFill: Color {
-        if isSelected { return SottoSidebarRowStyle.selectedFill }
-        return isHovering ? SottoSidebarRowStyle.hoverFill : Color.clear
-    }
-}
-
-/// Matte sidebar-row colors. Selection is a nested matte fill + a phosphor edge
-/// tick and label — NOT an accent-filled row. Extracted so
-/// `SettingsMatteSnapshotTests` can assert the matte selection without rendering.
-enum SottoSidebarRowStyle {
-    /// Selected row fill — nested matte surface (NOT the accent).
-    static let selectedFill = Theme.selectedRow
-    /// Selected label + glyph ink. Computed so it follows the user's accent
-    /// choice (never frozen).
-    static var selectedLabel: Color { Palette.phosphor }
-    /// Idle (unselected) glyph + label ink.
-    static let idleLabel = Palette.inkSecondary
-    /// Hover ink on an unselected row.
-    static let hoverLabel = Palette.inkPrimary
-    /// Hover fill on an unselected row.
-    static let hoverFill = Theme.panel
-}
-
-// MARK: - Sidebar group header
-
-/// The non-selectable SETTINGS label above the settings rows — the sidebar's one
-/// grouping affordance, in the microlabel voice the destination headers use.
-private struct SidebarGroupHeader: View {
-    let title: String
-
-    var body: some View {
-        Text(title.uppercased())
-            .font(.microlabel(11))
-            .tracking(0.18 * 11)
-            .foregroundStyle(Palette.inkSecondary)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.leading, 14)
-            .padding(.top, 12)
-            .padding(.bottom, 2)
-            .accessibilityAddTraits(.isHeader)
-    }
-}
-
 // MARK: - Row press feedback
 
-/// Pointer-down feedback for the hand-built navigation rows (the sidebar and the
+/// Pointer-down feedback for hand-built button rows (the model cards and the
 /// accent swatch), mirroring `LimeFillButtonStyle`'s treatment: a slight dim on
 /// press, released over 120ms. Without it these rows answer a click only after
 /// the destination repaints.

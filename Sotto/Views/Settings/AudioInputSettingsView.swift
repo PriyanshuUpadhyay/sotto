@@ -59,15 +59,32 @@ struct AudioInputSettingsView: View {
         VStack(alignment: .leading, spacing: 20) {
             sectionHeading("Input Mode")
             
-            HStack(spacing: 20) {
-                ForEach(AudioInputMode.allCases, id: \.self) { mode in
-                    InputModeCard(
-                        mode: mode,
-                        isSelected: audioDeviceManager.inputMode == mode,
-                        action: { audioDeviceManager.selectInputMode(mode) }
-                    )
+            VStack(alignment: .leading, spacing: 8) {
+                Picker("Input Mode", selection: Binding(
+                    get: { audioDeviceManager.inputMode },
+                    set: { audioDeviceManager.selectInputMode($0) }
+                )) {
+                    ForEach(AudioInputMode.allCases, id: \.self) { mode in
+                        Text(mode.rawValue).tag(mode)
+                    }
                 }
+                .labelsHidden()
+                .pickerStyle(.segmented)
+                .fixedSize()
+
+                Text(Self.description(for: audioDeviceManager.inputMode))
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
             }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private static func description(for mode: AudioInputMode) -> String {
+        switch mode {
+        case .systemDefault: return "Use your Mac's default input."
+        case .custom: return "Select a specific input device."
+        case .prioritized: return "Set up device priority order."
         }
     }
     
@@ -118,17 +135,17 @@ struct AudioInputSettingsView: View {
                 .buttonStyle(.borderless)
             }
 
-            VStack(spacing: 12) {
+            Picker("Device", selection: Binding(
+                get: { audioDeviceManager.selectedDeviceID },
+                set: { if let id = $0 { audioDeviceManager.selectDevice(id: id) } }
+            )) {
                 ForEach(audioDeviceManager.availableDevices, id: \.id) { device in
-                    DeviceSelectionCard(
-                        name: device.name,
-                        isSelected: audioDeviceManager.selectedDeviceID == device.id,
-                        isActive: audioDeviceManager.getCurrentDevice() == device.id
-                    ) {
-                        audioDeviceManager.selectDevice(id: device.id)
-                    }
+                    Text(audioDeviceManager.getCurrentDevice() == device.id ? "\(device.name) — Active" : device.name)
+                        .tag(Optional(device.id))
                 }
             }
+            .labelsHidden()
+            .pickerStyle(.radioGroup)
         }
     }
     
@@ -271,106 +288,6 @@ struct AudioInputSettingsView: View {
             PrioritizedDevice(id: device.id, name: device.name, priority: index, modelUID: device.modelUID)
         }
         audioDeviceManager.updatePriorities(devices: updatedDevices)
-    }
-}
-
-struct InputModeCard: View {
-    let mode: AudioInputMode
-    let isSelected: Bool
-    let action: () -> Void
-
-    private var icon: String {
-        switch mode {
-        case .systemDefault: return "display"
-        case .custom: return "mic.circle.fill"
-        case .prioritized: return "list.number"
-        }
-    }
-
-    private var description: String {
-        switch mode {
-        case .systemDefault: return "Use your Mac's default input"
-        case .custom: return "Select a specific input device"
-        case .prioritized: return "Set up device priority order"
-        }
-    }
-    
-    var body: some View {
-        Button(action: action) {
-            VStack(alignment: .leading, spacing: 12) {
-                Image(systemName: icon)
-                    .font(.system(size: 28))
-                    .symbolRenderingMode(.hierarchical)
-                    .foregroundStyle(isSelected ? Brand.tint : .secondary)
-                
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(mode.rawValue)
-                        .font(.headline)
-                    
-                    Text(description)
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding()
-            .background(RoundedRectangle(cornerRadius: Radius.control, style: .continuous).fill(Theme.selectedRow))
-            .overlay(RoundedRectangle(cornerRadius: Radius.control, style: .continuous).strokeBorder(Theme.hairline, lineWidth: 1))
-            .overlay(
-                RoundedRectangle(cornerRadius: Radius.control, style: .continuous)
-                    .strokeBorder(Brand.tint.opacity(isSelected ? 0.5 : 0), lineWidth: 1.5)
-            )
-        }
-        .buttonStyle(.plain)
-    }
-}
-
-struct DeviceSelectionCard: View {
-    let name: String
-    let isSelected: Bool
-    let isActive: Bool
-    let action: () -> Void
-    
-    var body: some View {
-        Button(action: action) {
-            HStack {
-                Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
-                    .symbolRenderingMode(.hierarchical)
-                    .foregroundStyle(isSelected ? Brand.tint : .secondary)
-                    .font(.system(size: 18))
-                
-                Text(name)
-                    .foregroundStyle(.primary)
-                
-                Spacer()
-                
-                if isActive {
-                    Label("Active", systemImage: "wave.3.right")
-                        .font(.ui(10.5, weight: .semibold))
-                        .tracking(0.06 * 10.5)
-                        .foregroundStyle(Palette.success)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 3)
-                        .background(
-                            Capsule()
-                                .fill(Palette.success.opacity(0.16))
-                        )
-                        .overlay(
-                            Capsule()
-                                .stroke(Palette.success.opacity(0.42), lineWidth: 0.5)
-                        )
-                }
-            }
-            .padding()
-            .background(RoundedRectangle(cornerRadius: Radius.control, style: .continuous).fill(Theme.selectedRow))
-            .overlay(RoundedRectangle(cornerRadius: Radius.control, style: .continuous).strokeBorder(Theme.hairline, lineWidth: 1))
-            .overlay(
-                RoundedRectangle(cornerRadius: Radius.control, style: .continuous)
-                    .strokeBorder(Brand.tint.opacity(isSelected ? 0.5 : 0), lineWidth: 1.5)
-            )
-        }
-        .buttonStyle(.plain)
     }
 }
 
