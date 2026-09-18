@@ -64,6 +64,12 @@ final class WordAgreementEngine {
         confirmedWords.map(\.text).joined(separator: " ")
     }
 
+    /// The confirmed words with their per-word confidence, for callers that need
+    /// more than the flat text. The confidence is the mean of the TDT decoder's
+    /// per-token softmax probabilities (`TokenTiming.confidence`), averaged over
+    /// the tokens that merged into the word.
+    var confirmedTimedWords: [TimedWord] { confirmedWords }
+
     init(config: AgreementConfig = AgreementConfig()) {
         self.config = config
     }

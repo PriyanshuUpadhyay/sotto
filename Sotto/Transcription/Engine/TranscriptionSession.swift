@@ -5,6 +5,9 @@ struct TranscriptionSessionDiagnostics {
     var sessionType: String
     var streamingFinalLength: Int? = nil
     var fallbackReason: String? = nil
+    /// Per-word decoder confidence for the streaming transcript, when the
+    /// provider reports it. Observability only — nothing gates on it yet.
+    var wordConfidences: [TimedWord] = []
 }
 
 /// Encapsulates a single recording-to-transcription lifecycle (streaming or file-based).
@@ -116,6 +119,7 @@ final class StreamingTranscriptionSession: TranscriptionSession {
             do {
                 let text = try await streamingService.stopAndGetFinalText()
                 diagnostics.streamingFinalLength = text.count
+                diagnostics.wordConfidences = streamingService.confirmedWordConfidences
                 logger.notice("Streaming transcript received")
 
                 if let fallbackReason = Self.implausiblyShortFallbackReason(

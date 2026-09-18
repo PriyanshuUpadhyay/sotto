@@ -11,6 +11,8 @@ final class FluidAudioStreamingProvider: StreamingTranscriptionProvider {
 
     private(set) var transcriptionEvents: AsyncStream<StreamingTranscriptionEvent>
 
+    var confirmedWordConfidences: [TimedWord] { agreementEngine.confirmedTimedWords }
+
     private var audioBuffer: [Float] = []
     private let bufferLock = NSLock()
     private let sampleRate: Double = 16000.0

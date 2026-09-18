@@ -48,4 +48,18 @@ protocol StreamingTranscriptionProvider: AnyObject {
 
     /// Stream of transcription events from the provider
     var transcriptionEvents: AsyncStream<StreamingTranscriptionEvent> { get }
+
+    /// Per-word confidence for the confirmed transcript, when the provider's
+    /// decoder reports it. Read after `commit()`.
+    ///
+    /// Not part of `StreamingTranscriptionEvent`: the events carry plain text to
+    /// the live UI, and only the pipeline's post-run trace wants the scores, so
+    /// widening every event case (and every provider that emits one) would buy
+    /// nothing. Defaults to empty, which is the honest answer for the cloud and
+    /// Unified providers — they expose no per-token scores.
+    var confirmedWordConfidences: [TimedWord] { get }
+}
+
+extension StreamingTranscriptionProvider {
+    var confirmedWordConfidences: [TimedWord] { [] }
 }

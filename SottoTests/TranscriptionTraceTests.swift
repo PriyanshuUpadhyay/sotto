@@ -12,6 +12,26 @@ import Testing
         #expect(!out.contains("rejected"))
     }
 
+    @Test("confidence section summarises and names the weakest words")
+    func confidenceSection() {
+        var trace = TranscriptionTrace()
+        trace.wordConfidences = [
+            ("the", 0.98), ("clouds", 0.41), ("auto", 0.95), ("selection", 0.88),
+        ]
+        let out = trace.render()
+        #expect(out.contains("confidence: n=4"))
+        #expect(out.contains("min=0.410"))
+        #expect(out.contains("max=0.980"))
+        // The weakest word is what a confidence-triggered corrector would act on.
+        #expect(out.contains("clouds=0.410"))
+        #expect(out.range(of: "weakest: clouds") != nil)
+    }
+
+    @Test("no confidence section when the provider reports no scores")
+    func confidenceAbsent() {
+        #expect(!TranscriptionTrace().render().contains("confidence:"))
+    }
+
     @Test("phonetic section rendered when populated")
     func rendersPhonetic() {
         var t = TranscriptionTrace()
@@ -134,11 +154,11 @@ import Testing
 
     // MARK: - Pipeline Latency 01: every stage reports a duration
 
-    @Test("the trace names exactly the seven pipeline stages")
+    @Test("the trace names exactly the eight pipeline stages, in pipeline order")
     func stagesCoverThePipeline() {
         let names = TranscriptionTrace.Stage.allCases.map(\.rawValue)
         #expect(names == ["asr", "boosting", "filter", "wordReplacement",
-                          "acoustic", "phonetic", "enhancement"])
+                          "acoustic", "phonetic", "glossaryRepair", "enhancement"])
     }
 
     @Test("a timed stage reports its duration; an untimed one reports none")

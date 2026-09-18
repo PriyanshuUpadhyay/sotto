@@ -36,6 +36,13 @@ actor GGUFProvider {
         let genSeconds: TimeInterval
     }
 
+    /// Instruction for the glossary-repair call. The GBNF grammar is what makes
+    /// the output shape binding; this only sets the task.
+    private static let glossaryRepairSystemPrompt =
+        "You correct speech-recognition mistakes. You only ever replace a misheard "
+        + "word with the correct term from a supplied list. You never rephrase, "
+        + "reorder, add, or delete anything else. You reply with JSON only."
+
     private static let s1MiniSystemPrompt =
         "You are a text normalizer for speech-to-text transcripts. The input begins " +
         "with a control line specifying the styling, structure, and context settings; " +
@@ -173,6 +180,127 @@ actor GGUFProvider {
 
     private var selectedSlug: String {
         modelSlugOverride ?? GGUFModelRegistry.selectedSlug
+    }
+
+    /// Grammar-constrained glossary repair. Returns the transcript with the
+    /// model's accepted substitutions applied, or the transcript unchanged.
+    ///
+    /// Deliberately a second, separate call rather than a change to
+    /// `runEnhance`: the enhancement pass works (its prompt forbids rewriting
+    /// and it honours that), so the repair runs on its own grammar and its own
+    /// budget and cannot regress it. Every failure returns the input untouched.
+    func correctGlossary(transcript: String, glossary: [String]) async -> String {
+        guard !transcript.isEmpty,
+              let grammarText = GlossaryCorrection.grammar(glossary: glossary)
+        else { return transcript }
+
+        do {
+            let raw = try generateWithGrammar(
+                prompt: GlossaryCorrection.prompt(transcript: transcript, glossary: glossary),
+                grammar: grammarText)
+            let patches = GlossaryCorrection.parse(raw)
+            guard !patches.isEmpty else { return transcript }
+            let corrected = GlossaryCorrection.apply(patches, to: transcript, glossary: glossary)
+            if corrected != transcript {
+                Self.logger.notice(
+                    "🦾 gguf: glossary repair applied \(patches.count, privacy: .public) patch(es)")
+            }
+            return corrected
+        } catch {
+            Self.logger.notice(
+                "🦾 gguf: glossary repair skipped: \(error.localizedDescription, privacy: .public)")
+            return transcript
+        }
+    }
+
+    private func generateWithGrammar(prompt: String, grammar: String) throws -> String {
+        let slug = selectedSlug
+        guard GGUFModelRegistry.entry(slug: slug) != nil else { throw ProviderError.noModelSelected }
+        try Task.checkCancellation()
+
+        let (model, context) = try loadModel(slug: slug)
+        lastUsedAt = Date()
+        scheduleEvictionCheck()
+
+        guard let vocab = llama_model_get_vocab(model) else {
+            throw ProviderError.generationFailed("Model vocabulary is unavailable")
+        }
+        let framed = llama_model_chat_template(model, nil)
+            .flatMap { applyChatTemplate(template: $0, system: Self.glossaryRepairSystemPrompt, user: prompt) }
+            ?? """
+            <|im_start|>system
+            \(Self.glossaryRepairSystemPrompt)<|im_end|>
+            <|im_start|>user
+            \(prompt)<|im_end|>
+            <|im_start|>assistant
+            """
+
+        var promptTokens = try tokenize(framed, vocab: vocab, addSpecial: true, parseSpecial: true)
+        guard !promptTokens.isEmpty else {
+            throw ProviderError.generationFailed("Prompt tokenization returned no tokens")
+        }
+        // A patch list is short even when everything is wrong; this is a cap on
+        // runaway generation, not a budget the model is expected to use.
+        let maxNewTokens = 256
+        guard promptTokens.count + maxNewTokens <= Int(llama_n_ctx(context)) else {
+            throw ProviderError.generationFailed("Prompt exceeds the model context window")
+        }
+        llama_memory_clear(llama_get_memory(context), true)
+
+        for start in stride(from: 0, to: promptTokens.count, by: 512) {
+            try Task.checkCancellation()
+            let end = min(start + 512, promptTokens.count)
+            let status = promptTokens.withUnsafeMutableBufferPointer { buffer -> Int32 in
+                guard let base = buffer.baseAddress else { return -1 }
+                return llama_decode(context, llama_batch_get_one(base.advanced(by: start), Int32(end - start)))
+            }
+            guard status == 0 else {
+                throw ProviderError.generationFailed("Prompt decode failed with code \(status)")
+            }
+        }
+
+        // Returns NULL when the grammar does not parse — never a crash, so a
+        // malformed glossary term degrades to "no repair this time".
+        guard let grammarSampler = grammar.withCString({ grammarPointer in
+            "root".withCString { rootPointer in
+                llama_sampler_init_grammar(vocab, grammarPointer, rootPointer)
+            }
+        }) else {
+            throw ProviderError.generationFailed("Grammar failed to parse")
+        }
+        // The grammar sampler only masks logits and never selects a token, so
+        // sampling it alone trips GGML_ASSERT(cur_p.selected >= 0) and aborts.
+        // Greedy picks from what the grammar allows. The chain owns and frees both.
+        guard let sampler = llama_sampler_chain_init(llama_sampler_chain_default_params()) else {
+            llama_sampler_free(grammarSampler)
+            throw ProviderError.generationFailed("Sampler chain init failed")
+        }
+        defer { llama_sampler_free(sampler) }
+        llama_sampler_chain_add(sampler, grammarSampler)
+        llama_sampler_chain_add(sampler, llama_sampler_init_greedy())
+
+        var outputBytes: [UInt8] = []
+        var generatedTokens = 0
+
+        while generatedTokens < maxNewTokens {
+            try Task.checkCancellation()
+            // llama_sampler_sample already accepts the token into the grammar.
+            // A second llama_sampler_accept makes the grammar throw and abort.
+            let token = llama_sampler_sample(sampler, context, -1)
+            if llama_vocab_is_eog(vocab, token) { break }
+            outputBytes.append(contentsOf: try tokenBytes(token, vocab: vocab))
+            generatedTokens += 1
+
+            var nextToken = token
+            let status = withUnsafeMutablePointer(to: &nextToken) {
+                llama_decode(context, llama_batch_get_one($0, 1))
+            }
+            guard status == 0 else {
+                throw ProviderError.generationFailed("Token decode failed with code \(status)")
+            }
+        }
+
+        return String(decoding: outputBytes, as: UTF8.self)
     }
 
     private func runEnhance(transcript: String) throws -> GenerationOutcome {

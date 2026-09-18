@@ -175,6 +175,13 @@ class AIService: ObservableObject {
         try? await AIService.sharedGGUFProvider.warm(prompt: prompt, source: source)
     }
 
+    /// Grammar-constrained glossary repair on the raw transcript. Returns the
+    /// input unchanged on any failure, so a caller never has to handle an error.
+    func correctGlossaryWithGGUF(transcript: String, glossary: [String]) async -> String {
+        await AIService.sharedGGUFProvider.correctGlossary(
+            transcript: transcript, glossary: glossary)
+    }
+
     /// Pages AFM base weights without running enhance. Fire-and-forget; swallows
     /// errors. Fired from the prewarm path (wake/launch).
     func warmAFM(source: String) async {

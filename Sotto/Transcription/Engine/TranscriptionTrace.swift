@@ -30,7 +30,7 @@ struct TranscriptionTrace {
 
     /// The pipeline stages `TranscriptionPipeline.run` walks, in order.
     enum Stage: String, CaseIterable {
-        case asr, boosting, filter, wordReplacement, acoustic, phonetic, enhancement
+        case asr, boosting, filter, wordReplacement, acoustic, phonetic, glossaryRepair, enhancement
     }
 
     /// Wall-clock cost per stage. A stage that did not run has no entry, so a
@@ -48,6 +48,15 @@ struct TranscriptionTrace {
     var acoustic: [AcousticDetection] = []
     var phonetic: [PhoneticCorrection] = [];  var afterPhonetic = ""
     var afmModel = "";  var afmEdits: [WordEdit] = [];  var afterEnhance = ""
+
+    /// Grammar-constrained glossary repair (GGUF only, opt-in). Empty when
+    /// the pass did not run or proposed nothing the transcript supported.
+    var glossaryRepairEdits: [WordEdit] = [];  var afterGlossaryRepair = ""
+
+    /// Per-word decoder confidence for a streaming utterance. Recorded so the
+    /// question "do the mishears actually score lower than the words around
+    /// them?" can be answered from real dictations before anything gates on it.
+    var wordConfidences: [(word: String, confidence: Float)] = []
 
     func duration(for stage: Stage) -> TimeInterval? { stageDurations[stage] }
 
@@ -98,6 +107,21 @@ struct TranscriptionTrace {
             let termsStr = b.terms.isEmpty ? "" : " (\(shown)\(more))"
             lines.append("boosting [\(label)]: \(b.termCount) terms\(termsStr)")
         }
+        if !wordConfidences.isEmpty {
+            let scores = wordConfidences.map(\.confidence).sorted()
+            let mean = scores.reduce(0, +) / Float(scores.count)
+            // The weakest words are the ones a confidence-triggered corrector
+            // would act on, so name them rather than only the summary.
+            let weakest = wordConfidences.sorted { $0.confidence < $1.confidence }.prefix(5)
+                .map { "\($0.word)=\(String(format: "%.3f", $0.confidence))" }
+                .joined(separator: " ")
+            lines.append(
+                "confidence: n=\(scores.count) "
+                    + "min=\(String(format: "%.3f", scores.first ?? 0)) "
+                    + "mean=\(String(format: "%.3f", mean)) "
+                    + "max=\(String(format: "%.3f", scores.last ?? 0))")
+            lines.append("  weakest: \(weakest)")
+        }
         if !afterFilter.isEmpty { lines.append("filter: \(afterFilter)") }
         if !afterWordReplace.isEmpty { lines.append("wordReplace: \(afterWordReplace)") }
         if !acoustic.isEmpty {
@@ -115,6 +139,11 @@ struct TranscriptionTrace {
             }
         }
         if !afterPhonetic.isEmpty { lines.append("afterPhonetic: \(afterPhonetic)") }
+        if !glossaryRepairEdits.isEmpty || !afterGlossaryRepair.isEmpty {
+            lines.append("glossaryRepair:")
+            for e in glossaryRepairEdits { lines.append("  \(e.from) → \(e.to)") }
+            if !afterGlossaryRepair.isEmpty { lines.append("  after: \(afterGlossaryRepair)") }
+        }
         if !afmEdits.isEmpty || !afterEnhance.isEmpty {
             let m = afmModel.isEmpty ? "" : " [\(afmModel)]"
             lines.append("AFM\(m):")

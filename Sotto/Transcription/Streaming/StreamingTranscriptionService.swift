@@ -51,6 +51,13 @@ class StreamingTranscriptionService {
     /// Longest cumulative partial/committed transcript observed this session — evidence for
     /// detecting a dropped final commit independent of audio duration (which includes silence).
     private(set) var maxObservedTranscriptLength: Int = 0
+
+    /// Per-word confidence for the confirmed transcript, when the provider's
+    /// decoder reports it. Snapshotted during `stopAndGetFinalText()` rather
+    /// than read through `provider`, because that call ends in
+    /// `cleanupStreaming()`, which releases the provider before the caller gets
+    /// a chance to ask. Empty for providers that expose no per-token scores.
+    private(set) var confirmedWordConfidences: [TimedWord] = []
     private let modelContext: ModelContext
     private let fluidAudioService: FluidAudioTranscriptionService?
     private let streamingManagerCache: FluidAudioStreamingManagerCache?
@@ -86,6 +93,7 @@ class StreamingTranscriptionService {
     func startStreaming(model: any TranscriptionModel) async throws {
         state = .connecting
         committedSegments = []
+        confirmedWordConfidences = []
         maxObservedTranscriptLength = 0
 
         // Observability: a realtime (streaming/M1) run never calls the file-based
@@ -148,6 +156,9 @@ class StreamingTranscriptionService {
 
         // Wait for the server to acknowledge our commit (or timeout)
         let finalText = await waitForFinalCommit(signalStream: signalStream)
+
+        // Before cleanupStreaming() releases the provider.
+        confirmedWordConfidences = provider.confirmedWordConfidences
 
         state = .done
         await cleanupStreaming()
