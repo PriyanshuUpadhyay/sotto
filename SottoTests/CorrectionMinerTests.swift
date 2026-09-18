@@ -21,14 +21,14 @@ import Foundation
                              existingReplacements: replacements, dismissed: dismissed)
     }
 
-    @Test("pair corrected in 3 distinct dictations is suggested; 2 is below threshold")
+    @Test("pair corrected in 2 distinct dictations is suggested; 1 is below threshold")
     func threshold() {
-        #expect(mine([editRecord(), editRecord()]).isEmpty)
-        let three = mine([editRecord(), editRecord(), editRecord()])
-        #expect(three.count == 1)
-        #expect(three[0].original == "cloud")
-        #expect(three[0].replacement == "Claude")
-        #expect(three[0].count == 3)
+        #expect(mine([editRecord()]).isEmpty)
+        let two = mine([editRecord(), editRecord()])
+        #expect(two.count == 1)
+        #expect(two[0].original == "cloud")
+        #expect(two[0].replacement == "Claude")
+        #expect(two[0].count == 2)
     }
 
     @Test("repeats within the SAME dictation count once (across dictations, not occurrences)")

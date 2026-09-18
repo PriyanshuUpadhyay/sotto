@@ -47,11 +47,20 @@ enum CorrectionMiner {
     /// Only unambiguously aligned substitutions count (see
     /// `alignedSubstitutions`); case-only changes are ignored. Sorted by count
     /// desc, then replacement asc.
+    ///
+    /// `threshold` is 2, not 3. Measured against the live store on 2026-09-18:
+    /// 76 `.edit` records had produced NO pair repeated more than twice, so a
+    /// bar of 3 had never surfaced a single suggestion since the feature
+    /// shipped, while real repeats sat one below it ("console"→"council",
+    /// "def"→"diff", "seeds"→"seats"). 2 is safe here because `mine` only
+    /// SUGGESTS: `VocabularyView` shows the top 3 and the user must accept one
+    /// before it reaches the vocabulary. The higher bar belongs on anything
+    /// that auto-applies, which this is not.
     static func mine(records: [EnhancementEditRecord],
                      existingVocabulary: Set<String>,
                      existingReplacements: Set<String>,
                      dismissed: Set<String>,
-                     threshold: Int = 3) -> [CorrectionSuggestion] {
+                     threshold: Int = 2) -> [CorrectionSuggestion] {
         var agg: [String: (original: String, replacement: String, dictations: Set<UUID>)] = [:]
 
         for record in records where record.signalSource == .edit {
