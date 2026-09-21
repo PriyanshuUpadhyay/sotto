@@ -27,8 +27,13 @@ import os
 ///
 /// A second, separate small CSV (`recordStopToPaste`) captures X1/F6
 /// acceptance evidence — end-to-end wall-clock from recording-stop to the
-/// enhanced text landing via paste — since that span doesn't fit this
-/// per-AFM-call schema (paste happens well after this row is written).
+/// paste — since that span doesn't fit this per-AFM-call schema (paste happens
+/// well after this row is written). NOT a latency measure: with review on (the
+/// default) the paste fires from the user's own commit, so the span carries
+/// their reading and editing time. A 2026-09 analysis misread it as machine
+/// latency and missed a real regression that `recordStopToPreview` had caught
+/// on day one. Read stop-to-preview for machine delay; read this one for total
+/// elapsed time, and for the direct-paste path where no preview fires.
 ///
 /// A third small CSV (`recordStopToPreview`) captures recording-stop to the
 /// review-before-paste editor appearing — the system-only portion of the

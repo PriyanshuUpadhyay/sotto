@@ -222,32 +222,6 @@ class TranscriptionPipeline {
             trace.afterPhonetic = text
             logger.notice("📝 PhoneticCorrect: \(text, privacy: .public)")
 
-            // Grammar-constrained glossary repair. Runs BEFORE enhancement so
-            // the enhancer still punctuates the corrected text, and only on the
-            // GGUF path, which is the only provider with a grammar sampler.
-            // Opt-in while the quality is unproven on real dictation; the call
-            // itself returns the input unchanged on any failure.
-            if UserDefaults.standard.bool(forKey: "IsGlossaryRepairEnabled"),
-               AIProvider.resolved() == .localGGUF,
-               let aiService = enhancementService?.aiService {
-                let glossary = (try? modelContext.fetch(FetchDescriptor<VocabularyWord>()))?
-                    .map { $0.word } ?? []
-                if !glossary.isEmpty {
-                    let repairStart = TranscriptionTrace.now()
-                    let repaired = await aiService.correctGlossaryWithGGUF(
-                        transcript: text, glossary: glossary)
-                    trace.record(.glossaryRepair, since: repairStart)
-                    if repaired != text {
-                        trace.glossaryRepairEdits = WordDiffEngine
-                            .findSingleWordSubstitutions(original: text, edited: repaired)
-                            .map { TranscriptionTrace.WordEdit(from: $0.original, to: $0.replacement) }
-                        text = repaired
-                        logger.notice("📝 GlossaryRepair: \(text, privacy: .public)")
-                    }
-                    trace.afterGlossaryRepair = text
-                }
-            }
-
             let actualDuration = audioMetrics.durationSeconds ?? 0.0
 
             transcription.text = text

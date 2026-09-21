@@ -154,11 +154,11 @@ import Testing
 
     // MARK: - Pipeline Latency 01: every stage reports a duration
 
-    @Test("the trace names exactly the eight pipeline stages, in pipeline order")
+    @Test("the trace names exactly the seven pipeline stages, in pipeline order")
     func stagesCoverThePipeline() {
         let names = TranscriptionTrace.Stage.allCases.map(\.rawValue)
         #expect(names == ["asr", "boosting", "filter", "wordReplacement",
-                          "acoustic", "phonetic", "glossaryRepair", "enhancement"])
+                          "acoustic", "phonetic", "enhancement"])
     }
 
     @Test("a timed stage reports its duration; an untimed one reports none")

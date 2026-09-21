@@ -4,6 +4,23 @@ import Foundation
 
 struct EnhancementSanityCheckTests {
 
+    // MARK: detect — an empty output is total loss, not a clean pass
+
+    /// Regression: two production calls on 2026-09-16 returned "" with
+    /// `outcome=success`, and the empty string was pasted over the dictation.
+    /// `detect` had treated an empty output as `.clean`, so the repair ladder
+    /// never ran.
+    @Test func flagsEmptyOutputAsSuspect() {
+        #expect(EnhancementSanityCheck.detect(raw: "Let's see how it works.", output: "").isSuspect)
+        #expect(EnhancementSanityCheck.detect(raw: "Let's see how it works.", output: "   \n ").isSuspect)
+    }
+
+    /// Empty input stays clean — there is nothing to lose.
+    @Test func emptyInputStaysClean() {
+        #expect(EnhancementSanityCheck.detect(raw: "", output: "").isClean)
+        #expect(EnhancementSanityCheck.detect(raw: "  ", output: "anything").isClean)
+    }
+
     // MARK: detect — known answer-vs-rewrite failures must be flagged
 
     @Test func flagsAnswerOpenerAndPersonFlip_813() {

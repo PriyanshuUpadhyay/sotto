@@ -34,7 +34,15 @@ enum EnhancementSanityCheck {
     static func detect(raw: String, output: String, vocabulary: Set<String> = []) -> Verdict {
         let r = raw.trimmingCharacters(in: .whitespacesAndNewlines)
         let o = output.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !r.isEmpty, !o.isEmpty else { return .clean }
+        guard !r.isEmpty else { return .clean }
+        // An empty output for non-empty input is total sentence loss, not a
+        // clean pass. Two production calls returned "" and the pipeline pasted
+        // it over the dictation (2026-09-16, gguf-s1-mini). Reporting it
+        // .suspect routes it into the hardened retry and then
+        // `deterministicCleanup`, so the user gets cleaned raw text, never
+        // nothing. Guards every provider, not only the one that was seen to
+        // fail.
+        guard !o.isEmpty else { return .suspect([.sentenceDrop]) }
 
         var reasons: [Reason] = []
         if hasPersonFlip(r, o)   { reasons.append(.personFlip) }

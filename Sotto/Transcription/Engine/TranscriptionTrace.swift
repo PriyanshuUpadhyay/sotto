@@ -30,7 +30,7 @@ struct TranscriptionTrace {
 
     /// The pipeline stages `TranscriptionPipeline.run` walks, in order.
     enum Stage: String, CaseIterable {
-        case asr, boosting, filter, wordReplacement, acoustic, phonetic, glossaryRepair, enhancement
+        case asr, boosting, filter, wordReplacement, acoustic, phonetic, enhancement
     }
 
     /// Wall-clock cost per stage. A stage that did not run has no entry, so a
@@ -48,10 +48,6 @@ struct TranscriptionTrace {
     var acoustic: [AcousticDetection] = []
     var phonetic: [PhoneticCorrection] = [];  var afterPhonetic = ""
     var afmModel = "";  var afmEdits: [WordEdit] = [];  var afterEnhance = ""
-
-    /// Grammar-constrained glossary repair (GGUF only, opt-in). Empty when
-    /// the pass did not run or proposed nothing the transcript supported.
-    var glossaryRepairEdits: [WordEdit] = [];  var afterGlossaryRepair = ""
 
     /// Per-word decoder confidence for a streaming utterance. Recorded so the
     /// question "do the mishears actually score lower than the words around
@@ -139,11 +135,6 @@ struct TranscriptionTrace {
             }
         }
         if !afterPhonetic.isEmpty { lines.append("afterPhonetic: \(afterPhonetic)") }
-        if !glossaryRepairEdits.isEmpty || !afterGlossaryRepair.isEmpty {
-            lines.append("glossaryRepair:")
-            for e in glossaryRepairEdits { lines.append("  \(e.from) → \(e.to)") }
-            if !afterGlossaryRepair.isEmpty { lines.append("  after: \(afterGlossaryRepair)") }
-        }
         if !afmEdits.isEmpty || !afterEnhance.isEmpty {
             let m = afmModel.isEmpty ? "" : " [\(afmModel)]"
             lines.append("AFM\(m):")
