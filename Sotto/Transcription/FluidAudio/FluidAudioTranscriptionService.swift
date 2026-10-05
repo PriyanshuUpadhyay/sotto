@@ -558,8 +558,12 @@ actor FluidAudioTranscriptionService: TranscriptionService {
             let spotter = CtcKeywordSpotter(models: ctcModels, blankId: ctcModels.vocabulary.count)
             let spot = try await spotter.spotKeywordsWithLogProbs(
                 audioSamples: samples, customVocabulary: context, minScore: nil)
+            // Spotter rescue off: it swaps any ≤4-word span where the CTC spotter
+            // hears a term and ignores `minSimilarity`. On a 39 s dictation
+            // (2026-10-05) it made 18 swaps like "especially in" → "Gemini".
             let rescorer = try await VocabularyRescorer.create(
-                spotter: spotter, vocabulary: context, ctcModelDirectory: ctcDir)
+                spotter: spotter, vocabulary: context,
+                config: .init(spotterRescueEnabled: false), ctcModelDirectory: ctcDir)
             let output = rescorer.ctcTokenRescore(
                 transcript: result.text, tokenTimings: tokenTimings, logProbs: spot.logProbs,
                 frameDuration: spot.frameDuration, cbw: Self.rescoreCbw,
