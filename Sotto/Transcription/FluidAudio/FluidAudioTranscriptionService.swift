@@ -62,7 +62,8 @@ actor FluidAudioTranscriptionService: TranscriptionService {
     private var ctcModelsCache: CtcModels?
     private var ctcTokenizerCache: CtcTokenizer?
 
-    private enum VocabularyBoostingError: Error { case ctcModelMissing, bufferFailed, emptyContext }
+    private enum VocabularyBoostingError: Error { case ctcModelMissing, emptyContext }
+    private var boostableCache: (vocabulary: [String], terms: [String])?
 
     /// Observability ONLY (no behavior): the M2 in-decoder rescore outcome for the
     /// most recent `transcribe(audioURL:model:)` call. Reset to nil at the top of
@@ -339,30 +340,11 @@ actor FluidAudioTranscriptionService: TranscriptionService {
 
         let audioSamples = try readAudioSamples(from: audioURL)
 
-        // In-decoder vocabulary rescoring (FILE-BASED only). When the user's
-        // custom vocabulary is non-empty and the CTC spotter model is already
-        // resident on disk, run the decode through FluidAudio's
-        // SlidingWindowAsrManager with `configureVocabularyBoosting`, which
-        // applies `VocabularyRescorer.ctcTokenRescore` to confirmed tokens.
-        // Best-effort: any failure (incl. a missing CTC model) falls through to
-        // the plain TDT decode below, so transcription never breaks.
-        let vocabulary = currentVocabulary()
-        if FluidAudioVocabularyBoosting.shouldAttempt(modelName: model.name, vocabulary: vocabulary) {
-            do {
-                let boosted = try await transcribeWithVocabularyBoosting(
-                    samples: audioSamples, version: targetVersion, vocabulary: vocabulary)
-                logger.notice("🔤 vocabulary boosting engaged; terms=\(vocabulary.count, privacy: .public)")
-                lastBoosting = .init(outcome: .engaged, termCount: vocabulary.count, terms: vocabulary)
-                return TextNormalizer.shared.normalizeSentence(boosted)
-            } catch {
-                lastBoosting = .init(outcome: Self.boostingFallbackOutcome(for: error),
-                                     termCount: vocabulary.count, terms: vocabulary)
-                logger.notice("vocabulary boosting unavailable; using plain decode: \(error.localizedDescription, privacy: .public)")
-            }
-        } else {
-            // On a non-unified FluidAudio file decode the gate said no (empty
-            // vocabulary or the acoustic-boosting policy is off) — record it so
-            // the trace shows the gate evaluated, not that M2 silently no-op'd.
+        let vocabulary = await boostableVocabulary()
+        let attemptBoosting = FluidAudioVocabularyBoosting.shouldAttempt(modelName: model.name, vocabulary: vocabulary)
+        if !attemptBoosting {
+            // The gate said no (empty vocabulary or the acoustic-boosting policy is
+            // off) — record it so the trace shows the gate evaluated.
             lastBoosting = .init(outcome: .notAttempted, termCount: vocabulary.count, terms: vocabulary)
         }
 
@@ -406,7 +388,50 @@ actor FluidAudioTranscriptionService: TranscriptionService {
         var decoderState = TdtDecoderState.make(decoderLayers: await asrManager.decoderLayerCount)
         let result = try await asrManager.transcribe(speechAudio, decoderState: &decoderState)
 
-        return TextNormalizer.shared.normalizeSentence(result.text)
+        var text = result.text
+        if attemptBoosting, let rescored = await rescore(result, samples: speechAudio, vocabulary: vocabulary) {
+            text = rescored.text
+        }
+        return TextNormalizer.shared.normalizeSentence(text)
+    }
+
+    /// Repairs a finished streaming (agreement-based TDT) transcript with one
+    /// batch decode of the whole recording: appends trailing words streaming
+    /// dropped, then applies the vocabulary rescorer's swaps when boosting is on.
+    /// Streaming stays the base text (see `StreamingTranscriptRepair`). Returns
+    /// `streaming` unchanged on any failure, so the repair never blocks a paste.
+    func repairStreamingTranscript(_ streaming: String, audioURL: URL, model: any TranscriptionModel) async -> String {
+        lastBoosting = nil
+        do {
+            let version = try version(for: model)
+            try await ensureModelsLoaded(for: version)
+            guard let asrManager else { return streaming }
+            let samples = try readAudioSamples(from: audioURL)
+            // Same 1 s trailing pad as the file path, for final punctuation.
+            var padded = samples
+            if padded.count + 16_000 <= 240_000 { padded += [Float](repeating: 0, count: 16_000) }
+            var decoderState = TdtDecoderState.make(decoderLayers: await asrManager.decoderLayerCount)
+            let result = try await asrManager.transcribe(padded, decoderState: &decoderState)
+
+            var text = StreamingTranscriptRepair.appendingDroppedTail(
+                streaming: streaming, batch: TextNormalizer.shared.normalizeSentence(result.text))
+            let vocabulary = await boostableVocabulary()
+            if FluidAudioVocabularyBoosting.shouldAttempt(modelName: model.name, vocabulary: vocabulary) {
+                if let rescored = await rescore(result, samples: samples, vocabulary: vocabulary) {
+                    let swaps = rescored.replacements.compactMap { r -> (original: String, replacement: String)? in
+                        guard r.shouldReplace, let word = r.replacementWord else { return nil }
+                        return (r.originalWord, word)
+                    }
+                    text = StreamingTranscriptRepair.applyingSwaps(swaps, to: text)
+                }
+            } else {
+                lastBoosting = .init(outcome: .notAttempted, termCount: vocabulary.count, terms: vocabulary)
+            }
+            return text
+        } catch {
+            logger.notice("streaming repair skipped: \(error.localizedDescription, privacy: .public)")
+            return streaming
+        }
     }
 
     /// Load (and cache) the Cohere CoreML encoder/decoder/vocab from the
@@ -487,75 +512,83 @@ actor FluidAudioTranscriptionService: TranscriptionService {
         }
     }
 
-    // MARK: - File-based vocabulary boosting
+    // MARK: - Vocabulary rescoring
 
-    /// Transcribe a file through FluidAudio's sliding-window manager with custom
-    /// vocabulary rescoring applied per window. Throws (→ caller falls back to
-    /// the plain decode) if the CTC model isn't on disk or any step fails.
-    ///
-    /// LIMITATION (accepted, opt-in path only): SlidingWindowAsrManager exposes no
-    /// partial-window-failure signal — `failedWindowCount`/`lastWindowError` are
-    /// private, and `finish()` throws ONLY when ALL windows fail (which we catch
-    /// → plain-decode fallback). A PARTIAL window failure therefore returns a
-    /// silently-truncated boosted transcript that we can't detect from here
-    /// (reading the count would need a FluidAudio source change — out of scope and
-    /// not durable across SPM re-resolve). Risk is bounded: this path is opt-in
-    /// (.fast + acoustic-boosting flag). The truncation case is covered by the
-    /// manual long-passage regression test, not by code.
+    /// `cbw 0` + `minSimilarity 0.7`. Measured on 241 real dictations
+    /// (2026-10-05), the library defaults changed 40 transcripts, mostly wrongly
+    /// ("code" → "Xcode", "getting" → "Gemini"); these settings changed none on
+    /// the same vocabulary and fixed real misses once the terms were listed.
+    /// Matches FluidAudio issue #967 (278 → 40 changed of 500, nearly all right).
+    private static let rescoreCbw: Float = 0
+    private static let rescoreMinSimilarity: Float = 0.7
+
     /// Map a thrown boosting error to the trace outcome (observability only).
     private static func boostingFallbackOutcome(for error: Error) -> TranscriptionTrace.BoostingTrace.Outcome {
         switch error {
         case VocabularyBoostingError.ctcModelMissing: return .ctcModelMissing
         case VocabularyBoostingError.emptyContext: return .fellBackToPlainDecode(reason: "empty context")
-        case VocabularyBoostingError.bufferFailed: return .fellBackToPlainDecode(reason: "buffer failed")
         default: return .fellBackToPlainDecode(reason: String(error.localizedDescription.prefix(60)))
         }
     }
 
-    private func transcribeWithVocabularyBoosting(
-        samples: [Float], version: AsrModelVersion, vocabulary: [String]
-    ) async throws -> String {
-        logger.notice("🔤 vocabulary boosting attempted; terms=\(vocabulary.count, privacy: .public)")
-        let ctcDir = CtcModels.defaultCacheDirectory(for: .ctc110m)
-        guard CtcModels.modelsExist(at: ctcDir) else {
-            // Never download on the transcribe hot path — prefetch for next time
-            // and fall back to the plain decode now.
-            logger.notice("🔤 vocabulary boosting: CTC model missing on disk; prefetching, plain decode this time")
-            Task.detached { _ = try? await CtcModels.downloadAndLoad(variant: .ctc110m) }
-            throw VocabularyBoostingError.ctcModelMissing
-        }
-
-        let ctcModels: CtcModels
-        if let cached = ctcModelsCache {
-            ctcModels = cached
-        } else {
-            ctcModels = try await CtcModels.load(from: ctcDir, variant: .ctc110m)
-            ctcModelsCache = ctcModels
-        }
-
-        let context = try await vocabularyContext(for: vocabulary, ctcDir: ctcDir)
-        guard !context.terms.isEmpty else {
-            logger.notice("🔤 vocabulary boosting: empty CTC context (no term tokenized); plain decode")
-            throw VocabularyBoostingError.emptyContext
-        }
-        guard let buffer = Self.pcmBuffer(fromFloatSamples: samples) else {
-            throw VocabularyBoostingError.bufferFailed
-        }
-
-        let models = try await getOrLoadModels(for: version)
-        let manager = SlidingWindowAsrManager(config: .default)
+    /// CTC-rescore a finished TDT decode against the custom vocabulary. Sets
+    /// `lastBoosting`; returns nil (the caller keeps its text) on any failure.
+    private func rescore(_ result: ASRResult, samples: [Float], vocabulary: [String]) async
+        -> VocabularyRescorer.RescoreOutput? {
         do {
-            try await manager.loadModels(models)
-            try await manager.configureVocabularyBoosting(vocabulary: context, ctcModels: ctcModels)
-            try await manager.startStreaming()
-            await manager.streamAudio(buffer)
-            let text = try await manager.finish()
-            await manager.cleanup()
-            return text
+            let ctcDir = CtcModels.defaultCacheDirectory(for: .ctc110m)
+            guard CtcModels.modelsExist(at: ctcDir) else {
+                // Never download on the transcribe hot path — prefetch for next time.
+                Task.detached { _ = try? await CtcModels.downloadAndLoad(variant: .ctc110m) }
+                throw VocabularyBoostingError.ctcModelMissing
+            }
+            guard let tokenTimings = result.tokenTimings, !tokenTimings.isEmpty else {
+                throw VocabularyBoostingError.emptyContext
+            }
+            let ctcModels: CtcModels
+            if let cached = ctcModelsCache {
+                ctcModels = cached
+            } else {
+                ctcModels = try await CtcModels.load(from: ctcDir, variant: .ctc110m)
+                ctcModelsCache = ctcModels
+            }
+            let context = try await vocabularyContext(for: vocabulary, ctcDir: ctcDir)
+            guard !context.terms.isEmpty else { throw VocabularyBoostingError.emptyContext }
+
+            let spotter = CtcKeywordSpotter(models: ctcModels, blankId: ctcModels.vocabulary.count)
+            let spot = try await spotter.spotKeywordsWithLogProbs(
+                audioSamples: samples, customVocabulary: context, minScore: nil)
+            let rescorer = try await VocabularyRescorer.create(
+                spotter: spotter, vocabulary: context, ctcModelDirectory: ctcDir)
+            let output = rescorer.ctcTokenRescore(
+                transcript: result.text, tokenTimings: tokenTimings, logProbs: spot.logProbs,
+                frameDuration: spot.frameDuration, cbw: Self.rescoreCbw,
+                minSimilarity: Self.rescoreMinSimilarity)
+            lastBoosting = .init(outcome: .engaged, termCount: vocabulary.count, terms: vocabulary)
+            return output
         } catch {
-            await manager.cleanup()
-            throw error
+            lastBoosting = .init(outcome: Self.boostingFallbackOutcome(for: error),
+                                 termCount: vocabulary.count, terms: vocabulary)
+            logger.notice("vocabulary rescoring unavailable: \(error.localizedDescription, privacy: .public)")
+            return nil
         }
+    }
+
+    /// The user's vocabulary minus the terms that over-fire (see
+    /// `StreamingTranscriptRepair.boostableTerms`). Uses the system word list
+    /// because NSSpellChecker accepts "laude" and "emini" and would drop Claude
+    /// and Gemini. Scanned once per vocabulary, keeping only the hits.
+    private func boostableVocabulary() async -> [String] {
+        let vocabulary = currentVocabulary()
+        if let cached = boostableCache, cached.vocabulary == vocabulary { return cached.terms }
+        let candidates = Set(vocabulary.map { String($0.trimmingCharacters(in: .whitespaces).dropFirst()).lowercased() })
+        // A missing word list keeps every term (the length rule still applies).
+        let words = (try? String(contentsOfFile: "/usr/share/dict/words", encoding: .utf8)) ?? ""
+        var hits = Set<String>()
+        words.enumerateLines { line, _ in if candidates.contains(line) { hits.insert(line) } }
+        let terms = StreamingTranscriptRepair.boostableTerms(vocabulary, isDictionaryWord: hits.contains)
+        boostableCache = (vocabulary, terms)
+        return terms
     }
 
     /// Build the CTC custom-vocabulary context (terms → CTC token ids), mirroring
@@ -574,24 +607,6 @@ actor FluidAudioTranscriptionService: TranscriptionService {
             return CustomVocabularyTerm(text: text, ctcTokenIds: ids)
         }
         return CustomVocabularyContext(terms: vocabTerms)
-    }
-
-    /// Wrap normalized 16 kHz mono `[Float]` samples in an `AVAudioPCMBuffer`
-    /// (the format `SlidingWindowAsrManager.streamAudio` expects).
-    private static func pcmBuffer(fromFloatSamples samples: [Float]) -> AVAudioPCMBuffer? {
-        guard !samples.isEmpty,
-              let format = AVAudioFormat(commonFormat: .pcmFormatFloat32,
-                                         sampleRate: 16000, channels: 1, interleaved: false),
-              let buffer = AVAudioPCMBuffer(pcmFormat: format,
-                                            frameCapacity: AVAudioFrameCount(samples.count)),
-              let channel = buffer.floatChannelData?[0]
-        else { return nil }
-        buffer.frameLength = AVAudioFrameCount(samples.count)
-        samples.withUnsafeBufferPointer { ptr in
-            guard let base = ptr.baseAddress else { return }
-            channel.update(from: base, count: samples.count)
-        }
-        return buffer
     }
 
     // Releases ASR/VAD resources but preserves cached models for reuse

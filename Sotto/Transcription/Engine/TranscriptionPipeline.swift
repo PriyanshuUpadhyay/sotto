@@ -161,9 +161,21 @@ class TranscriptionPipeline {
             logger.notice("📝 Transcript: \(text, privacy: .public)")
             trace.asrText = text
             trace.asrModel = model.displayName
-            // M2 in-decoder rescore is FluidAudio-only and runs inside the
-            // service actor; read its per-utterance outcome here. Realtime
-            // (streaming) runs reset it to nil, so this is null for the M1 path.
+            // Agreement-based TDT streaming: one batch decode restores dropped
+            // trailing words and carries the vocabulary rescore. EOU, Nemotron
+            // and Unified have no AsrModelVersion, so they skip it.
+            if trace.sessionType == "streaming", model.provider == .fluidAudio,
+               FluidAudioModelManager.knownAsrVersion(for: model.name) != nil {
+                let repairStart = TranscriptionTrace.now()
+                let repaired = await serviceRegistry.fluidAudioTranscriptionService
+                    .repairStreamingTranscript(text, audioURL: audioURL, model: model)
+                trace.record(.repair, since: repairStart)
+                if repaired != text { trace.afterRepair = repaired }
+                text = repaired
+            }
+            // The vocabulary rescore is FluidAudio-only and runs inside the
+            // service actor (file decode or streaming repair); read its
+            // per-utterance outcome here.
             if model.provider == .fluidAudio {
                 let boostingStart = TranscriptionTrace.now()
                 trace.boosting = await serviceRegistry.fluidAudioTranscriptionService.lastBoosting

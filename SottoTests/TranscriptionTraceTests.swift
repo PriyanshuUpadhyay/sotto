@@ -157,8 +157,17 @@ import Testing
     @Test("the trace names exactly the seven pipeline stages, in pipeline order")
     func stagesCoverThePipeline() {
         let names = TranscriptionTrace.Stage.allCases.map(\.rawValue)
-        #expect(names == ["asr", "boosting", "filter", "wordReplacement",
+        #expect(names == ["asr", "repair", "boosting", "filter", "wordReplacement",
                           "acoustic", "phonetic", "enhancement"])
+    }
+
+    @Test("a streaming repair renders its own line; no repair renders none")
+    func rendersRepair() {
+        var t = TranscriptionTrace()
+        t.asrText = "it should be."
+        #expect(!t.render().contains("repair:"))
+        t.afterRepair = "it should be really exact."
+        #expect(t.render().contains("repair: it should be really exact."))
     }
 
     @Test("a timed stage reports its duration; an untimed one reports none")

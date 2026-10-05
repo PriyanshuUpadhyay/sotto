@@ -30,7 +30,7 @@ struct TranscriptionTrace {
 
     /// The pipeline stages `TranscriptionPipeline.run` walks, in order.
     enum Stage: String, CaseIterable {
-        case asr, boosting, filter, wordReplacement, acoustic, phonetic, enhancement
+        case asr, repair, boosting, filter, wordReplacement, acoustic, phonetic, enhancement
     }
 
     /// Wall-clock cost per stage. A stage that did not run has no entry, so a
@@ -43,6 +43,8 @@ struct TranscriptionTrace {
     var streamingFinalLength: Int? = nil
     var fallbackReason = ""
     var asrText = "";  var asrModel = ""
+    /// Streaming text after `StreamingTranscriptRepair`; empty when the repair did not run or changed nothing.
+    var afterRepair = ""
     var boosting: BoostingTrace? = nil
     var afterFilter = "";  var afterWordReplace = ""
     var acoustic: [AcousticDetection] = []
@@ -118,6 +120,7 @@ struct TranscriptionTrace {
                     + "max=\(String(format: "%.3f", scores.last ?? 0))")
             lines.append("  weakest: \(weakest)")
         }
+        if !afterRepair.isEmpty { lines.append("repair: \(afterRepair)") }
         if !afterFilter.isEmpty { lines.append("filter: \(afterFilter)") }
         if !afterWordReplace.isEmpty { lines.append("wordReplace: \(afterWordReplace)") }
         if !acoustic.isEmpty {
