@@ -57,6 +57,7 @@ check:
 
 healthcheck: check
 
+# Sotto ships macOS only. Upstream build-xcframework.sh builds every Apple platform and leaves ~5 GB of build-* intermediates; keep only build-apple.
 # Build process
 whisper:
 	@mkdir -p $(DEPS_DIR)
@@ -67,7 +68,7 @@ whisper:
 		else \
 			(cd $(WHISPER_CPP_DIR) && git pull); \
 		fi; \
-		cd $(WHISPER_CPP_DIR) && ./build-xcframework.sh; \
+		cd $(WHISPER_CPP_DIR) && ./build-xcframework.sh && rm -rf build-ios-* build-tvos-* build-visionos* build-macos; \
 	else \
 		echo "whisper.xcframework already built in $(DEPS_DIR), skipping build"; \
 	fi
@@ -81,7 +82,7 @@ llama:
 		else \
 			(cd $(LLAMA_CPP_DIR) && git pull); \
 		fi; \
-		cd $(LLAMA_CPP_DIR) && ./build-xcframework.sh; \
+		cd $(LLAMA_CPP_DIR) && ./build-xcframework.sh macos && rm -rf build-macos; \
 	else \
 		echo "llama.xcframework already built in $(DEPS_DIR), skipping build"; \
 	fi
@@ -92,7 +93,7 @@ llama:
 ggml-headers: whisper llama
 	@set -e; \
 	needs_copy=0; \
-	for slice_dir in $(FRAMEWORK_PATH)/*/; do \
+	for slice_dir in $(FRAMEWORK_PATH)/macos-*/; do \
 		slice_dir="$${slice_dir%/}"; \
 		slice=$$(basename "$$slice_dir"); \
 		w_hdr=$$(realpath "$$slice_dir/whisper.framework/Headers" 2>/dev/null); \
@@ -112,7 +113,7 @@ ggml-headers: whisper llama
 		echo "ggml headers already identical"; \
 		exit 0; \
 	fi; \
-	for slice_dir in $(FRAMEWORK_PATH)/*/; do \
+	for slice_dir in $(FRAMEWORK_PATH)/macos-*/; do \
 		slice_dir="$${slice_dir%/}"; \
 		slice=$$(basename "$$slice_dir"); \
 		w_hdr=$$(realpath "$$slice_dir/whisper.framework/Headers" 2>/dev/null); \
