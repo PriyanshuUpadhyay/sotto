@@ -769,6 +769,9 @@ class AIEnhancementService: ObservableObject {
         // text won above (first pass, hardened retry, or deterministic fallback),
         // so a mechanic like the personal-chat trailing-period drop lands uniformly.
         result = category.applyMechanics(to: result)
+        if UserDefaults.standard.bool(forKey: ConciseCleanup.userDefaultsKey) {
+            result = ConciseCleanup.apply(result)
+        }
 
         await MainActor.run {
             self.lastRawEnhancement = firstPass

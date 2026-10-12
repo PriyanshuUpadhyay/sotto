@@ -21,6 +21,7 @@ struct ModelsTab: View {
     @State private var isRunningTranscriptionEval = false
     @State private var modelSearchText = ""
     @AppStorage("EnhancementProvider") private var enhancementProvider = AIProvider.foundationModels.rawValue
+    @AppStorage(ConciseCleanup.userDefaultsKey) private var isConciseEnhancementEnabled = false
     @AppStorage("EnhancementGGUFModelSlug") private var enhancementGGUFModelSlug = GGUFModelRegistry.curated.first?.slug ?? "s1-mini"
     @ObservedObject private var ggufDownloadManager = GGUFDownloadManager.shared
     @State private var downloadedGGUFSlugs: Set<String> = []
@@ -485,6 +486,19 @@ struct ModelsTab: View {
                     }
                 }
                 .toggleStyle(.switch)
+
+                Toggle(isOn: $isConciseEnhancementEnabled) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Concise")
+                            .font(.ui(12, weight: .semibold))
+                        Text("Also drops crutch words such as \"basically\", \"actually\", \"that particular\", and a leading \"So,\" or \"Okay,\". Only deletes words; never rewrites.")
+                            .font(.ui(11))
+                            .foregroundColor(Palette.inkSecondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+                .toggleStyle(.switch)
+                .disabled(!enhancementService.isEnhancementEnabled)
             }
 
             SettingsCard(
