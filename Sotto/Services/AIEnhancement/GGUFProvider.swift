@@ -337,7 +337,7 @@ actor GGUFProvider {
             <|im_start|>system
             \(Self.s1MiniSystemPrompt)<|im_end|>
             <|im_start|>user
-            [Styling: semi-formal] [Structure: prose] [Context: general]
+            [Styling: semi-formal] [Structure: lists] [Context: general]
             \(transcript)<|im_end|>
             <|im_start|>assistant
             <think>
