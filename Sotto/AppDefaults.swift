@@ -36,6 +36,7 @@ enum AppDefaults {
             // Enhancement
             "enhanceLevel": EnhanceLevel.default.rawValue,  // "light"
             "SkipShortEnhancement": true,
+            ConciseCleanup.userDefaultsKey: false,
             "ShortEnhancementWordThreshold": 3,
             "EnhancementTimeoutSeconds": 15,
             "EnhancementRetryOnTimeout": true,
