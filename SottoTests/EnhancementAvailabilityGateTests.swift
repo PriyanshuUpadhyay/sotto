@@ -6,7 +6,10 @@ import SwiftData
 struct AIServiceAvailabilityGateTests {
     @Test func refreshAPIKeyValidityPicksUpLiveAvailabilityChange() {
         var available = false
-        let service = AIService(availabilityProvider: { available })
+        let service = AIService(
+            availabilityProvider: { available },
+            ggufAvailabilityProvider: { available }
+        )
         service.refreshAPIKeyValidity()
         #expect(service.isAPIKeyValid == false)
 
@@ -24,11 +27,14 @@ struct EnhancementServiceAvailabilityGateTests {
         return try! ModelContainer(for: schema, configurations: [cfg])
     }
 
-    /// A transient `.modelNotReady` at launch must recover once AFM becomes
+    /// A transient unavailability at launch must recover once the provider becomes
     /// ready, with no restart / no new AIEnhancementService instance.
     @Test func isConfiguredRecoversLiveWithoutRestart() {
         var available = false
-        let aiService = AIService(availabilityProvider: { available })
+        let aiService = AIService(
+            availabilityProvider: { available },
+            ggufAvailabilityProvider: { available }
+        )
         aiService.refreshAPIKeyValidity()
 
         let enhancementService = AIEnhancementService(aiService: aiService, modelContext: ModelContext(container()))
@@ -40,7 +46,10 @@ struct EnhancementServiceAvailabilityGateTests {
 
     @Test func isConfiguredReflectsAvailabilityGoingAwayLive() {
         var available = true
-        let aiService = AIService(availabilityProvider: { available })
+        let aiService = AIService(
+            availabilityProvider: { available },
+            ggufAvailabilityProvider: { available }
+        )
         aiService.refreshAPIKeyValidity()
 
         let enhancementService = AIEnhancementService(aiService: aiService, modelContext: ModelContext(container()))

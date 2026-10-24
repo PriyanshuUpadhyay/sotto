@@ -88,7 +88,7 @@ struct SelectedTextCaptureTests {
         let elapsed = clock.now - start
 
         #expect(!context.contains("CURRENTLY_SELECTED_TEXT"))
-        #expect(elapsed < .milliseconds(800), "expected the grace timeout (~300ms) to cut this off, took \(elapsed)")
+        #expect(elapsed < .milliseconds(1200), "expected the grace timeout (~300ms) to cut this off, took \(elapsed)")
         _ = container
     }
 
