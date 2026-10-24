@@ -4,11 +4,13 @@ import SwiftData
 @testable import Sotto
 
 struct AIServiceAvailabilityGateTests {
-    @Test func refreshAPIKeyValidityPicksUpLiveAvailabilityChange() {
+    @Test(arguments: AIProvider.allCases)
+    func refreshAPIKeyValidityPicksUpLiveAvailabilityChange(provider: AIProvider) {
         var available = false
         let service = AIService(
-            availabilityProvider: { available },
-            ggufAvailabilityProvider: { available }
+            providerSelection: { provider },
+            availabilityProvider: provider == .foundationModels ? { available } : { !available },
+            ggufAvailabilityProvider: provider == .localGGUF ? { available } : { !available }
         )
         service.refreshAPIKeyValidity()
         #expect(service.isAPIKeyValid == false)
@@ -16,6 +18,24 @@ struct AIServiceAvailabilityGateTests {
         available = true
         service.refreshAPIKeyValidity()
         #expect(service.isAPIKeyValid == true)
+    }
+
+    /// The injected selection, not real defaults, decides the provider, and a
+    /// refresh moves both `selectedProvider` and `isAPIKeyValid` to the new one.
+    @Test func refreshAPIKeyValidityFollowsInjectedProviderChange() {
+        var selection = AIProvider.foundationModels
+        let service = AIService(
+            providerSelection: { selection },
+            availabilityProvider: { true },
+            ggufAvailabilityProvider: { false }
+        )
+        #expect(service.selectedProvider == .foundationModels)
+        #expect(service.isAPIKeyValid == true)
+
+        selection = .localGGUF
+        service.refreshAPIKeyValidity()
+        #expect(service.selectedProvider == .localGGUF)
+        #expect(service.isAPIKeyValid == false)
     }
 }
 
@@ -29,11 +49,13 @@ struct EnhancementServiceAvailabilityGateTests {
 
     /// A transient unavailability at launch must recover once the provider becomes
     /// ready, with no restart / no new AIEnhancementService instance.
-    @Test func isConfiguredRecoversLiveWithoutRestart() {
+    @Test(arguments: AIProvider.allCases)
+    func isConfiguredRecoversLiveWithoutRestart(provider: AIProvider) {
         var available = false
         let aiService = AIService(
-            availabilityProvider: { available },
-            ggufAvailabilityProvider: { available }
+            providerSelection: { provider },
+            availabilityProvider: provider == .foundationModels ? { available } : { !available },
+            ggufAvailabilityProvider: provider == .localGGUF ? { available } : { !available }
         )
         aiService.refreshAPIKeyValidity()
 
@@ -44,11 +66,13 @@ struct EnhancementServiceAvailabilityGateTests {
         #expect(enhancementService.isConfigured == true)
     }
 
-    @Test func isConfiguredReflectsAvailabilityGoingAwayLive() {
+    @Test(arguments: AIProvider.allCases)
+    func isConfiguredReflectsAvailabilityGoingAwayLive(provider: AIProvider) {
         var available = true
         let aiService = AIService(
-            availabilityProvider: { available },
-            ggufAvailabilityProvider: { available }
+            providerSelection: { provider },
+            availabilityProvider: provider == .foundationModels ? { available } : { !available },
+            ggufAvailabilityProvider: provider == .localGGUF ? { available } : { !available }
         )
         aiService.refreshAPIKeyValidity()
 

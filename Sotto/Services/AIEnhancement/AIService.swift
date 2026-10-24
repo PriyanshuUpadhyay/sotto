@@ -58,17 +58,22 @@ class AIService: ObservableObject {
     /// macOS 26 / Apple Intelligence environment.
     private let availabilityProvider: () -> Bool
     private let ggufAvailabilityProvider: () -> Bool
+    /// Injected so tests can pick the provider without reading real
+    /// UserDefaults or the downloaded-model state.
+    private let providerSelection: () -> AIProvider
 
     var afmEnhanceHandler: ((_ systemPrompt: String, _ userPrompt: String, _ transcriptChars: Int, _ callKind: EnhancementTimingLogger.CallKind, _ generation: Int) async throws -> String)?
     var ggufEnhanceHandler: ((_ systemPrompt: String, _ userPrompt: String, _ transcriptChars: Int, _ callKind: EnhancementTimingLogger.CallKind, _ generation: Int) async throws -> String)?
 
     init(
+        providerSelection: @escaping () -> AIProvider = { AIProvider.resolved() },
         availabilityProvider: @escaping () -> Bool = { AIService.afmAvailable() },
         ggufAvailabilityProvider: @escaping () -> Bool = { GGUFModelRegistry.isDownloaded(GGUFModelRegistry.selectedSlug) }
     ) {
+        self.providerSelection = providerSelection
         self.availabilityProvider = availabilityProvider
         self.ggufAvailabilityProvider = ggufAvailabilityProvider
-        self.selectedProvider = AIProvider.resolved()
+        self.selectedProvider = providerSelection()
         self.isAPIKeyValid = checkAvailabilityNow()
 
         NotificationCenter.default.addObserver(
@@ -84,7 +89,7 @@ class AIService: ObservableObject {
     }
 
     @objc private func handleSettingsDidChange() {
-        let newProvider = AIProvider.resolved()
+        let newProvider = providerSelection()
         if newProvider != selectedProvider {
             selectedProvider = newProvider
         }
@@ -96,7 +101,7 @@ class AIService: ObservableObject {
 
     /// Recomputes `isAPIKeyValid` from live availability.
     func refreshAPIKeyValidity() {
-        let newProvider = AIProvider.resolved()
+        let newProvider = providerSelection()
         let providerChanged = (newProvider != selectedProvider)
         if providerChanged {
             selectedProvider = newProvider
