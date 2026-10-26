@@ -139,7 +139,7 @@ class AIEnhancementService: ObservableObject {
 
     /// Waits out the `cachedSelectedText` grace period. Overridable so tests can
     /// fire or withhold the timeout without depending on wall-clock time.
-    var selectedTextGraceSleep: @Sendable (Duration) async -> Void = { try? await Task.sleep(for: $0) }
+    var selectedTextGraceSleep: @Sendable (Duration) async -> Void = { try? await Task.sleep(for: $0, clock: .suspending) }
 
     /// Set once at record-start (`captureSelectedTextContext`) and read via
     /// `cachedSelectedText` at enhancement time — never fetched live on the

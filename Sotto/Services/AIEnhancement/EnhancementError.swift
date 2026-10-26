@@ -9,10 +9,11 @@ enum EnhancementGuardOutcome: String, CaseIterable {
 }
 
 /// Races `operation` against a `seconds` timer, throwing `.timeout` when it
-/// fires. The timer is `sleep` (wall-clock by default) so tests can inject one.
+/// fires. The timer is `sleep` so tests can inject one. Its default uses the
+/// suspending clock, so time with the Mac asleep does not use up the deadline.
 func withEnhancementDeadline<T: Sendable>(
     seconds: TimeInterval,
-    sleep: @escaping @Sendable (Duration) async throws -> Void = { try await Task.sleep(for: $0) },
+    sleep: @escaping @Sendable (Duration) async throws -> Void = { try await Task.sleep(for: $0, clock: .suspending) },
     operation: @escaping @Sendable () async throws -> T
 ) async throws -> T {
     try await withThrowingTaskGroup(of: T.self) { group in

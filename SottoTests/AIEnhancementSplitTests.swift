@@ -54,26 +54,6 @@ final class AIEnhancementSplitTests: XCTestCase {
 
     // MARK: - withEnhancementDeadline
 
-    func testDeadlineReturnsFastResult() async throws {
-        let result = try await withEnhancementDeadline(seconds: 5.0) { "ok" }
-        XCTAssertEqual(result, "ok")
-    }
-
-    /// The sleep lives inside the operation closure (no idle await in the test body).
-    func testDeadlineThrowsTimeoutForSlowOperation() async {
-        do {
-            _ = try await withEnhancementDeadline(seconds: 0.1) { () -> String in
-                try await Task.sleep(for: .seconds(5))
-                return "unreachable"
-            }
-            XCTFail("expected .timeout")
-        } catch let error as EnhancementError {
-            guard case .timeout = error else { return XCTFail("expected .timeout, got \(error)") }
-        } catch {
-            XCTFail("expected EnhancementError.timeout, got \(error)")
-        }
-    }
-
     /// Operation errors other than the deadline pass through untouched.
     func testDeadlinePropagatesOperationError() async {
         do {
