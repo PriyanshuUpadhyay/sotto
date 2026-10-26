@@ -4,15 +4,38 @@ import SwiftData
 @testable import Sotto
 
 struct AIServiceAvailabilityGateTests {
-    @Test func refreshAPIKeyValidityPicksUpLiveAvailabilityChange() {
+    @Test(arguments: AIProvider.allCases)
+    func refreshAPIKeyValidityPicksUpLiveAvailabilityChange(provider: AIProvider) {
         var available = false
-        let service = AIService(availabilityProvider: { available })
+        let service = AIService(
+            providerSelection: { provider },
+            availabilityProvider: provider == .foundationModels ? { available } : { !available },
+            ggufAvailabilityProvider: provider == .localGGUF ? { available } : { !available }
+        )
         service.refreshAPIKeyValidity()
         #expect(service.isAPIKeyValid == false)
 
         available = true
         service.refreshAPIKeyValidity()
         #expect(service.isAPIKeyValid == true)
+    }
+
+    /// The injected selection, not real defaults, decides the provider, and a
+    /// refresh moves both `selectedProvider` and `isAPIKeyValid` to the new one.
+    @Test func refreshAPIKeyValidityFollowsInjectedProviderChange() {
+        var selection = AIProvider.foundationModels
+        let service = AIService(
+            providerSelection: { selection },
+            availabilityProvider: { true },
+            ggufAvailabilityProvider: { false }
+        )
+        #expect(service.selectedProvider == .foundationModels)
+        #expect(service.isAPIKeyValid == true)
+
+        selection = .localGGUF
+        service.refreshAPIKeyValidity()
+        #expect(service.selectedProvider == .localGGUF)
+        #expect(service.isAPIKeyValid == false)
     }
 }
 
@@ -24,11 +47,16 @@ struct EnhancementServiceAvailabilityGateTests {
         return try! ModelContainer(for: schema, configurations: [cfg])
     }
 
-    /// A transient `.modelNotReady` at launch must recover once AFM becomes
+    /// A transient unavailability at launch must recover once the provider becomes
     /// ready, with no restart / no new AIEnhancementService instance.
-    @Test func isConfiguredRecoversLiveWithoutRestart() {
+    @Test(arguments: AIProvider.allCases)
+    func isConfiguredRecoversLiveWithoutRestart(provider: AIProvider) {
         var available = false
-        let aiService = AIService(availabilityProvider: { available })
+        let aiService = AIService(
+            providerSelection: { provider },
+            availabilityProvider: provider == .foundationModels ? { available } : { !available },
+            ggufAvailabilityProvider: provider == .localGGUF ? { available } : { !available }
+        )
         aiService.refreshAPIKeyValidity()
 
         let enhancementService = AIEnhancementService(aiService: aiService, modelContext: ModelContext(container()))
@@ -38,9 +66,14 @@ struct EnhancementServiceAvailabilityGateTests {
         #expect(enhancementService.isConfigured == true)
     }
 
-    @Test func isConfiguredReflectsAvailabilityGoingAwayLive() {
+    @Test(arguments: AIProvider.allCases)
+    func isConfiguredReflectsAvailabilityGoingAwayLive(provider: AIProvider) {
         var available = true
-        let aiService = AIService(availabilityProvider: { available })
+        let aiService = AIService(
+            providerSelection: { provider },
+            availabilityProvider: provider == .foundationModels ? { available } : { !available },
+            ggufAvailabilityProvider: provider == .localGGUF ? { available } : { !available }
+        )
         aiService.refreshAPIKeyValidity()
 
         let enhancementService = AIEnhancementService(aiService: aiService, modelContext: ModelContext(container()))
