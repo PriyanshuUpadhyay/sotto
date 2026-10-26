@@ -8,9 +8,13 @@ enum EnhancementGuardOutcome: String, CaseIterable {
     case deterministicFallback  // both passes suspect; deterministic cleanup used
 }
 
-/// Races `operation` against `seconds` of wall-clock time, throwing `.timeout`
-/// on expiry.
-func withEnhancementDeadline<T: Sendable>(seconds: TimeInterval, operation: @escaping @Sendable () async throws -> T) async throws -> T {
+/// Races `operation` against a `seconds` timer, throwing `.timeout` when it
+/// fires. The timer is `sleep` (wall-clock by default) so tests can inject one.
+func withEnhancementDeadline<T: Sendable>(
+    seconds: TimeInterval,
+    sleep: @escaping @Sendable (Duration) async throws -> Void = { try await Task.sleep(for: $0) },
+    operation: @escaping @Sendable () async throws -> T
+) async throws -> T {
     try await withThrowingTaskGroup(of: T.self) { group in
         // A task group that returns normally does NOT auto-cancel still-running
         // siblings (only exiting via throw does) — without this, a fast success
@@ -19,7 +23,7 @@ func withEnhancementDeadline<T: Sendable>(seconds: TimeInterval, operation: @esc
         defer { group.cancelAll() }
         group.addTask { try await operation() }
         group.addTask {
-            try await Task.sleep(nanoseconds: UInt64(max(seconds, 0) * 1_000_000_000))
+            try await sleep(.seconds(max(seconds, 0)))
             throw EnhancementError.timeout
         }
         guard let result = try await group.next() else {

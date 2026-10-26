@@ -37,13 +37,13 @@ actor SelectedTextSlot {
         }
     }
 
-    func read(timeoutSeconds: TimeInterval) async -> String? {
+    func read(timeoutSeconds: TimeInterval, sleep: @escaping @Sendable (Duration) async -> Void) async -> String? {
         if isWritten { return value }
         let id = UUID()
         return await withCheckedContinuation { continuation in
             waiters[id] = continuation
             Task {
-                try? await Task.sleep(nanoseconds: UInt64(timeoutSeconds * 1_000_000_000))
+                await sleep(.seconds(timeoutSeconds))
                 await self.resolveTimeout(id: id)
             }
         }
@@ -136,6 +136,10 @@ class AIEnhancementService: ObservableObject {
         guard AXIsProcessTrusted() else { return nil }
         return await SelectedTextService.fetchSelectedText()
     }
+
+    /// Waits out the `cachedSelectedText` grace period. Overridable so tests can
+    /// fire or withhold the timeout without depending on wall-clock time.
+    var selectedTextGraceSleep: @Sendable (Duration) async -> Void = { try? await Task.sleep(for: $0) }
 
     /// Set once at record-start (`captureSelectedTextContext`) and read via
     /// `cachedSelectedText` at enhancement time — never fetched live on the

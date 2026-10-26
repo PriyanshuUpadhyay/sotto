@@ -123,7 +123,7 @@ extension AIEnhancementService {
     /// fetch itself is left running in the background (see `SelectedTextSlot`).
     private func cachedSelectedText(graceSeconds: TimeInterval = 0.3) async -> String? {
         guard let slot = selectedTextSlot else { return nil }
-        return await slot.read(timeoutSeconds: graceSeconds)
+        return await slot.read(timeoutSeconds: graceSeconds, sleep: selectedTextGraceSleep)
     }
 
     /// T5 — gate ContextSanitizer behind a kill-switch. Default true.
