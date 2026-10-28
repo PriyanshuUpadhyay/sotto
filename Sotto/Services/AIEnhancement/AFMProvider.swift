@@ -5,19 +5,6 @@ import os
 import FoundationModels
 #endif
 
-#if canImport(FoundationModels)
-/// Guided-generation output shape. One field, so the model's only legal answer
-/// is the cleaned transcript — a conversational preamble or a sign-off has
-/// nowhere to go. `stripPreamble` still runs downstream, now as a belt for the
-/// plain-text path and for a model that ignores the schema.
-@available(macOS 26.0, *)
-@Generable
-struct CleanedTranscript {
-    @Guide(description: "The transcript, cleaned. The same words, nothing added and nothing explained.")
-    var cleaned: String
-}
-#endif
-
 /// On-device LLM provider using Apple's Foundation Models framework (AFM).
 /// Available on macOS 26+ with Apple Intelligence enabled.
 ///
@@ -71,8 +58,8 @@ actor AFMProvider {
     // matching enhance reuse the already-prefilled instruction prefix — cutting
     // time-to-first-token, the dominant per-enhance cost.
     #if canImport(FoundationModels)
-    private var warmedInstructions: String?
-    private var warmedSession: LanguageModelSession?
+    var warmedInstructions: String?
+    var warmedSession: LanguageModelSession?
     /// Dictation generation the warm belongs to (`AIEnhancementService`'s
     /// counter, threaded through `warm(...)`). Consumption in `enhance(...)`
     /// requires an EXACT match on top of the instruction-string match — a
@@ -80,12 +67,12 @@ actor AFMProvider {
     /// slow) can never be claimed by whatever dictation is current by then,
     /// even if that dictation's instructions happen to be identical (e.g.
     /// two consecutive dictations in the same app).
-    private var warmedGeneration: Int?
+    var warmedGeneration: Int?
     /// When the warm slot was stashed. Reported as `warmAgeSeconds` on a
     /// reusing enhance — a TTFT that rises with this age means AFM is letting
     /// the prefilled prefix decay, which is a different problem than prefill
     /// simply being expensive.
-    private var warmedAt: Date?
+    var warmedAt: Date?
     #endif
 
     /// Chains the fire-and-forget telemetry writes in `enhance(...)` so they
@@ -99,66 +86,6 @@ actor AFMProvider {
     #if canImport(FoundationModels)
     private var lastTelemetryTask: Task<Void, Never>?
     #endif
-
-    // MARK: - Availability
-
-    /// Synchronous availability probe. Use from settings UI / `isAPIKeyValid`
-    /// to decide whether to expose the provider. Throws a recoverable error
-    /// if Apple Intelligence isn't ready; never crashes.
-    nonisolated static func checkAvailability() throws {
-        #if canImport(FoundationModels)
-        switch SystemLanguageModel.default.availability {
-        case .available:
-            return
-        case .unavailable(let reason):
-            switch reason {
-            case .appleIntelligenceNotEnabled:
-                throw ProviderError.appleIntelligenceNotEnabled
-            case .modelNotReady:
-                throw ProviderError.modelNotReady
-            case .deviceNotEligible:
-                throw ProviderError.deviceNotEligible
-            @unknown default:
-                throw ProviderError.generationFailed("Unknown availability reason")
-            }
-        }
-        #else
-        throw ProviderError.frameworkUnavailable
-        #endif
-    }
-
-    nonisolated static var isAvailable: Bool {
-        do {
-            try checkAvailability()
-            return true
-        } catch {
-            return false
-        }
-    }
-
-    /// Human-readable single-line description of why AFM is/isn't available,
-    /// for the settings panel "Active path" indicator.
-    nonisolated static func availabilityDescription() -> String {
-        do {
-            try checkAvailability()
-            return "Apple Foundation Models"
-        } catch let err as ProviderError {
-            switch err {
-            case .appleIntelligenceNotEnabled:
-                return "Unavailable (Apple Intelligence not enabled)"
-            case .modelNotReady:
-                return "Unavailable (model still downloading)"
-            case .deviceNotEligible:
-                return "Unavailable (device not eligible)"
-            case .frameworkUnavailable:
-                return "Unavailable (FoundationModels framework missing)"
-            default:
-                return "Unavailable"
-            }
-        } catch {
-            return "Unavailable"
-        }
-    }
 
     // MARK: - Enhance (with timing telemetry)
 
@@ -350,90 +277,5 @@ actor AFMProvider {
         #else
         throw ProviderError.frameworkUnavailable
         #endif
-    }
-
-    // MARK: - Prewarm
-
-    /// Prewarm hook, so the
-    /// `ModelPrewarmService` can fire on the same triggers (app launch,
-    /// wake, recording start). Calls `LanguageModelSession.prewarm()` to
-    /// trigger asset paging without running an enhancement.
-    func warm(source: String) async {
-        #if canImport(FoundationModels)
-        guard Self.isAvailable else {
-            Self.logger.notice("🦾 afm: prewarm skipped — AFM unavailable (source=\(source, privacy: .public))")
-            return
-        }
-        let start = Date()
-        // `LanguageModelSession.prewarm()` is a static-side hint on macOS 26;
-        // wire via a throwaway session whose lifetime is the prewarm call.
-        let session = LanguageModelSession(instructions: "")
-        session.prewarm()
-        let elapsed = Date().timeIntervalSince(start)
-        Self.logger.notice("🦾 afm: prewarm fired source=\(source, privacy: .public) in \(elapsed, format: .fixed(precision: 2), privacy: .public)s")
-        #else
-        Self.logger.notice("🦾 afm: prewarm no-op (framework unavailable, source=\(source, privacy: .public))")
-        #endif
-    }
-
-    /// Prewarm a session built with the prospective enhance *instructions* and
-    /// stash it for one-shot reuse by the next `enhance(...)`. Unlike
-    /// `warm(source:)` (empty session — pages base weights only), this also
-    /// primes the instruction prefix so a matching enhance skips that prefill,
-    /// the dominant slice of AFM time-to-first-token. Fired at recording start
-    /// where the prompt is already known.
-    func warm(instructions: String, source: String, generation: Int) async {
-        #if canImport(FoundationModels)
-        guard Self.isAvailable else {
-            Self.logger.notice("🦾 afm: prewarm(instr) skipped — AFM unavailable (source=\(source, privacy: .public))")
-            return
-        }
-        let start = Date()
-        let session = LanguageModelSession(instructions: instructions)
-        session.prewarm()
-        warmedSession = session
-        warmedInstructions = instructions
-        warmedGeneration = generation
-        warmedAt = start
-        let elapsed = Date().timeIntervalSince(start)
-        Self.logger.notice("🦾 afm: prewarm(instr) fired source=\(source, privacy: .public) instr=\(instructions.count, privacy: .public)c in \(elapsed, format: .fixed(precision: 2), privacy: .public)s")
-        #else
-        Self.logger.notice("🦾 afm: prewarm(instr) no-op (framework unavailable, source=\(source, privacy: .public))")
-        #endif
-    }
-
-    /// Drop any cached state — called unconditionally at the start of every
-    /// NEW dictation (`AIEnhancementService.beginNewDictation`), on top of
-    /// `enhance(...)`'s own generation-tagged consume check, so a warm from
-    /// an ended dictation can never survive even briefly into whatever comes
-    /// next.
-    func reset() {
-        #if canImport(FoundationModels)
-        warmedSession = nil
-        warmedInstructions = nil
-        warmedGeneration = nil
-        warmedAt = nil
-        #endif
-        Self.logger.notice("🦾 afm: reset")
-    }
-
-    // MARK: - Helpers
-
-    /// Heuristic guardrail-violation detector. Switches on the typed SDK
-    /// error when present; otherwise falls back to localized-description
-    /// substring matching to stay robust across SDK revisions.
-    nonisolated static func isGuardrailViolation(_ error: Error) -> Bool {
-        #if canImport(FoundationModels)
-        if let genErr = error as? LanguageModelSession.GenerationError {
-            switch genErr {
-            case .guardrailViolation:
-                return true
-            default:
-                return false
-            }
-        }
-        #endif
-        let desc = error.localizedDescription.lowercased()
-        return desc.contains("guardrail") || desc.contains("safety")
     }
 }

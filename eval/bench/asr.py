@@ -1,6 +1,7 @@
 # /// script
 # requires-python = ">=3.12,<3.14"
 # dependencies = [
+#   "constriction>=0.5.0",
 #   "crisperwhisper[transformers]>=2.0.0",
 #   "huggingface-hub>=0.34.0",
 #   "mistral-common[audio]>=1.9.0",
@@ -66,6 +67,16 @@ OUTPUT_DIR = ROOT / "eval/results/bench/asr"
 # Source: https://huggingface.co/mlx-community/whisper-large-v3-turbo
 # License: MIT (inherited from openai/whisper). Downloaded cache size: 1.5G.
 #
+# phonon-2
+# Source: https://huggingface.co/FermionResearch/Phonon-2
+# License: CC-BY-4.0. Download: 164M; unpacks to ~/.cache/fermion.
+# Runtime: fermion-research (MLX); run with its own venv, not the inline deps.
+#
+# bark-3.0
+# Source: https://huggingface.co/ConwayResearch/Underdog-Bark-3.0
+# License: CC-BY-4.0. Download: 163M; unpacks to ~/.cache/sotto-bench/bark-3.0-fp16.
+# Runtime: the repo's bark_mlx.py on mlx-audio's Parakeet graph.
+#
 # canary-qwen-2.5b
 # Source: https://huggingface.co/nvidia/canary-qwen-2.5b
 # License: NVIDIA Open Model License. Downloaded cache size: not downloaded.
@@ -90,7 +101,11 @@ ALL_MODELS = (
     "crisperwhisper2-small-intended",
     "whisper-large-v3-turbo",
     "canary-qwen-2.5b",
+    "phonon-2",
+    "bark-3.0",
 )
+BARK_REPO = "ConwayResearch/Underdog-Bark-3.0"
+BARK_REVISION = "85db2ad18ab41e534a222ee253c29191d77ed919"
 
 
 def load_rows(ids: set[str] | None, limit: int | None) -> list[dict]:
@@ -281,6 +296,41 @@ def whisper_loader() -> Callable[[str], str]:
     return transcribe
 
 
+def phonon_loader() -> Callable[[str], str]:
+    from fermion._speech import backends, fetch
+    from fermion.transcribe import _resolve
+
+    repo, key, pin, _ = _resolve("phonon-2")
+    engine = backends.resolve("sotto bench")
+    model = backends.load(
+        engine, fetch.ensure(repo, key, pin), profile=key, backend=pin["backend"], quiet=True
+    )
+    return lambda audio: model.transcribe(audio)[0].strip()
+
+
+def bark_loader() -> Callable[[str], str]:
+    import soundfile as sf
+    from huggingface_hub import snapshot_download
+
+    # Pinned revision, because bark_mlx.py is code from the model repo.
+    folder = snapshot_download(
+        BARK_REPO,
+        revision=BARK_REVISION,
+        allow_patterns=["model.bark", "bark_loader.py", "bark_mlx.py", "mlx/*"],
+    )
+    sys.path.insert(0, folder)
+    import bark_mlx
+
+    cache = Path.home() / ".cache/sotto-bench/bark-3.0-fp16"
+    model = bark_mlx.load_model(f"{folder}/model.bark", bits=16, cache_dir=str(cache))
+
+    def transcribe(audio: str) -> str:
+        wave, sample_rate = sf.read(audio, dtype="float32", always_2d=True)
+        return bark_mlx.transcribe(model, wave.mean(1), sample_rate)
+
+    return transcribe
+
+
 def load_adapter(slug: str) -> Callable[[str], str]:
     if slug in MLX_MODELS:
         return mlx_audio_loader(MLX_MODELS[slug])
@@ -294,6 +344,10 @@ def load_adapter(slug: str) -> Callable[[str], str]:
         return crisperwhisper_loader()
     if slug == "whisper-large-v3-turbo":
         return whisper_loader()
+    if slug == "phonon-2":
+        return phonon_loader()
+    if slug == "bark-3.0":
+        return bark_loader()
     if slug == "kyutai-stt-1b":
         raise RuntimeError(
             "moshi-mlx has a file CLI but no reusable file-transcription API; "
