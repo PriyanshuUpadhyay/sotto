@@ -7,10 +7,10 @@ import os
 /// transcribe → filter → format → word-replace → prompt-detect → AI enhance → save → paste → dismiss
 @MainActor
 class TranscriptionPipeline {
-    private let modelContext: ModelContext
-    private let serviceRegistry: TranscriptionServiceRegistry
-    private let enhancementService: AIEnhancementService?
-    private let logger = Logger(subsystem: OSLogSubsystems.app, category: "TranscriptionPipeline")
+    let modelContext: ModelContext
+    let serviceRegistry: TranscriptionServiceRegistry
+    let enhancementService: AIEnhancementService?
+    let logger = Logger(subsystem: OSLogSubsystems.app, category: "TranscriptionPipeline")
 
     init(
         modelContext: ModelContext,
@@ -90,47 +90,7 @@ class TranscriptionPipeline {
         var presentedComposeReview = false
         var reviewSession: Int?
 
-        // Shared ⌘↵ handler for both present sites. `enhancedRef` is whatever
-        // enhanced text the panel had actually received by commit time — nil
-        // when the user pasted ahead of a pending (or absent) enhancement, in
-        // which case there is no exact edit signal to record.
-        let reviewCommitHandler: (String, String?, Bool) -> Void = { [weak self] finalText, enhancedRef, fromRawLineage in
-            guard let self else { return }
-            self.performPaste(pasteText: finalText, dictationGeneration: dictationGeneration)
-            // Auto-vocab AX monitoring starts only after the paste lands in
-            // the real target field.
-            AutoLearnVocabularyService.shared.beginMonitoring()
-            // Exact edit signal: final vs enhanced. EditSignalService
-            // self-handles a no-op (final == enhanced). Read the target app
-            // AFTER performPaste so lastPasteContext is the real field.
-            // `transcription.promptName` is read here (not captured at present
-            // time) — on the early-present path it is only set once
-            // enhancement succeeds, which is also what makes enhancedRef non-nil.
-            if let enhancedRef {
-                // CorrectionMiner mines `.edit` as enhanced→final. When the
-                // committed text descends from the RAW face (raw toggle, or
-                // edits made before the enhancement landed), enhanced was
-                // never the base: verbatim raw → `.revertRaw`; edited raw →
-                // record NOTHING (there is no valid enhanced→final pair, and
-                // a wrong triplet is worse than a missing one).
-                let source: EditSignalSource? = fromRawLineage
-                    ? (finalText == transcription.text ? .revertRaw : nil)
-                    : .edit
-                if let source {
-                    let bundleID = CursorPaster.lastPasteContext?.targetApp?.bundleIdentifier
-                    EditSignalService().record(
-                        rawText: transcription.text,
-                        enhancedText: enhancedRef,
-                        finalText: finalText,
-                        source: source,
-                        appBundleID: bundleID,
-                        transcriptionID: transcription.id,
-                        promptName: transcription.promptName,
-                        in: self.modelContext
-                    )
-                }
-            }
-        }
+        let reviewCommitHandler = makeReviewCommitHandler(transcription: transcription, dictationGeneration: dictationGeneration)
 
         logger.notice("🔄 Starting transcription...")
 
@@ -143,96 +103,15 @@ class TranscriptionPipeline {
         trace.audioSampleCount = audioMetrics.sampleCount
 
         do {
-            let transcriptionStart = Date()
-            var text: String
-            let asrStart = TranscriptionTrace.now()
-            if let session {
-                text = try await session.transcribe(audioURL: audioURL, audioDurationSeconds: audioMetrics.durationSeconds)
-                trace.sessionType = session.diagnostics.sessionType
-                trace.streamingFinalLength = session.diagnostics.streamingFinalLength
-                trace.fallbackReason = session.diagnostics.fallbackReason ?? ""
-                trace.wordConfidences = session.diagnostics.wordConfidences
-                    .map { (word: $0.text, confidence: $0.confidence) }
-            } else {
-                trace.sessionType = "batch"
-                text = try await serviceRegistry.transcribe(audioURL: audioURL, model: model)
-            }
-            trace.record(.asr, since: asrStart)
-            logger.notice("📝 Transcript: \(text, privacy: .public)")
-            trace.asrText = text
-            trace.asrModel = model.displayName
-            // Agreement-based TDT streaming: one batch decode restores dropped
-            // trailing words and carries the vocabulary rescore. EOU, Nemotron
-            // and Unified have no AsrModelVersion, so they skip it.
-            if trace.sessionType == "streaming", model.provider == .fluidAudio,
-               FluidAudioModelManager.knownAsrVersion(for: model.name) != nil {
-                let repairStart = TranscriptionTrace.now()
-                let repaired = await serviceRegistry.fluidAudioTranscriptionService
-                    .repairStreamingTranscript(text, audioURL: audioURL, model: model)
-                trace.record(.repair, since: repairStart)
-                if repaired != text { trace.afterRepair = repaired }
-                text = repaired
-            }
-            // The vocabulary rescore is FluidAudio-only and runs inside the
-            // service actor (file decode or streaming repair); read its
-            // per-utterance outcome here.
-            if model.provider == .fluidAudio {
-                let boostingStart = TranscriptionTrace.now()
-                trace.boosting = await serviceRegistry.fluidAudioTranscriptionService.lastBoosting
-                trace.record(.boosting, since: boostingStart)
-            }
-            let filterStart = TranscriptionTrace.now()
-            text = TranscriptionOutputFilter.filter(text)
-            trace.record(.filter, since: filterStart)
-            logger.notice("📝 Output filter result: \(text, privacy: .public)")
-            trace.afterFilter = text
-            let transcriptionDuration = Date().timeIntervalSince(transcriptionStart)
+            let transcribed = try await transcribeAudio(audioURL: audioURL, model: model, session: session, audioMetrics: audioMetrics, trace: &trace)
+            var text = transcribed.text
+            let transcriptionDuration = transcribed.transcriptionDuration
 
             if shouldCancel() { await onCleanup(); return }
 
             text = text.trimmingCharacters(in: .whitespacesAndNewlines)
 
-            if UserDefaults.standard.bool(forKey: "IsTextFormattingEnabled") {
-                text = WhisperTextFormatter.format(text)
-                logger.notice("📝 Formatted transcript: \(text, privacy: .public)")
-            }
-
-            let wordReplaceStart = TranscriptionTrace.now()
-            text = WordReplacementService.shared.applyReplacements(to: text, using: modelContext)
-            trace.record(.wordReplacement, since: wordReplaceStart)
-            logger.notice("📝 WordReplacement: \(text, privacy: .public)")
-            trace.afterWordReplace = text
-
-            // Acoustic confirmation: CTC spotter reports which vocab terms it
-            // thinks were spoken. Evidence from the realtime path showed it
-            // over-confirming the entire vocabulary (21/21 kept on ordinary
-            // utterances), which made the homophone unlock rewrite valid words
-            // ("to"→"TUI", "then"→"Thine"). When explicitly enabled we still log
-            // the spotter output for diagnostics, but we do not apply it below.
-            // Re-enable by passing the confirmed set only after the spotter's
-            // scores actually discriminate.
-            var acousticallyConfirmed: Set<String>? = nil
-            if AcousticBoostingPolicy.isEnabled(forModelNamed: model.name) {
-                let terms = (try? modelContext.fetch(FetchDescriptor<VocabularyWord>()))?.map { $0.word } ?? []
-                if !terms.isEmpty {
-                    let acousticStart = TranscriptionTrace.now()
-                    let details = await AcousticVocabularyService.shared.confirmedTermsDetailed(at: audioURL, terms: terms)
-                    trace.record(.acoustic, since: acousticStart)
-                    trace.acoustic = details
-                    acousticallyConfirmed = Set(details.filter { $0.kept }.map { $0.term })
-                    logger.notice("🎙️ AcousticConfirm: \(acousticallyConfirmed?.sorted().joined(separator: ",") ?? "-", privacy: .public)")
-                }
-            }
-
-            // Evidence mode: do NOT apply the homophone-unlock (pass nil), but
-            // keep the spotter's confirmations in trace.acoustic above.
-            let phoneticStart = TranscriptionTrace.now()
-            let phoneticResult = PhoneticCorrectionService.shared.correctDetailed(text, using: modelContext, acousticallyConfirmed: nil)
-            trace.record(.phonetic, since: phoneticStart)
-            text = phoneticResult.text
-            trace.phonetic = phoneticResult.corrections
-            trace.afterPhonetic = text
-            logger.notice("📝 PhoneticCorrect: \(text, privacy: .public)")
+            text = await cleanTranscript(text, audioURL: audioURL, model: model, trace: &trace)
 
             let actualDuration = audioMetrics.durationSeconds ?? 0.0
 
@@ -242,160 +121,26 @@ class TranscriptionPipeline {
             transcription.transcriptionDuration = transcriptionDuration
             finalPastedText = text
 
-            let isSkipShortEnhancementEnabled = UserDefaults.standard.bool(forKey: "SkipShortEnhancement")
-            let savedThreshold = UserDefaults.standard.integer(forKey: "ShortEnhancementWordThreshold")
-            let shortEnhancementWordThreshold = savedThreshold > 0 ? savedThreshold : 3
-            let shouldSkipEnhancement = isSkipShortEnhancementEnabled && WordCounter.count(in: text) <= shortEnhancementWordThreshold
-
-            if let enhancementService,
-               enhancementService.isEnhancementEnabled,
-               enhancementService.isConfigured,
-               !shouldSkipEnhancement {
-                if shouldCancel() { await onCleanup(); return }
-
-                let textForAI = text
-
-                // Optionally skip the LLM when the raw transcript is already
-                // clean (~66% of runs were no-ops costing ~1.7s median). Default
-                // is now OFF — the stronger Light pass is meant to punctuate and
-                // fix grammar on every dictation, not only messy ones; skipping
-                // clean-looking Parakeet output muted it. Set the key true to
-                // restore the latency-saving skip.
-                let skipWhenClean = UserDefaults.standard.object(forKey: "SkipEnhancementWhenClean") as? Bool ?? false
-                if !EnhancementSanityCheck.shouldCallModel(textForAI, skipWhenClean: skipWhenClean) {
-                    logger.notice("🦾 enhance: skipped (raw already clean)")
-                } else {
-                    // P3.F: transcribe-complete cue fires "ASR finishes, before
-                    // enhance" per spec §3.10. The enhance step then runs (often
-                    // several seconds), and enhance-complete fires before paste.
-                    SoundManager.shared.playTranscribeComplete()
-                    didFireTranscribeCue = true
-
-                    onStateChange(.enhancing)
-
-                    // Never wait on the AI: the review editor appears NOW with
-                    // the raw transcript editable; ⌘↵ pastes the current text
-                    // immediately and the pending enhancement is dropped on
-                    // delivery.
-                    if reviewEnabled {
-                        presentedComposeReview = true
-                        reviewSession = ComposeReviewWindowManager.shared.present(
-                            rawText: textForAI,
-                            enhancedText: nil,
-                            isEnhancing: true,
-                            onCommit: reviewCommitHandler
-                        )
-                        onPreviewShown()
-                    }
-
-                    do {
-                        let (enhancedText, enhancementDuration, promptName) = try await enhancementService.enhance(textForAI)
-                        logger.notice("📝 AI enhancement: \(enhancedText, privacy: .public)")
-                        transcription.enhancedText = enhancedText
-                        transcription.aiEnhancementModelName = enhancementService.lastEnhancementModelUsed
-                        transcription.promptName = promptName
-                        transcription.enhancementDuration = enhancementDuration
-                        trace.record(.enhancement, seconds: enhancementDuration)
-                        transcription.aiRequestSystemMessage = enhancementService.lastSystemMessageSent
-                        transcription.aiRequestUserMessage = enhancementService.lastUserMessageSent
-                        finalPastedText = enhancedText
-                        didEnhance = true
-                        trace.afmModel = enhancementService.lastEnhancementModelUsed ?? ""
-                        trace.afmEdits = WordDiffEngine.findSingleWordSubstitutions(original: textForAI, edited: enhancedText)
-                            .map { TranscriptionTrace.WordEdit(from: $0.original, to: $0.replacement) }
-                        trace.afterEnhance = enhancedText
-                        if let reviewSession,
-                           ComposeReviewWindowManager.shared.deliverEnhanced(enhancedText, session: reviewSession) {
-                            // "Done" cue at the moment the enhanced text lands
-                            // in the live panel (the pre-paste cue below never
-                            // runs on the review path). Skipped when the user
-                            // already committed/cancelled — the paste happened.
-                            SoundManager.shared.playEnhanceComplete()
-                        }
-                    } catch {
-                        let errorDescription = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
-                        let shortReason = String(errorDescription.prefix(80))
-                        // Don't write the error into `transcription.enhancedText` —
-                        // history views and the copy/paste path resolve text via
-                        // `enhancedText ?? text`, so persisting a failure string
-                        // there leaks "Enhancement failed: …" into the clipboard
-                        // and the history list. Leaving it nil falls through to
-                        // the raw transcript everywhere.
-                        logger.error("AI enhancement failed: \(errorDescription, privacy: .public)")
-                        // Clear the panel's ENHANCING state (raw stays editable).
-                        // false = the panel was already committed/cancelled — the
-                        // user pasted and moved on, so suppress the failure
-                        // notification + visual along with the dropped delivery
-                        // (the log line above still records it). No review
-                        // session (review off) surfaces normally.
-                        let surfaceFailure = reviewSession.map {
-                            ComposeReviewWindowManager.shared.deliverEnhanced(nil, session: $0)
-                        } ?? true
-                        if surfaceFailure {
-                            // A guardrail refusal is not a malfunction — the
-                            // transcript still pastes, just un-enhanced. Say
-                            // that plainly instead of "Enhancement failed:
-                            // <raw provider string>", and say it regardless of
-                            // the failure-notification pref: a silently
-                            // declined dictation is exactly the case the user
-                            // has no other signal for.
-                            let isRefusal = (error as? EnhancementError).map {
-                                if case .safetyRefusal = $0 { return true } else { return false }
-                            } ?? false
-                            if isRefusal {
-                                // Fire-and-forget, NOT `await MainActor.run`:
-                                // showNotification builds a hosting controller
-                                // and an NSPanel synchronously, so awaiting it
-                                // parks the raw transcript behind whatever else
-                                // the main actor is doing. The toast is
-                                // advisory; the paste is not.
-                                Task { @MainActor in
-                                    NotificationManager.shared.showNotification(
-                                        title: "Enhancement declined — pasted raw transcript",
-                                        type: .warning,
-                                        duration: 2.5
-                                    )
-                                }
-                            } else if UserDefaults.standard.bool(forKey: "EnableEnhancementFailureNotification") {
-                                await MainActor.run {
-                                    NotificationManager.shared.showNotification(
-                                        title: "Enhancement failed: \(shortReason)",
-                                        type: .warning
-                                    )
-                                }
-                            }
-                            // Surface to engine so the failure visual can render. Paste
-                            // still proceeds with the un-enhanced transcript (silent fallback).
-                            onFailure("Enhancement failed: \(shortReason)")
-                        }
-                        if shouldCancel() {
-                            if presentedComposeReview { ComposeReviewWindowManager.shared.cancel() }
-                            await onCleanup()
-                            return
-                        }
-                    }
-                }
-            }
+            if await enhanceTranscript(
+                text: text,
+                transcription: transcription,
+                reviewEnabled: reviewEnabled,
+                reviewCommitHandler: reviewCommitHandler,
+                onStateChange: onStateChange,
+                onFailure: onFailure,
+                shouldCancel: shouldCancel,
+                onCleanup: onCleanup,
+                onPreviewShown: onPreviewShown,
+                finalPastedText: &finalPastedText,
+                didEnhance: &didEnhance,
+                didFireTranscribeCue: &didFireTranscribeCue,
+                presentedComposeReview: &presentedComposeReview,
+                reviewSession: &reviewSession,
+                trace: &trace
+            ) { return }
 
             transcription.transcriptionStatus = TranscriptionStatus.completed.rawValue
-            // SessionMetric lives in the separate stats.store container, not the
-            // transcript context — write it through a fresh stats context and
-            // save THAT (the transcript save below persists the Transcription).
-            if let statsContainer = StatsModelContainerProvider.shared.modelContainer {
-                do {
-                    let statsContext = ModelContext(statsContainer)
-                    didInsertSessionMetric = try SessionMetricRecorder.recordRecorderSession(
-                        transcription: transcription,
-                        model: model,
-                        in: statsContext
-                    )
-                    if didInsertSessionMetric {
-                        try statsContext.save()
-                    }
-                } catch {
-                    logger.error("Failed to record session metric: \(error.localizedDescription, privacy: .public)")
-                }
-            }
+            recordSessionMetric(transcription: transcription, model: model, didInsertSessionMetric: &didInsertSessionMetric)
 
             if UserDefaults.standard.object(forKey: "PipelineTraceLoggingEnabled") as? Bool ?? true {
                 let rendered = trace.render()
@@ -431,51 +176,17 @@ class TranscriptionPipeline {
             return
         }
 
-        if let textToPaste = finalPastedText,
-           transcription.transcriptionStatus == TranscriptionStatus.completed.rawValue,
-           !presentedComposeReview {
-
-            let pasteText = textToPaste
-
-            if reviewEnabled {
-                // Enhancement never ran (disabled / skipped / short) — present
-                // the editor now with the single available text. When it DID
-                // run, the panel went up at enhance-start above and this tail
-                // is skipped.
-                presentedComposeReview = true
-
-                // "Done" cue now — processing is complete and the editor appears
-                // (mirrors the pre-paste cue on the auto-paste path below).
-                if didEnhance {
-                    SoundManager.shared.playEnhanceComplete()
-                } else if !didFireTranscribeCue {
-                    SoundManager.shared.playTranscribeComplete()
-                }
-
-                ComposeReviewWindowManager.shared.present(
-                    rawText: transcription.text,
-                    enhancedText: didEnhance ? pasteText : nil,
-                    isEnhancing: false,
-                    onCommit: reviewCommitHandler
-                )
-                onPreviewShown()
-            } else {
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.015) { [weak self] in
-                    guard let self else { return }
-                    // P3.F: pre-paste cue. enhance-complete if enhancement
-                    // actually ran (slightly softer stacked arpeggio), else
-                    // transcribe-complete (the fundamental "done" cue) — but only
-                    // if the pre-enhance transcribe cue didn't already fire
-                    // (enhance-failure path) so we don't stack three cues.
-                    if didEnhance {
-                        SoundManager.shared.playEnhanceComplete()
-                    } else if !didFireTranscribeCue {
-                        SoundManager.shared.playTranscribeComplete()
-                    }
-                    self.performPaste(pasteText: pasteText, dictationGeneration: dictationGeneration)
-                }
-            }
-        }
+        presentOrPasteTranscript(
+            finalPastedText: finalPastedText,
+            transcription: transcription,
+            presentedComposeReview: &presentedComposeReview,
+            reviewEnabled: reviewEnabled,
+            didEnhance: didEnhance,
+            didFireTranscribeCue: didFireTranscribeCue,
+            dictationGeneration: dictationGeneration,
+            reviewCommitHandler: reviewCommitHandler,
+            onPreviewShown: onPreviewShown
+        )
 
         // When the review editor is up it replaces the post-paste tray and
         // owns the surface — dismiss the recorder immediately (no keep-for-
@@ -510,7 +221,7 @@ class TranscriptionPipeline {
     /// handleDidPaste` attribute stop→paste telemetry to the run that
     /// actually produced this paste, not whichever dictation happens to be
     /// current when the deferred paste finally fires.
-    private func performPaste(pasteText: String, dictationGeneration: Int) {
+    func performPaste(pasteText: String, dictationGeneration: Int) {
         let appendSpace = UserDefaults.standard.bool(forKey: "AppendTrailingSpace")
         let textToInsert = pasteText + (appendSpace ? " " : "")
 
