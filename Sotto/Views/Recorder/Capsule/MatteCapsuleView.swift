@@ -1,54 +1,6 @@
 import SwiftUI
 import AppKit
 
-// MARK: - WordStream
-//
-// Suffix-diff over the cumulative ASR partial (2026-07 revamp,
-// design-mockups/01): the tape animates only APPENDED words; any rewrite of
-// earlier content (ASR corrections, trims) rebuilds the visible tail
-// instantly — never animate a correction. Pure value type so the diff is
-// unit-testable (`WordStreamTests`).
-
-struct StreamedWord: Identifiable, Equatable {
-    /// Monotonic per-stream id — an appended word is a NEW identity (its
-    /// entrance transition fires) while surviving prefix words keep theirs.
-    let id: Int
-    let text: String
-}
-
-struct WordStream: Equatable {
-    enum Change { case none, appended, rewritten }
-
-    /// The FULL token sequence of the current partial — diffing always runs
-    /// against the whole prior partial so trims/rewrites that reach behind
-    /// the visible window still resolve correctly; the window only decides
-    /// which suffix is rendered.
-    private var all: [StreamedWord] = []
-    private var nextID = 0
-
-    static let windowMax = 16
-
-    /// Visible tail, capped at `windowMax` — older words sit under the leading
-    /// fade mask anyway; the cap bounds layout work for long dictations.
-    var words: [StreamedWord] { Array(all.suffix(Self.windowMax)) }
-
-    init(partial: String = "") { ingest(partial) }
-
-    @discardableResult
-    mutating func ingest(_ partial: String) -> Change {
-        let new = partial.split(whereSeparator: \.isWhitespace).map(String.init)
-        let old = all.map(\.text)
-        guard new != old else { return .none }
-        let stable = zip(old, new).prefix(while: ==).count
-        all.removeLast(old.count - stable)
-        for text in new[stable...] {
-            all.append(StreamedWord(id: nextID, text: text))
-            nextID += 1
-        }
-        return (stable == old.count && new.count > old.count) ? .appended : .rewritten
-    }
-}
-
 // MARK: - MatteCapsuleView
 //
 // The compact matte recorder HUD (spec §1 + §4) — replaces the Constellation
@@ -104,14 +56,14 @@ struct MatteCapsuleView: View {
     /// Seeded from `partial` at init so the FIRST render (incl. the snapshot
     /// harness, which never runs onAppear/onChange) already shows the words;
     /// `onChange(of: partial)` drives the per-word choreography after.
-    @State private var tape: WordStream
-    @State private var lastChange: WordStream.Change = .none
+    @State var tape: WordStream
+    @State var lastChange: WordStream.Change = .none
     /// Measured width of the visible tape words (font metrics, no layout
     /// reads) — drives the conveyor shift and the reveal mask.
-    @State private var tapeContentWidth: CGFloat
+    @State var tapeContentWidth: CGFloat
     /// Revealed tape span, ratcheted (grows with content, never shrinks
     /// mid-dictation) and clamped to `tapeWidth`; resets when the tape empties.
-    @State private var tapeReveal: CGFloat
+    @State var tapeReveal: CGFloat
     init(state: CapsuleState,
          elapsed: TimeInterval = 0,
          partial: String = "",
@@ -194,13 +146,13 @@ struct MatteCapsuleView: View {
     /// Widest the tape window gets; beyond it older words ride left on the
     /// conveyor. The tape FRAME follows `tapeReveal` up to this, so the pill's
     /// bounds are always exactly its visible surface.
-    private static let tapeWidth: CGFloat = 220
+    static let tapeWidth: CGFloat = 220
     /// Leading fade-out span of the edge mask (the "recency window" edge).
-    private static let tapeFade: CGFloat = 28
+    static let tapeFade: CGFloat = 28
     /// Inter-word gap — must match the tape HStack spacing (width math).
-    private static let wordSpacing: CGFloat = 5
+    static let wordSpacing: CGFloat = 5
     /// Leading-cluster HStack spacing before the tape.
-    private static let itemSpacing: CGFloat = 10
+    static let itemSpacing: CGFloat = 10
 
     private var liveTape: Bool { state == .recording || state == .processing }
 
@@ -212,15 +164,15 @@ struct MatteCapsuleView: View {
 
     /// The tape face — the user's own words at the SAME size the review
     /// editor uses, so one scale carries a transcript across the app.
-    private static let tapeFontSize: CGFloat = 15
+    static let tapeFontSize: CGFloat = 15
     /// Positive tracking on the small serif (§15). The measurement twins must
     /// add it back by hand — `NSFont` metrics do not carry it, and an
     /// under-measured tape clips under the reveal mask.
-    private static let tapeTracking: CGFloat = 0.1
+    static let tapeTracking: CGFloat = 0.1
 
     /// New York `tapeFontSize` metrics twin for cheap measurement — no layout
     /// reads of the rendered tape.
-    private static let measureFont: NSFont = {
+    static let measureFont: NSFont = {
         let base = NSFont.systemFont(ofSize: tapeFontSize)
         guard let descriptor = base.fontDescriptor.withDesign(.serif),
               let serif = NSFont(descriptor: descriptor, size: tapeFontSize) else { return base }
@@ -229,132 +181,10 @@ struct MatteCapsuleView: View {
 
     /// Italic twin — the tentative (newest) word renders `.italic`, which is
     /// measurably wider than roman at this size; measuring it roman clips.
-    private static let measureFontItalic: NSFont = {
+    static let measureFontItalic: NSFont = {
         let descriptor = measureFont.fontDescriptor.withSymbolicTraits(.italic)
         return NSFont(descriptor: descriptor, size: tapeFontSize) ?? measureFont
     }()
-
-    static func contentWidth(of words: [StreamedWord], italicLast: Bool) -> CGFloat {
-        guard !words.isEmpty else { return 0 }
-        var total = CGFloat(words.count - 1) * wordSpacing
-        for (index, word) in words.enumerated() {
-            let font = (italicLast && index == words.count - 1)
-                ? measureFontItalic : measureFont
-            total += (word.text as NSString).size(withAttributes: [.font: font]).width
-            total += CGFloat(word.text.count) * tapeTracking
-        }
-        return total
-    }
-
-    /// Conveyor (design-mockups/01): leading-aligned with a content shift so
-    /// an underfilled tape hugs its left edge (the reveal mask tracks it) and
-    /// an overflowing tape rides older words left; new words fade in + rise
-    /// individually; the leading gradient mask dissolves the oldest visible
-    /// words. The line is never repainted wholesale — `WordStream` keeps
-    /// surviving word identities stable.
-    private var wordTape: some View {
-        HStack(alignment: .firstTextBaseline, spacing: Self.wordSpacing) {
-            ForEach(tape.words) { word in
-                wordText(word)
-            }
-        }
-        .fixedSize(horizontal: true, vertical: false)
-        .glassInkShadow()
-        .offset(x: min(0, Self.tapeWidth - tapeContentWidth))
-        .frame(width: tapeReveal, height: 28, alignment: .leading)
-        .clipped()
-        .mask(tapeMask)
-    }
-
-    /// Mic bars + tape ride the capsule's own glass. `Glass.regular` blurs AND
-    /// dims what is behind it to keep foreground text legible, so a frosted
-    /// well here would only be a second sheet of glass inside the first.
-    private var liveRow: some View {
-        HStack(spacing: tapeReveal > 0 ? Self.itemSpacing : 0) {
-            if state == .recording, let recorder {
-                MicLevelBars(recorder: recorder, reduceMotion: reduceMotion)
-            }
-            wordTape
-        }
-    }
-
-    private func wordText(_ word: StreamedWord) -> some View {
-        // The newest word sits tentative (italic, secondary ink) until the
-        // next arrives, then settles. The settle animates ONLY on appends —
-        // a rewrite can flip a SURVIVING word tentative (e.g. a trim exposes
-        // it as the new last word) and corrections must stay instant.
-        let tentative = state == .recording && word.id == tape.words.last?.id
-        return Text(word.text)
-            .font(.transcript(Self.tapeFontSize))
-            .tracking(Self.tapeTracking)
-            .italic(tentative)
-            .foregroundStyle(tentative ? Palette.inkSecondary : Palette.inkPrimary)
-            .lineLimit(1)
-            .animation(lastChange == .appended && !reduceMotion ? MotionTokens.wordSettle : nil,
-                       value: tentative)
-            .transition(wordTransition)
-    }
-
-    /// Insertion choreography by last diff outcome: appended words fade+rise
-    /// (Reduce Motion: opacity-only fade); rewrites are `.identity` — a
-    /// correction swaps instantly. Removals are always instant (trimmed words
-    /// are already under the mask).
-    private var wordTransition: AnyTransition {
-        guard lastChange == .appended else { return .identity }
-        if reduceMotion {
-            return .asymmetric(insertion: .opacity.animation(MotionTokens.reducedFade),
-                               removal: .identity)
-        }
-        return .asymmetric(
-            insertion: .offset(y: MotionTokens.wordRise).combined(with: .opacity)
-                .animation(MotionTokens.wordIn),
-            removal: .identity
-        )
-    }
-
-    private var tapeMask: some View {
-        LinearGradient(
-            stops: [
-                .init(color: .clear, location: 0),
-                .init(color: .black, location: Self.tapeFade / Self.tapeWidth),
-                .init(color: .black, location: 1),
-            ],
-            startPoint: .leading, endPoint: .trailing
-        )
-    }
-
-    /// Appends slide the conveyor + reveal (`tapeSlide` ambient animation);
-    /// rewrites and Reduce Motion mutate without animation — the word
-    /// transition's own attached animation still fades appended words in.
-    /// The ratchet keeps `tapeReveal` from shrinking on a mid-stream trim;
-    /// only an emptied tape (stop / new dictation) resets it, and that reset
-    /// still animates the mask (never the frame) unless Reduce Motion.
-    private func ingest(_ newPartial: String) {
-        var next = tape
-        let change = next.ingest(newPartial)
-        guard change != .none else { return }
-        lastChange = change
-        let width = Self.contentWidth(of: next.words, italicLast: state == .recording)
-        let reveal = next.words.isEmpty
-            ? 0
-            : min(Self.tapeWidth, max(tapeReveal, width))
-        if reduceMotion {
-            tape = next
-            tapeContentWidth = width
-            tapeReveal = reveal
-        } else if change == .appended {
-            withAnimation(MotionTokens.tapeSlide) {
-                tape = next
-                tapeContentWidth = width
-                tapeReveal = reveal
-            }
-        } else {
-            // Corrections swap instantly; only the masked reveal glides.
-            tape = next
-            tapeContentWidth = width
-            withAnimation(MotionTokens.tapeSlide) { tapeReveal = reveal }
-        }
-    }
 
     // MARK: - Pieces
 
