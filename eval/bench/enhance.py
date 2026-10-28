@@ -334,7 +334,9 @@ def load_llama(config: dict):
     from huggingface_hub import hf_hub_download
     from llama_cpp import Llama
 
-    model_path = hf_hub_download(repo_id=config["repo"], filename=config["file"])
+    model_path = config.get("path") or hf_hub_download(
+        repo_id=config["repo"], filename=config["file"]
+    )
     model = Llama(model_path=model_path, n_ctx=8192, n_gpu_layers=-1, verbose=False)
     prompt_style = config.get("prompt_style", "speakoflow")
 
