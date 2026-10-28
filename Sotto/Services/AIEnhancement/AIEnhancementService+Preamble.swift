@@ -17,11 +17,20 @@ extension AIEnhancementService {
     /// same lead-in), so THOSE are only stripped when what follows is not a
     /// list. `nonisolated` — pure, no dependency on the class's @MainActor
     /// instance state, and used directly by tests (not just `performEnhance`).
-    nonisolated static func stripPreamble(_ raw: String) -> String {
+    ///
+    /// A speaker can open with the same words ("Okay, I need…", "Here is the
+    /// problem…"), so a first line that starts with the transcript's own first
+    /// words is content and stays.
+    nonisolated static func stripPreamble(_ raw: String, transcript: String) -> String {
         let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
         let lines = trimmed.components(separatedBy: "\n")
         guard let first = lines.first, lines.count >= 2 else { return trimmed }
         let firstLower = first.lowercased().trimmingCharacters(in: .whitespaces)
+
+        let spokenOpener = leadingWords(transcript, count: 3)
+        if !spokenOpener.isEmpty, leadingWords(first, count: spokenOpener.count) == spokenOpener {
+            return trimmed
+        }
 
         let isUnconditionalPreamble = unconditionalPreambleHeads.contains(where: { firstLower.hasPrefix($0) })
         let isListCapablePreamble = listCapablePreambleHeads.contains(where: { firstLower.hasPrefix($0) })
@@ -42,6 +51,15 @@ extension AIEnhancementService {
         "i've cleaned", "i have cleaned", "i'll clean", "below is", "the cleaned",
     ]
     private nonisolated static let listCapablePreambleHeads = ["here's", "here is", "here are"]
+
+    /// The first `count` words, lowercased, with punctuation and apostrophe
+    /// style ignored, so "okay i need" matches "Okay, I need".
+    private nonisolated static func leadingWords(_ text: String, count: Int) -> [String] {
+        let words = text.lowercased()
+            .replacingOccurrences(of: "’", with: "'")
+            .split(whereSeparator: { !($0.isLetter || $0.isNumber || $0 == "'") })
+        return words.prefix(count).map(String.init)
+    }
 
     /// A line that opens a list item: "- x", "* x", "• x", "1. x", "2) x".
     nonisolated static func looksLikeListItem(_ line: String) -> Bool {

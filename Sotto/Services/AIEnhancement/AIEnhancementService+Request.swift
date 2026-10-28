@@ -93,7 +93,7 @@ extension AIEnhancementService {
             await MainActor.run { self.lastEnhancementModelUsed = AIProvider.foundationModels.modelIdentifier }
         }
 
-        let cleaned = AIEnhancementOutputFilter.filter(Self.stripPreamble(rawResult))
+        let cleaned = AIEnhancementOutputFilter.filter(Self.stripPreamble(rawResult, transcript: text))
         return TranscriptPrepass.finish(TranscriptPrepass.emphasis(TranscriptPrepass.contractions(TranscriptPrepass.lineBreaks(TranscriptPrepass.clean(VerbatimWordGuard.restore(raw: text, output: cleaned))))))
     }
 
