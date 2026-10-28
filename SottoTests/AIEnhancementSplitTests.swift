@@ -76,22 +76,22 @@ final class AIEnhancementSplitTests: XCTestCase {
                      "Absolutely", "I've cleaned this up", "I have cleaned this up", "I'll clean this up",
                      "Below is the text", "The cleaned transcript"]
         for head in heads {
-            XCTAssertEqual(AIEnhancementService.stripPreamble("\(head)\nWorking late."), "Working late.", head)
+            XCTAssertEqual(AIEnhancementService.stripPreamble("\(head)\nWorking late.", transcript: "working late"), "Working late.", head)
         }
     }
 
     func testStripPreambleKeepsTextWhenNothingFollowsThePreamble() {
-        XCTAssertEqual(AIEnhancementService.stripPreamble("Sure,\n\n  "), "Sure,")
+        XCTAssertEqual(AIEnhancementService.stripPreamble("Sure,\n\n  ", transcript: ""), "Sure,")
     }
 
     func testStripPreambleTrimsWhitespace() {
-        XCTAssertEqual(AIEnhancementService.stripPreamble("  \nHello there.\n "), "Hello there.")
+        XCTAssertEqual(AIEnhancementService.stripPreamble("  \nHello there.\n ", transcript: "hello there"), "Hello there.")
     }
 
     func testStripPreambleStripsHereIsBeforeProseButKeepsItBeforeABullet() {
-        XCTAssertEqual(AIEnhancementService.stripPreamble("Here is the text:\nWorking late."), "Working late.")
+        XCTAssertEqual(AIEnhancementService.stripPreamble("Here is the text:\nWorking late.", transcript: "working late"), "Working late.")
         let list = "Here is the plan:\n- Auth\n- Logging"
-        XCTAssertEqual(AIEnhancementService.stripPreamble(list), list)
+        XCTAssertEqual(AIEnhancementService.stripPreamble(list, transcript: "auth logging"), list)
     }
 
     func testLooksLikeListItemEdgeCases() {
