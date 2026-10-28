@@ -6,36 +6,36 @@ import AppKit
 /// arrow keys and ⌘A; `DisclosureGroup` owns expand/collapse; the Edit menu
 /// commands (Copy, Delete) and the context menu act on the selection.
 struct InlineHistoryView: View {
-    @Environment(\.modelContext) private var modelContext
+    @Environment(\.modelContext) var modelContext
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @EnvironmentObject private var hotkeyManager: HotkeyManager
-    @State private var searchText = ""
+    @EnvironmentObject var hotkeyManager: HotkeyManager
+    @State var searchText = ""
     /// Can hold rows past the loaded page after "Select All", so bulk actions
     /// fetch by id instead of reading `displayedTranscriptions`.
-    @State private var selection: Set<UUID> = []
-    @State private var expandedIds: Set<UUID> = []
-    @State private var showDeleteConfirmation = false
+    @State var selection: Set<UUID> = []
+    @State var expandedIds: Set<UUID> = []
+    @State var showDeleteConfirmation = false
     /// A single-row delete waits out `undoWindowSeconds` before it touches the
     /// database or the audio file: the row hides immediately, an UNDO toast
     /// stands, and only then is the deletion committed. Bulk delete keeps its
     /// confirmation instead.
-    @State private var pendingDeletion: Transcription?
-    @State private var undoWindow: Task<Void, Never>?
-    @State private var inspectedId: UUID?
-    @State private var displayedTranscriptions: [Transcription] = []
-    @State private var isLoading = false
-    @State private var hasMoreContent = true
-    @State private var lastTimestamp: Date?
+    @State var pendingDeletion: Transcription?
+    @State var undoWindow: Task<Void, Never>?
+    @State var inspectedId: UUID?
+    @State var displayedTranscriptions: [Transcription] = []
+    @State var isLoading = false
+    @State var hasMoreContent = true
+    @State var lastTimestamp: Date?
     @State private var isViewCurrentlyVisible = false
     /// Every row the current search matches, not just the loaded page — "Select
     /// All" selects all of them, so the control has to say so.
-    @State private var totalMatchingCount = 0
+    @State var totalMatchingCount = 0
     @State private var searchDebounce: Task<Void, Never>?
     @FocusState private var searchFocused: Bool
 
     private let exportService = SottoCSVExportService()
-    private let pageSize = 20
-    private static let undoWindowSeconds: TimeInterval = 5
+    let pageSize = 20
+    static let undoWindowSeconds: TimeInterval = 5
 
     @Query(Self.createLatestTranscriptionIndicatorDescriptor()) private var latestTranscriptionIndicator: [Transcription]
 
@@ -47,7 +47,7 @@ struct InlineHistoryView: View {
         return descriptor
     }
 
-    private func cursorQueryDescriptor(after timestamp: Date? = nil) -> FetchDescriptor<Transcription> {
+    func cursorQueryDescriptor(after timestamp: Date? = nil) -> FetchDescriptor<Transcription> {
         var descriptor = FetchDescriptor<Transcription>(
             sortBy: [SortDescriptor(\Transcription.timestamp, order: .reverse)]
         )
@@ -77,7 +77,7 @@ struct InlineHistoryView: View {
 
     /// Unpaginated twin of `cursorQueryDescriptor` — the scope "Select All"
     /// actually covers.
-    private func matchingDescriptor() -> FetchDescriptor<Transcription> {
+    func matchingDescriptor() -> FetchDescriptor<Transcription> {
         var descriptor = FetchDescriptor<Transcription>()
         if !searchText.isEmpty {
             descriptor.predicate = #Predicate<Transcription> { transcription in
@@ -198,104 +198,6 @@ struct InlineHistoryView: View {
         .padding(.vertical, 10)
         .background(.bar)
         .overlay(alignment: .top) { Divider() }
-    }
-
-    // MARK: - Empty State
-
-    @ViewBuilder
-    private var emptyStateView: some View {
-        if searchText.isEmpty {
-            coachingEmptyState
-        } else {
-            searchEmptyState
-        }
-    }
-
-    /// Failed-search variant — distinct from first-run coaching: no hotkey
-    /// teaching, just a "narrow your query" nudge on semantic ink tokens.
-    private var searchEmptyState: some View {
-        VStack(spacing: 12) {
-            Spacer()
-            Image(systemName: "doc.text.magnifyingglass")
-                .font(.system(size: 36, weight: .light))
-                .foregroundColor(Theme.inkTertiary)
-            Text("No results found")
-                .font(.system(size: 16, weight: .medium))
-                .foregroundColor(.primary)
-            Text("Try a different search term")
-                .font(.system(size: 13))
-                .foregroundColor(.secondary)
-            Spacer()
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
-
-    /// Genuinely-empty history → first-run activation surface. Teaches the core
-    /// press·speak·release gesture against the user's *actual* bound dictation
-    /// hotkey (rendered as KeyCaps). If no hotkey is bound, swaps the lesson for
-    /// an Acid-Lime CTA that deep-links to Shortcuts settings.
-    private var coachingEmptyState: some View {
-        VStack(spacing: 16) {
-            Spacer()
-
-            Image(systemName: "waveform")
-                .font(.system(size: 38, weight: .light))
-                .foregroundColor(Theme.inkTertiary)
-
-            VStack(spacing: 6) {
-                Text("Start dictating")
-                    .font(.system(size: 17, weight: .semibold))
-                    .foregroundColor(.primary)
-                Text("Your transcriptions will appear here.")
-                    .font(.system(size: 13))
-                    .foregroundColor(.secondary)
-            }
-
-            if dictationGlyphs.isEmpty {
-                Button {
-                    openShortcutsSettings()
-                } label: {
-                    Text("Set a dictation shortcut")
-                        .font(.system(size: 13, weight: .semibold))
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 7)
-                }
-                .buttonStyle(LimeFillButtonStyle())
-                .padding(.top, 4)
-            } else {
-                VStack(spacing: 8) {
-                    HStack(spacing: 8) {
-                        Text("Hold")
-                            .font(.system(size: 13, weight: .medium))
-                            .foregroundColor(.secondary)
-                        KeyCombo(keys: dictationGlyphs)
-                        Text("to dictate")
-                            .font(.system(size: 13, weight: .medium))
-                            .foregroundColor(.secondary)
-                    }
-                    Text("press · speak · release")
-                        .font(.system(size: 11, weight: .medium))
-                        .foregroundColor(Theme.inkSecondary)
-                }
-                .padding(.top, 4)
-            }
-
-            Spacer()
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
-
-    /// Unicode key-cap glyphs for the *primary* dictation hotkey
-    /// (`selectedHotkey1`). Empty ⇒ no hotkey bound. Shared with the onboarding
-    /// shortcut step and the first-run reminder toast.
-    private var dictationGlyphs: [String] {
-        HotkeyManager.dictationGlyphs(for: hotkeyManager.selectedHotkey1)
-    }
-
-    private func openShortcutsSettings() {
-        // Staged via the coordinator — a bare notification is lossy when
-        // SettingsContentView isn't mounted yet.
-        SottoWindowCoordinator.shared.open(settingsTab: .shortcuts)
     }
 
     // MARK: - List
@@ -445,272 +347,4 @@ struct InlineHistoryView: View {
         }
     }
 
-    // MARK: - Data Loading
-
-    @MainActor
-    private func loadInitialContent() async {
-        isLoading = true
-        defer { isLoading = false }
-
-        do {
-            lastTimestamp = nil
-            let items = try modelContext.fetch(cursorQueryDescriptor())
-            displayedTranscriptions = items.filter { $0.id != pendingDeletion?.id }
-            lastTimestamp = items.last?.timestamp
-            hasMoreContent = items.count == pageSize
-            totalMatchingCount = (try? modelContext.fetchCount(matchingDescriptor())) ?? items.count
-        } catch {
-            print("Error loading transcriptions: \(error)")
-        }
-    }
-
-    @MainActor
-    private func loadMoreContent() async {
-        guard !isLoading, hasMoreContent, let lastTimestamp = lastTimestamp else { return }
-
-        isLoading = true
-        defer { isLoading = false }
-
-        do {
-            let newItems = try modelContext.fetch(cursorQueryDescriptor(after: lastTimestamp))
-            displayedTranscriptions.append(contentsOf: newItems.filter { $0.id != pendingDeletion?.id })
-            self.lastTimestamp = newItems.last?.timestamp
-            hasMoreContent = newItems.count == pageSize
-        } catch {
-            print("Error loading more transcriptions: \(error)")
-        }
-    }
-
-    @MainActor
-    private func resetPagination() {
-        displayedTranscriptions = []
-        lastTimestamp = nil
-        hasMoreContent = true
-        isLoading = false
-    }
-
-    // MARK: - Selection & Deletion
-
-    /// Newest first, including selected rows that are not on a loaded page.
-    private func transcriptions(for ids: Set<UUID>) -> [Transcription] {
-        let idList = Array(ids)
-        let descriptor = FetchDescriptor<Transcription>(
-            predicate: #Predicate { idList.contains($0.id) },
-            sortBy: [SortDescriptor(\.timestamp, order: .reverse)]
-        )
-        return (try? modelContext.fetch(descriptor)) ?? []
-    }
-
-    private func selectAllMatching() {
-        var descriptor = matchingDescriptor()
-        descriptor.propertiesToFetch = [\.id]
-        do {
-            selection = Set(try modelContext.fetch(descriptor).map(\.id))
-        } catch {
-            print("Error selecting all transcriptions: \(error)")
-        }
-    }
-
-    /// One row goes through the undo window; several rows ask first.
-    private func requestDelete(_ ids: Set<UUID>) {
-        guard !ids.isEmpty else { return }
-        if ids.count == 1, let id = ids.first,
-           let transcription = displayedTranscriptions.first(where: { $0.id == id }) {
-            deleteSingle(transcription)
-        } else {
-            selection = ids
-            showDeleteConfirmation = true
-        }
-    }
-
-    private func performDeletion(for transcription: Transcription) {
-        if let urlString = transcription.audioFileURL,
-           let url = URL(string: urlString),
-           FileManager.default.fileExists(atPath: url.path) {
-            do {
-                try FileManager.default.removeItem(at: url)
-            } catch {
-                print("Error deleting audio file: \(error.localizedDescription)")
-            }
-        }
-
-        expandedIds.remove(transcription.id)
-        if inspectedId == transcription.id {
-            inspectedId = nil
-        }
-
-        selection.remove(transcription.id)
-        modelContext.delete(transcription)
-    }
-
-    private func deleteSelectedTranscriptions() {
-        for transcription in transcriptions(for: selection) {
-            performDeletion(for: transcription)
-        }
-        selection.removeAll()
-
-        Task {
-            do {
-                try modelContext.save()
-                NotificationCenter.default.post(name: .transcriptionDeleted, object: nil)
-                await loadInitialContent()
-            } catch {
-                print("Error saving deletion: \(error.localizedDescription)")
-                await loadInitialContent()
-            }
-        }
-    }
-
-    /// One row, one keypress: no modal. The row leaves the list at once and an
-    /// UNDO toast stands for `undoWindowSeconds`; the transcript and its audio
-    /// file survive until that window closes.
-    private func deleteSingle(_ transcription: Transcription) {
-        // At most one undo window is open — an earlier pending delete stands.
-        commitPendingDeletion()
-
-        expandedIds.remove(transcription.id)
-        if inspectedId == transcription.id {
-            inspectedId = nil
-        }
-        selection.remove(transcription.id)
-
-        pendingDeletion = transcription
-        displayedTranscriptions.removeAll { $0.id == transcription.id }
-
-        undoWindow = Task {
-            try? await Task.sleep(for: .seconds(Self.undoWindowSeconds))
-            guard !Task.isCancelled else { return }
-            commitPendingDeletion()
-        }
-
-        NotificationManager.shared.showNotification(
-            title: "Deleted 1 transcription",
-            type: .info,
-            duration: Self.undoWindowSeconds,
-            actionButton: (label: "UNDO", action: { undoPendingDeletion() })
-        )
-    }
-
-    /// Ends the undo window and performs the deferred deletion for real.
-    @MainActor
-    private func commitPendingDeletion() {
-        undoWindow?.cancel()
-        undoWindow = nil
-        guard let transcription = pendingDeletion else { return }
-        pendingDeletion = nil
-
-        performDeletion(for: transcription)
-        Task {
-            do {
-                try modelContext.save()
-                NotificationCenter.default.post(name: .transcriptionDeleted, object: nil)
-            } catch {
-                print("Error saving deletion: \(error.localizedDescription)")
-            }
-            await loadInitialContent()
-        }
-    }
-
-    /// Cancels the pending deletion — nothing was removed yet, so the row simply
-    /// comes back on the next load.
-    @MainActor
-    private func undoPendingDeletion() {
-        undoWindow?.cancel()
-        undoWindow = nil
-        guard pendingDeletion != nil else { return }
-        pendingDeletion = nil
-        Task { await loadInitialContent() }
-    }
-}
-
-// MARK: - History Row
-
-private struct HistoryRow: View {
-    let transcription: Transcription
-    @Binding var isExpanded: Bool
-    let onShowInfo: () -> Void
-
-    @State private var selectedTab: TranscriptionTab = .original
-
-    private var displayText: String {
-        switch selectedTab {
-        case .original:
-            return transcription.text
-        case .enhanced:
-            return transcription.enhancedText ?? ""
-        }
-    }
-
-    private var audioURL: URL? {
-        guard let urlString = transcription.audioFileURL,
-              let url = URL(string: urlString),
-              FileManager.default.fileExists(atPath: url.path) else { return nil }
-        return url
-    }
-
-    var body: some View {
-        DisclosureGroup(isExpanded: $isExpanded) {
-            details
-        } label: {
-            summary
-        }
-    }
-
-    private var summary: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            // Time only — the day section header already names the day.
-            Text(transcription.timestamp, format: .dateTime.hour().minute())
-                .font(.mono(11))
-                .tabularNumbers()
-                .foregroundStyle(.secondary)
-
-            if !isExpanded {
-                Text(transcription.enhancedText ?? transcription.text)
-                    .font(.transcript(15))
-                    .lineSpacing(3)
-                    .lineLimit(2)
-            }
-        }
-        .padding(.vertical, 8)
-        .padding(.leading, 4)
-    }
-
-    private var details: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                if transcription.enhancedText != nil {
-                    Picker("Version", selection: $selectedTab) {
-                        ForEach(TranscriptionTab.allCases, id: \.self) { tab in
-                            Text(tab.rawValue).tag(tab)
-                        }
-                    }
-                    .pickerStyle(.segmented)
-                    .labelsHidden()
-                    .fixedSize()
-                }
-                Spacer()
-                CopyIconButton(textToCopy: displayText)
-            }
-
-            Text(displayText)
-                .font(.transcript(15))
-                .lineSpacing(3)
-                .textSelection(.enabled)
-                .frame(maxWidth: .infinity, alignment: .leading)
-
-            if let audioURL {
-                AudioPlayerView(url: audioURL, transcription: transcription, onInfoTap: onShowInfo)
-                    .padding(.vertical, 4)
-            } else {
-                HStack {
-                    Spacer()
-                    Button("View details", systemImage: "info.circle", action: onShowInfo)
-                        .labelStyle(.iconOnly)
-                        .buttonStyle(.borderless)
-                        .help("View details")
-                }
-            }
-        }
-        .padding(.vertical, 6)
-    }
 }
