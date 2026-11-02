@@ -12,6 +12,7 @@ enum EnhancementSanityCheck {
         case metaPreamble         // output begins with a meta/answer preamble ("Reasoning:", "The request…")
         case lowGroundedFraction  // too few output content words trace back to the input
         case sentenceDrop         // output lost a large fraction of the input's sentences
+        case lostSentence         // one input sentence's content words are mostly gone from the output
     }
 
     enum Verdict: Equatable {
@@ -50,6 +51,7 @@ enum EnhancementSanityCheck {
         if hasMetaPreamble(r, o) { reasons.append(.metaPreamble) }
         if groundedFractionCheck(r, o, vocabulary).isLow { reasons.append(.lowGroundedFraction) }
         if hasSentenceDrop(r, o) { reasons.append(.sentenceDrop) }
+        if hasLostSentence(r, o, vocabulary) { reasons.append(.lostSentence) }
         return reasons.isEmpty ? .clean : .suspect(reasons)
     }
 
