@@ -13,7 +13,7 @@ extension EnhancementSanityCheckTests {
         let bad: String
     }
 
-    /// One entry per `AIPrompts.customPromptTemplate` few-shot example, plus a
+    /// Dictation cases in the style of the prompt's few-shot examples, each with a
     /// plausible bad output for the SAME raw input covering the failure
     /// categories the guard must still catch (answer, meta, person-flip,
     /// hallucinated content) even after the prompt was un-weakened to mandate
