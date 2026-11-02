@@ -94,4 +94,89 @@ extension EnhancementSanityCheck {
         guard rawN >= 2 else { return false }
         return Double(sentenceCount(out)) / Double(rawN) <= sentenceKeepRatio
     }
+
+    // MARK: - lostSentence
+
+    /// A raw sentence must have this many distinct content words to be judged.
+    /// A shorter one ("This is alright.") looks the same as a filler sentence
+    /// the prompt tells the model to remove.
+    static let lostSentenceMinWords = 3
+    /// Below this fraction of its content words in the output, a raw sentence
+    /// counts as lost.
+    static let lostSentenceCoverage = 0.5
+
+    /// One raw sentence is gone from the output: fewer than half of its
+    /// distinct content words appear there. `hasSentenceDrop` compares counts
+    /// only, so a long output that silently drops one real paragraph passes
+    /// it. Calibrated on 993 judged real recordings: this flagged 21 of the 60
+    /// outputs that judges marked as dropping a point, and 0 of 648 that every
+    /// judge graded clean.
+    ///
+    /// A sentence that has a self-correction cue, or that the next sentence
+    /// corrects, is skipped, because the prompt asks for it to go. Each
+    /// vocabulary term that the output adds may replace up to two misheard
+    /// raw words ("cooper netties" -> "Kubernetes"), so those count as kept.
+    static func hasLostSentence(_ raw: String, _ out: String, _ vocabulary: Set<String> = []) -> Bool {
+        let outTokens = Set(tokens(out))
+        let outBlob = tokens(out).joined()
+        let addedTerms = outTokens.intersection(vocabulary).subtracting(tokens(raw)).count
+        let parts = rawSentences(raw)
+        for (index, sentence) in parts.enumerated() {
+            if hasSelfCorrectionCue(sentence) { continue }
+            if index + 1 < parts.count, hasSelfCorrectionCue(parts[index + 1]) { continue }
+            let words = Set(tokens(sentence).filter(isCoverageWord))
+            guard words.count >= lostSentenceMinWords else { continue }
+            let found = words.filter { isKept($0, outTokens: outTokens, outBlob: outBlob) }.count
+            let kept = min(words.count, found + 2 * addedTerms)
+            if Double(kept) / Double(words.count) < lostSentenceCoverage { return true }
+        }
+        return false
+    }
+
+    /// Sentence ends are ".", "!" or "?" followed by whitespace, and line
+    /// breaks. A dot inside a token ("NetworkClient.swift", "99.99") is not
+    /// an end.
+    private static func rawSentences(_ raw: String) -> [String] {
+        var parts: [String] = []
+        var current = ""
+        var previous: Character = " "
+        for char in raw {
+            if char.isNewline || (char.isWhitespace && ".!?".contains(previous)) {
+                parts.append(current)
+                current = ""
+            } else {
+                current.append(char)
+            }
+            previous = char
+        }
+        parts.append(current)
+        return parts.map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
+    }
+
+    /// A content word has 4 or more letters and is not a common word that the
+    /// model may drop or rephrase while it cleans. Numbers are judged by the
+    /// grounding check instead, because the model rewrites "four" as "4".
+    private static func isCoverageWord(_ token: String) -> Bool {
+        token.count >= 4 && !token.allSatisfy(\.isNumber) && numberWords[token] == nil
+            && !coverageStopWords.contains(token)
+    }
+
+    /// Kept if spelled out inside the output's tokens (a split or merged form
+    /// still counts) or within a small edit distance of an output token.
+    private static func isKept(_ word: String, outTokens: Set<String>, outBlob: String) -> Bool {
+        if outBlob.contains(word) { return true }
+        let threshold = editDistanceThreshold(for: word.count)
+        guard threshold > 0 else { return false }
+        return outTokens.contains {
+            abs($0.count - word.count) <= threshold && levenshtein(word, $0) <= threshold
+        }
+    }
+
+    private static let coverageStopWords: Set<String> = [
+        "that", "this", "with", "were", "have", "will", "just", "like", "okay",
+        "yeah", "also", "then", "what", "when", "which", "there", "their", "they",
+        "them", "from", "into", "about", "would", "could", "should", "some",
+        "something", "thing", "things", "really", "very", "maybe", "much", "more",
+        "because", "think", "know", "want", "need", "going", "gonna",
+    ]
 }

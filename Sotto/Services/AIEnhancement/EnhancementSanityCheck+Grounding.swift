@@ -107,7 +107,7 @@ extension EnhancementSanityCheck {
         return composedValues.contains(outValue)
     }
 
-    private static let numberWords: [String: Int] = [
+    static let numberWords: [String: Int] = [
         "zero": 0, "one": 1, "two": 2, "three": 3, "four": 4, "five": 5, "six": 6,
         "seven": 7, "eight": 8, "nine": 9, "ten": 10, "eleven": 11, "twelve": 12,
         "thirteen": 13, "fourteen": 14, "fifteen": 15, "sixteen": 16, "seventeen": 17,
@@ -179,13 +179,13 @@ extension EnhancementSanityCheck {
     /// distance 2 at length 9) — see `groundedFractionCheck`'s doc comment.
     /// 2 edits only at ≥10 chars, where a single-edit collision is
     /// vanishingly unlikely to be a coincidence rather than a real correction.
-    private static func editDistanceThreshold(for tokenLength: Int) -> Int {
+    static func editDistanceThreshold(for tokenLength: Int) -> Int {
         if tokenLength < 5 { return 0 }
         if tokenLength < 10 { return 1 }
         return 2
     }
 
-    private static func levenshtein(_ a: String, _ b: String) -> Int {
+    static func levenshtein(_ a: String, _ b: String) -> Int {
         let aChars = Array(a), bChars = Array(b)
         if aChars.isEmpty { return bChars.count }
         if bChars.isEmpty { return aChars.count }

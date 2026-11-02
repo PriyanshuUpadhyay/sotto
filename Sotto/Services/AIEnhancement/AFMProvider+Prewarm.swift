@@ -23,7 +23,7 @@ extension AFMProvider {
         let start = Date()
         // `LanguageModelSession.prewarm()` is a static-side hint on macOS 26;
         // wire via a throwaway session whose lifetime is the prewarm call.
-        let session = LanguageModelSession(instructions: "")
+        let session = LanguageModelSession(model: Self.model, instructions: "")
         session.prewarm()
         let elapsed = Date().timeIntervalSince(start)
         Self.logger.notice("🦾 afm: prewarm fired source=\(source, privacy: .public) in \(elapsed, format: .fixed(precision: 2), privacy: .public)s")
@@ -45,7 +45,7 @@ extension AFMProvider {
             return
         }
         let start = Date()
-        let session = LanguageModelSession(instructions: instructions)
+        let session = LanguageModelSession(model: Self.model, instructions: instructions)
         session.prewarm()
         warmedSession = session
         warmedInstructions = instructions

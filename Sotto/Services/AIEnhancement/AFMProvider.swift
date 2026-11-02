@@ -49,6 +49,15 @@ actor AFMProvider {
 
     nonisolated static let logger = Logger(subsystem: OSLogSubsystems.app, category: "AFMProvider")
 
+    #if canImport(FoundationModels)
+    /// Dictation cleanup rewrites the user's own words, which is what Apple's
+    /// content-transformation guardrails are for. The default guardrails
+    /// refused 10 of 300 real dictations (mostly swearing), and a refusal sends
+    /// the dictation out uncleaned. Every session, warmed or fresh, must use
+    /// this model so a warmed session behaves like a fresh one.
+    nonisolated static let model = SystemLanguageModel(guardrails: .permissiveContentTransformations)
+    #endif
+
     init() {}
 
     // One-shot warmed session. Prewarmed at recording start with the prospective
@@ -190,7 +199,7 @@ actor AFMProvider {
             reusedWarm = true
             warmAge = warmedAt.map { prepStart.timeIntervalSince($0) }
         } else {
-            session = LanguageModelSession(instructions: systemPrompt)
+            session = LanguageModelSession(model: Self.model, instructions: systemPrompt)
             reusedWarm = false
             warmAge = nil
         }
