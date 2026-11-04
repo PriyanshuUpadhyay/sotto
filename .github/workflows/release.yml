@@ -1,0 +1,117 @@
+name: Release
+
+# scripts/release.sh bumps the version on main, tags it, and pushes the tag.
+# This workflow builds, signs, and publishes that tag: the DMG goes to a GitHub
+# release first, and only then does the appcast reach main, so an updater never
+# reads a feed whose download is missing.
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    # Xcode 27 preview image; the app needs the macOS 27 SDK that local builds use.
+    runs-on: xcode-27
+    timeout-minutes: 120
+    # The signing secrets live in this environment, so only a v* tag can read them.
+    environment: release
+    permissions:
+      contents: write
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_27.2.app/Contents/Developer
+      RELEASE_TAG: ${{ github.ref_name }}
+      # SHA-1 of the voiceink-fork-local certificate. Installed copies hold their
+      # Accessibility and Input Monitoring grants against this certificate, so a
+      # release signed by any other one makes every user grant them again.
+      SIGNING_CERT_SHA1: 18999A81B33EB15B7149DE33027E7BC05026FB9F
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Restore the whisper and llama frameworks
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/Sotto-Dependencies/whisper.cpp/build-apple
+            ~/Sotto-Dependencies/llama.cpp/build-apple
+          key: sotto-deps-xcode27.2-${{ hashFiles('mk/deps.mk') }}
+
+      - name: Install uv
+        run: brew install uv
+
+      - name: Import the signing certificate
+        env:
+          SIGNING_CERT_P12: ${{ secrets.SIGNING_CERT_P12 }}
+          SIGNING_CERT_PASSWORD: ${{ secrets.SIGNING_CERT_PASSWORD }}
+        run: |
+          keychain="$RUNNER_TEMP/release.keychain-db"
+          password=$(openssl rand -hex 16)
+          security create-keychain -p "$password" "$keychain"
+          security set-keychain-settings -lut 21600 "$keychain"
+          security unlock-keychain -p "$password" "$keychain"
+          printf '%s' "$SIGNING_CERT_P12" | base64 -D > "$RUNNER_TEMP/cert.p12"
+          security import "$RUNNER_TEMP/cert.p12" -k "$keychain" -P "$SIGNING_CERT_PASSWORD" -T /usr/bin/codesign
+          rm -f "$RUNNER_TEMP/cert.p12"
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$password" "$keychain" >/dev/null
+          # shellcheck disable=SC2046 # one keychain path per word
+          security list-keychains -d user -s "$keychain" $(security list-keychains -d user | tr -d '"')
+          # The certificate is self-signed; xcodebuild picks only a trusted code-signing identity.
+          security find-certificate -a -p "$keychain" > "$RUNNER_TEMP/cert.pem"
+          sudo security add-trusted-cert -d -r trustRoot -p codeSign -k "$keychain" "$RUNNER_TEMP/cert.pem"
+          rm -f "$RUNNER_TEMP/cert.pem"
+          security find-identity -v -p codesigning "$keychain" | grep -q "$SIGNING_CERT_SHA1" \
+            || { echo "no trusted identity $SIGNING_CERT_SHA1 in the imported certificate" >&2; exit 1; }
+
+      - name: Build and sign the DMG and appcast
+        env:
+          SPARKLE_ED_PRIVATE_KEY: ${{ secrets.SPARKLE_ED_PRIVATE_KEY }}
+        run: |
+          key="$RUNNER_TEMP/sparkle.key"
+          (umask 077 && printf '%s' "$SPARKLE_ED_PRIVATE_KEY" > "$key")
+          make release LOCAL_SIGN_IDENTITY="$SIGNING_CERT_SHA1" SPARKLE_KEY_FILE="$key"
+          rm -f "$key"
+
+      - name: Check the build matches the tag
+        run: |
+          version="${RELEASE_TAG#v}"
+          dmg="dist/releases/Sotto-$version.dmg"
+          test -f "$dmg" || { echo "no $dmg; the app version does not match $RELEASE_TAG" >&2; exit 1; }
+          codesign -dr - .local-build/Build/Products/Debug/Sotto.app 2>&1 \
+            | grep -qi "certificate leaf = H\"$SIGNING_CERT_SHA1\"" \
+            || { echo "the app is not signed by $SIGNING_CERT_SHA1" >&2; exit 1; }
+          cp docs/appcast.xml "$RUNNER_TEMP/appcast.xml"
+          echo "DMG=$dmg" >> "$GITHUB_ENV"
+
+      - name: Publish the GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          sha=$(shasum -a 256 "$DMG" | awk '{print $1}')
+          gh release create "$RELEASE_TAG" "$DMG" --verify-tag --title "$RELEASE_TAG" \
+            --notes "SHA-256 of the DMG: \`$sha\`" --generate-notes
+
+      - name: Publish the appcast
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          for _ in 1 2 3; do
+            git fetch origin main
+            git checkout -f -B main origin/main
+            cp "$RUNNER_TEMP/appcast.xml" docs/appcast.xml
+            git add docs/appcast.xml
+            git diff --cached --quiet || git commit -m "Publish ${RELEASE_TAG#v}"
+            git push origin main && exit 0
+            sleep 5
+          done
+          echo "could not push docs/appcast.xml to main" >&2
+          exit 1
+
+      - name: Remove the signing keychain
+        if: always()
+        run: security delete-keychain "$RUNNER_TEMP/release.keychain-db" 2>/dev/null || true

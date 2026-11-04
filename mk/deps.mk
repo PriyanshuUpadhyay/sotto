@@ -8,17 +8,23 @@ check:
 
 healthcheck: check
 
+# Pinned so the release build in CI compiles the same sources as a local build;
+# .github/workflows/release.yml keys its framework cache on this file.
+WHISPER_REF := fc674574ca27cac59a15e5b22a09b9d9ad62aafe
+LLAMA_REF := 38a5b42d9a3e82e0a586bcd1caed121f36c87a73
+
 # Sotto ships macOS only. Upstream build-xcframework.sh builds every Apple platform and leaves ~5 GB of build-* intermediates; keep only build-apple.
 # Build process
 whisper:
 	@mkdir -p $(DEPS_DIR)
 	@if [ ! -d "$(FRAMEWORK_PATH)" ]; then \
-		echo "Building whisper.xcframework in $(DEPS_DIR)..."; \
+		echo "Building whisper.xcframework $(WHISPER_REF) in $(DEPS_DIR)..."; \
 		if [ ! -d "$(WHISPER_CPP_DIR)" ]; then \
 			git clone https://github.com/ggerganov/whisper.cpp.git $(WHISPER_CPP_DIR); \
 		else \
-			(cd $(WHISPER_CPP_DIR) && git pull); \
+			git -C $(WHISPER_CPP_DIR) fetch origin; \
 		fi; \
+		git -C $(WHISPER_CPP_DIR) checkout --detach $(WHISPER_REF); \
 		cd $(WHISPER_CPP_DIR) && ./build-xcframework.sh && rm -rf build-ios-* build-tvos-* build-visionos* build-macos; \
 	else \
 		echo "whisper.xcframework already built in $(DEPS_DIR), skipping build"; \
@@ -27,12 +33,13 @@ whisper:
 llama:
 	@mkdir -p $(DEPS_DIR)
 	@if [ ! -d "$(LLAMA_FRAMEWORK_PATH)" ]; then \
-		echo "Building llama.xcframework in $(DEPS_DIR)..."; \
+		echo "Building llama.xcframework $(LLAMA_REF) in $(DEPS_DIR)..."; \
 		if [ ! -d "$(LLAMA_CPP_DIR)" ]; then \
 			git clone https://github.com/ggml-org/llama.cpp $(LLAMA_CPP_DIR); \
 		else \
-			(cd $(LLAMA_CPP_DIR) && git pull); \
+			git -C $(LLAMA_CPP_DIR) fetch origin; \
 		fi; \
+		git -C $(LLAMA_CPP_DIR) checkout --detach $(LLAMA_REF); \
 		cd $(LLAMA_CPP_DIR) && ./build-xcframework.sh macos && rm -rf build-macos; \
 	else \
 		echo "llama.xcframework already built in $(DEPS_DIR), skipping build"; \

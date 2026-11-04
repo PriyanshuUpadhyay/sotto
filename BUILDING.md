@@ -54,7 +54,7 @@ make dev
 - `make test` - Run the unit test suite headlessly (non-activating)
 - `make dmg` - Package the local build into `dist/Sotto.dmg` (see [Distributing a DMG](#distributing-a-dmg))
 - `make release` - Build and sign a release DMG plus its Sparkle appcast in `dist/releases`
-- `make publish` - Upload what `make release` prepared (`make publish NOTES=path/to/notes.md`)
+- `make publish` - Upload what `make release` prepared (`make publish NOTES=path/to/notes.md`); a manual fallback for [Releasing](#releasing)
 - `make dev` - Build and run (ideal for development workflow)
 - `make all` - Complete build process (default)
 - `make clean` - Remove build artifacts and dependencies
@@ -148,6 +148,32 @@ recipients to:
 
 Updates after that arrive through the in-app updater and need no repeat of
 step 2.
+
+## Releasing
+
+From a clean `main` that matches `origin/main`:
+
+```bash
+scripts/release.sh patch    # or minor, major; add --dry-run to see the steps
+```
+
+The script bumps `MARKETING_VERSION` and `CURRENT_PROJECT_VERSION`, commits,
+tags `vX.Y.Z`, and pushes. The tag starts `.github/workflows/release.yml`,
+which runs `make release` on a GitHub macOS runner, creates the GitHub release
+with the DMG and generated notes, and then pushes `docs/appcast.xml` to `main`.
+The script waits for that run and pulls the appcast commit.
+
+The workflow reads three secrets from the `release` environment:
+
+| Secret | Value |
+|---|---|
+| `SIGNING_CERT_P12` | base64 of the `voiceink-fork-local` certificate and private key, exported as .p12 |
+| `SIGNING_CERT_PASSWORD` | the password of that .p12 |
+| `SPARKLE_ED_PRIVATE_KEY` | the output of Sparkle's `generate_keys -x` |
+
+The release must keep the same certificate, because installed copies hold
+their Accessibility and Input Monitoring grants against it. The workflow
+checks its SHA-1 before it builds.
 
 ---
 

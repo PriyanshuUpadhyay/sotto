@@ -45,6 +45,9 @@ dmg: local
 # RELEASE_DIR is emptied each run so the generated appcast holds exactly one
 # item. Sparkle only needs the newest one, and a stale item would otherwise
 # carry this run's download-url-prefix and point at the wrong tag.
+#
+# SPARKLE_KEY_FILE reads the EdDSA key from a file instead of the login keychain;
+# the release workflow in CI sets it.
 release: local
 	@set -e; \
 		APP="$(LOCAL_DERIVED_DATA)/Build/Products/Debug/Sotto.app"; \
@@ -53,7 +56,7 @@ release: local
 		rm -rf "$(RELEASE_DIR)"; mkdir -p "$(RELEASE_DIR)"; \
 		OUT_DIR="$(RELEASE_DIR)" bash scripts/make-dmg.sh >/dev/null; \
 		mv "$(RELEASE_DIR)/Sotto.dmg" "$(RELEASE_DIR)/Sotto-$$V.dmg"; \
-		"$(SPARKLE_BIN)/generate_appcast" \
+		"$(SPARKLE_BIN)/generate_appcast" $(if $(SPARKLE_KEY_FILE),--ed-key-file "$(SPARKLE_KEY_FILE)") \
 			--download-url-prefix "https://github.com/$(GITHUB_REPO)/releases/download/v$$V/" \
 			--link "https://github.com/$(GITHUB_REPO)" \
 			"$(RELEASE_DIR)"; \
