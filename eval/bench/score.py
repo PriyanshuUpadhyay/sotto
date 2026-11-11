@@ -57,6 +57,21 @@ def load_jsonl(path: str) -> list[dict[str, Any]]:
     return records
 
 
+def load_reference(rows: list[dict[str, Any]]) -> tuple[dict[str, str], str]:
+    """Returns (id -> reference text, kind).
+
+    A row with "checked": true was confirmed against its audio by a person.
+    When any row is checked, only checked rows score, because a reference built
+    from model output favours the models it came from. With none checked, every
+    row scores and the kind says so.
+    """
+    rows = [r for r in rows if "id" in r and "text" in r]
+    checked = {r["id"]: r["text"] for r in rows if r.get("checked") is True}
+    if checked:
+        return checked, "human-checked"
+    return {r["id"]: r["text"] for r in rows}, "model-agreement"
+
+
 def load_synthetic_sets(eval_dir: str) -> dict[str, dict[str, Any]]:
     """Loads enhancement-{dev,eval,heldout}.jsonl into a mapping id -> {set, raw, gold}."""
     gold_map = {}
@@ -85,11 +100,20 @@ def generate_markdown(
     enh_results: list[dict[str, Any]],
     pseudo_ref_slug: str,
     has_ref: bool,
+    ref_kind: str = "",
+    ref_count: int = 0,
 ) -> str:
     lines = []
     lines.append("# Sotto Model Benchmark Report\n")
 
     lines.append("## ASR Models\n")
+    if ref_kind == "human-checked":
+        lines.append(f"Reference: {ref_count} clips checked against the audio by a person.\n")
+    elif ref_kind == "model-agreement":
+        lines.append(
+            f"Reference: {ref_count} clips built from model agreement, not checked by a person. "
+            "It favours the models it came from, so small WER gaps are not reliable.\n"
+        )
     ref_hdr = "WER (Ref) | CER (Ref) | " if has_ref else ""
     lines.append(
         f"| Model | N | Errors | Warm Med (s) | Warm P90 (s) | RTF | Cold (s) | {ref_hdr}Agreement WER vs {pseudo_ref_slug} |"
@@ -165,6 +189,13 @@ def run_selftest() -> None:
 
         md = generate_markdown([asr_res], [enh_res], "test-asr", True)
         assert "# Sotto Model Benchmark Report" in md
+
+        ref_rows = [
+            {"id": "a", "text": "checked text", "checked": True},
+            {"id": "b", "text": "unchecked text"},
+        ]
+        assert load_reference(ref_rows) == ({"a": "checked text"}, "human-checked")
+        assert load_reference(ref_rows[1:]) == ({"b": "unchecked text"}, "model-agreement")
         print("Score selftest passed successfully!")
 
 
@@ -207,7 +238,7 @@ def main() -> None:
 
     ref_file = os.path.join(data_dir, "reference.jsonl")
     ref_rows = load_jsonl(ref_file)
-    reference_map = {r["id"]: r["text"] for r in ref_rows if "id" in r and "text" in r}
+    reference_map, reference_kind = load_reference(ref_rows)
 
     synthetic_gold = load_synthetic_sets(eval_dir)
 
@@ -313,6 +344,8 @@ def main() -> None:
         enh_scored,
         pseudo_ref_slug,
         has_ref=bool(reference_map),
+        ref_kind=reference_kind if reference_map else "",
+        ref_count=len(reference_map),
     )
 
     report_md_path = os.path.join(results_dir, "report.md")
@@ -323,7 +356,9 @@ def main() -> None:
     json_data = {
         "metadata": {
             "pseudo_reference": pseudo_ref_slug,
-            "has_human_reference": bool(reference_map),
+            "has_human_reference": reference_kind == "human-checked",
+            "reference_kind": reference_kind if reference_map else None,
+            "reference_count": len(reference_map),
             "recordings_count": len(recordings_rows),
             "edits_count": len(edits_rows),
             "synthetic_count": len(synthetic_gold),
