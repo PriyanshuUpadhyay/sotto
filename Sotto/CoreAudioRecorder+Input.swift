@@ -61,7 +61,7 @@ extension CoreAudioRecorder {
         return noErr
     }
 
-    private func calculateMeters(from bufferList: inout AudioBufferList, frameCount: UInt32) {
+    func calculateMeters(from bufferList: inout AudioBufferList, frameCount: UInt32) {
         guard let data = bufferList.mBuffers.mData else { return }
         guard frameCount > 0 else { return }
 
@@ -92,7 +92,7 @@ extension CoreAudioRecorder {
         meterLock.unlock()
     }
 
-    private func convertAndWriteToFile(inputBuffer: inout AudioBufferList, frameCount: UInt32) {
+    func convertAndWriteToFile(inputBuffer: inout AudioBufferList, frameCount: UInt32) {
         guard let file = audioFile else { return }
 
         let inputChannels = deviceFormat.mChannelsPerFrame

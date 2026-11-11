@@ -84,6 +84,19 @@ extension CoreAudioRecorder {
         }
     }
 
+    /// What Sotto writes and streams: 16 kHz, mono, PCM Int16.
+    static let transcriptionOutputFormat = AudioStreamBasicDescription(
+        mSampleRate: 16000.0,
+        mFormatID: kAudioFormatLinearPCM,
+        mFormatFlags: kAudioFormatFlagIsSignedInteger | kAudioFormatFlagIsPacked,
+        mBytesPerPacket: 2,
+        mFramesPerPacket: 1,
+        mBytesPerFrame: 2,
+        mChannelsPerFrame: 1,
+        mBitsPerChannel: 16,
+        mReserved: 0
+    )
+
     func configureFormats() throws {
         guard let audioUnit = audioUnit else {
             throw CoreAudioRecorderError.audioUnitNotInitialized
@@ -105,18 +118,7 @@ extension CoreAudioRecorder {
             throw CoreAudioRecorderError.failedToGetDeviceFormat(status: status)
         }
 
-        // Configure output format: 16kHz, mono, PCM Int16
-        outputFormat = AudioStreamBasicDescription(
-            mSampleRate: 16000.0,
-            mFormatID: kAudioFormatLinearPCM,
-            mFormatFlags: kAudioFormatFlagIsSignedInteger | kAudioFormatFlagIsPacked,
-            mBytesPerPacket: 2,
-            mFramesPerPacket: 1,
-            mBytesPerFrame: 2,
-            mChannelsPerFrame: 1,
-            mBitsPerChannel: 16,
-            mReserved: 0
-        )
+        outputFormat = Self.transcriptionOutputFormat
 
         // Set callback format (Float32 for processing, then convert to Int16 for file)
         var callbackFormat = AudioStreamBasicDescription(

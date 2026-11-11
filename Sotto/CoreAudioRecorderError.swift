@@ -17,6 +17,7 @@ enum CoreAudioRecorderError: LocalizedError {
     case failedToSetFileFormat(status: OSStatus)
     case failedToInitialize(status: OSStatus)
     case failedToStart(status: OSStatus)
+    case audioFixtureUnreadable(String)
 
     var errorDescription: String? {
         switch self {
@@ -48,6 +49,8 @@ enum CoreAudioRecorderError: LocalizedError {
             return "Failed to initialize AudioUnit: \(status)"
         case .failedToStart(let status):
             return "Failed to start AudioUnit: \(status)"
+        case .audioFixtureUnreadable(let path):
+            return "Could not read the audio fixture at \(path)"
         }
     }
 }

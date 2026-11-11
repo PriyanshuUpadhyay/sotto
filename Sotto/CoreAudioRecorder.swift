@@ -51,6 +51,12 @@ final class CoreAudioRecorder: @unchecked Sendable {
     /// Called on the audio thread with raw PCM data (16-bit, 16kHz, mono) for streaming.
     var onAudioChunk: ((_ data: Data) -> Void)?
 
+    #if DEBUG
+    // Test-audio pump; see CoreAudioRecorder+Fixture.swift.
+    let fixtureQueue = DispatchQueue(label: "com.sotto.audio-fixture", qos: .userInteractive)
+    var fixtureTimer: DispatchSourceTimer?
+    #endif
+
     // MARK: - Initialization
 
     init() {}
@@ -65,6 +71,14 @@ final class CoreAudioRecorder: @unchecked Sendable {
     func startRecording(toOutputFile url: URL, deviceID: AudioDeviceID) throws {
         // Stop any existing recording
         stopRecording()
+
+        #if DEBUG
+        if let fixture = Self.audioFixtureURL {
+            recordingURL = url
+            try startFixtureRecording(from: fixture, toOutputFile: url)
+            return
+        }
+        #endif
 
         if deviceID == 0 {
             logger.error("Cannot start recording - no valid audio device (deviceID is 0)")
@@ -111,6 +125,10 @@ final class CoreAudioRecorder: @unchecked Sendable {
             return
         }
         logger.notice("stopRecording: stopping core audio recorder")
+
+        #if DEBUG
+        stopFixturePump()
+        #endif
 
         // Stop and dispose AudioUnit
         if let unit = audioUnit {
