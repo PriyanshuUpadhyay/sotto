@@ -51,7 +51,7 @@ final class CoreAudioRecorder: @unchecked Sendable {
     /// Called on the audio thread with raw PCM data (16-bit, 16kHz, mono) for streaming.
     var onAudioChunk: ((_ data: Data) -> Void)?
 
-    #if DEBUG
+    #if SOTTO_AUDIO_FIXTURE
     // Test-audio pump; see CoreAudioRecorder+Fixture.swift.
     let fixtureQueue = DispatchQueue(label: "com.sotto.audio-fixture", qos: .userInteractive)
     var fixtureTimer: DispatchSourceTimer?
@@ -72,7 +72,7 @@ final class CoreAudioRecorder: @unchecked Sendable {
         // Stop any existing recording
         stopRecording()
 
-        #if DEBUG
+        #if SOTTO_AUDIO_FIXTURE
         if let fixture = Self.audioFixtureURL {
             recordingURL = url
             try startFixtureRecording(from: fixture, toOutputFile: url)
@@ -126,7 +126,7 @@ final class CoreAudioRecorder: @unchecked Sendable {
         }
         logger.notice("stopRecording: stopping core audio recorder")
 
-        #if DEBUG
+        #if SOTTO_AUDIO_FIXTURE
         stopFixturePump()
         #endif
 

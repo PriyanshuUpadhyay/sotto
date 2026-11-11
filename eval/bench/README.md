@@ -9,7 +9,7 @@ Outputs land in eval/results/bench/report.md and eval/results/bench/report.json.
 
 Reference text: score.py measures WER against eval/data/local/reference.jsonl. Build each reference by listening to the clip, never from a model's output, because a model-made reference favours that model. Mark a row checked with uv run eval/bench/check_refs.py, which plays each unchecked clip and saves your answer. Once any row is checked, only checked rows score; the report names which kind of reference it used.
 
-Test audio: a Debug build started with SOTTO_AUDIO_FIXTURE=<audio file> plays that file in place of the microphone on every recording (10 ms chunks at real-time pace, looping), so the live path from capture to paste runs with no person speaking. Example: SOTTO_AUDIO_FIXTURE=$PWD/clip.wav /Applications/Sotto.app/Contents/MacOS/Sotto
+Test audio: an app built with make local AUDIO_FIXTURE=1 and started with SOTTO_AUDIO_FIXTURE=<audio file> plays that file in place of the microphone on every recording (10 ms chunks at real-time pace, looping), so the live path from capture to paste runs with no person speaking. Example: SOTTO_AUDIO_FIXTURE=$PWD/clip.wav /Applications/Sotto.app/Contents/MacOS/Sotto
 
 Sandbox cache env vars: UV_CACHE_DIR=eval/data/local/uv-cache and HF_HOME=eval/data/local/hf-cache.
 

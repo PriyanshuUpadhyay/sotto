@@ -43,6 +43,7 @@ SUITE_LOCK := $(CURDIR)/eval/results/.suite.lock
 # only the first is reclaimed. Kept to ONE line so it can be spliced into the
 # recipe line that also arms the trap — they must share a shell.
 ACQUIRE_LOCK = mkdir "$(SUITE_LOCK)" 2>/dev/null || { owner=$$(cat "$(SUITE_LOCK)/pid" 2>/dev/null); case "$$owner" in ''|*[!0-9]*) echo "suite lock has no readable owner - delete it to recover: $(SUITE_LOCK)"; exit 1;; esac; if kill -0 "$$owner" 2>/dev/null || ps -p "$$owner" >/dev/null 2>&1; then echo "another make test/eval is running (pid $$owner) - lock: $(SUITE_LOCK)"; exit 1; fi; echo "reclaiming the suite lock from dead pid $$owner"; rm -rf "$(SUITE_LOCK)"; mkdir "$(SUITE_LOCK)" 2>/dev/null || { echo "could not reclaim the suite lock - delete it to recover: $(SUITE_LOCK)"; exit 1; }; }
+test: AUDIO_FIXTURE = 1
 test: check setup
 	@mkdir -p "$(dir $(EVAL_GATE))"
 	@if [ -e "$(EVAL_GATE)" ]; then \

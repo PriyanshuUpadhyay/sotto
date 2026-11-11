@@ -1,3 +1,4 @@
+#if SOTTO_AUDIO_FIXTURE
 import AVFoundation
 import Foundation
 import Testing
@@ -56,3 +57,4 @@ struct AudioFixtureTests {
         #expect(saved.length == AVAudioFramePosition(got.count))
     }
 }
+#endif

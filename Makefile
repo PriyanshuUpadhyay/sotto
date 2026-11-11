@@ -27,6 +27,10 @@ GITHUB_REPO := PriyanshuUpadhyay/sotto
 # Override with: make local LOCAL_SIGN_IDENTITY="other-name" — exact name or SHA1.
 LOCAL_SIGN_IDENTITY ?= $(shell bash $(CURDIR)/scripts/local-sign-identity.sh)
 
+# AUDIO_FIXTURE=1 compiles in the SOTTO_AUDIO_FIXTURE test-audio input
+# (Sotto/CoreAudioRecorder+Fixture.swift). `make test` sets it; a release never does.
+AUDIO_FIXTURE ?=
+
 # Shared by every local xcodebuild invocation below. Signing has to match across
 # `local`, `test`, and `property`: a run that signs differently gets a different
 # cdhash and re-prompts for Accessibility / Input Monitoring.
@@ -37,7 +41,7 @@ LOCAL_XCODE_FLAGS = -project Sotto.xcodeproj -scheme Sotto -configuration Debug 
 	CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=YES \
 	DEVELOPMENT_TEAM="" ENABLE_HARDENED_RUNTIME=NO \
 	CODE_SIGN_ENTITLEMENTS=$(CURDIR)/Sotto/Sotto.local.entitlements \
-	SWIFT_ACTIVE_COMPILATION_CONDITIONS='$$(inherited) LOCAL_BUILD'
+	SWIFT_ACTIVE_COMPILATION_CONDITIONS='$$(inherited) LOCAL_BUILD$(if $(AUDIO_FIXTURE), SOTTO_AUDIO_FIXTURE)'
 
 .PHONY: all clean whisper llama ggml-headers vad-model setup build local check healthcheck help dev run reload test eval acceptance acceptance-mutate property dmg release publish
 

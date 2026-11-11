@@ -1,4 +1,4 @@
-#if DEBUG
+#if SOTTO_AUDIO_FIXTURE
 import AVFoundation
 import Foundation
 
@@ -8,7 +8,8 @@ import Foundation
 /// live capture, in 10 ms chunks at real-time pace, from the file's start at
 /// each recording, looping. Benchmarks and acceptance runs can then drive
 /// capture -> streaming -> transcription -> paste without a person.
-/// Debug builds only. Idea from Hex's `HEX_AUDIO_FIXTURE` (anomalyco/hex, MIT).
+/// Compiled only with the SOTTO_AUDIO_FIXTURE flag (`make test`, or
+/// `make local AUDIO_FIXTURE=1`), never in a release build. Idea from Hex's `HEX_AUDIO_FIXTURE` (anomalyco/hex, MIT).
 extension CoreAudioRecorder {
     static let audioFixtureEnvironmentKey = "SOTTO_AUDIO_FIXTURE"
 
