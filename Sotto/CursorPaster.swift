@@ -74,6 +74,7 @@ class CursorPaster {
 
         // If the target is unverified, force non-transient and skip the timed
         // restore below so the text isn't restored away from under the user.
+        let previousChangeCount = pasteboard.changeCount
         ClipboardManager.setClipboard(text, transient: shouldRestoreClipboard && hasVerifiedTarget)
 
         if !hasVerifiedTarget {
@@ -120,18 +121,17 @@ class CursorPaster {
             }
         }
 
+        let restorer = ClipboardRestorer.shared
         if shouldRestoreClipboard && hasVerifiedTarget {
             let restoreDelay = UserDefaults.standard.double(forKey: "clipboardRestoreDelay")
             let delay = max(restoreDelay, 0.25)
+            let token = restorer.register(previous: savedContents, previousChangeCount: previousChangeCount)
 
             DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
-                if !savedContents.isEmpty {
-                    pasteboard.clearContents()
-                    for (type, data) in savedContents {
-                        pasteboard.setData(data, forType: type)
-                    }
-                }
+                restorer.restore(token)
             }
+        } else {
+            restorer.keep()
         }
 
         return hasVerifiedTarget ? .pasted : .pastedUnverified
