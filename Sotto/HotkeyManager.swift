@@ -47,6 +47,13 @@ class HotkeyManager: ObservableObject {
     private var globalEventMonitor: Any?
     private var localEventMonitor: Any?
 
+    /// True while the Fn tap takes Fn presses away from macOS, so the system
+    /// Fn (🌐) action cannot fire. Settings hides its Fn warning then.
+    @Published private(set) var isBlockingSystemFnAction = false
+    private var fnEventTap: FnKeyEventTap?
+    /// Retries the tap while macOS refuses it (Accessibility not granted yet).
+    private var fnTapRetryTask: Task<Void, Never>?
+
     // Key state tracking
     private var currentKeyState = false
     private var keyPressEventTime: TimeInterval?
@@ -142,6 +149,22 @@ class HotkeyManager: ObservableObject {
         // Only set up if the hotkey is a modifier key
         guard selectedHotkey1.isModifierKey && selectedHotkey1 != .none else { return }
 
+        if selectedHotkey1 == .fn {
+            // The tap drops the Fn events, so the NSEvent monitors below would
+            // never see them; the tap feeds the same handler instead.
+            let tap = FnKeyEventTap { [weak self] event in
+                Task { @MainActor in await self?.handleModifierKeyEvent(event) }
+            }
+            if tap.start() {
+                fnEventTap = tap
+                isBlockingSystemFnAction = true
+                logger.notice("fn tap: on — macOS Fn (globe) action blocked")
+                return
+            }
+            logger.error("fn tap: macOS refused the tap (axTrusted=\(AXIsProcessTrusted(), privacy: .public)) — listening only, so the macOS Fn action can still fire")
+            scheduleFnTapRetry()
+        }
+
         globalEventMonitor = NSEvent.addGlobalMonitorForEvents(matching: .flagsChanged) { [weak self] event in
             guard let self = self else { return }
             Task { @MainActor in
@@ -171,7 +194,26 @@ class HotkeyManager: ObservableObject {
         }
     }
 
+    private func scheduleFnTapRetry() {
+        fnTapRetryTask = Task { @MainActor [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(nanoseconds: 5_000_000_000)
+                guard let self, !Task.isCancelled, self.selectedHotkey1 == .fn else { return }
+                if AXIsProcessTrusted() {
+                    self.setupHotkeyMonitoring()
+                    return
+                }
+            }
+        }
+    }
+
     private func removeAllMonitoring() {
+        fnTapRetryTask?.cancel()
+        fnTapRetryTask = nil
+        fnEventTap?.stop()
+        fnEventTap = nil
+        isBlockingSystemFnAction = false
+
         if let monitor = globalEventMonitor {
             NSEvent.removeMonitor(monitor)
             globalEventMonitor = nil

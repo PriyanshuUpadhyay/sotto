@@ -14,6 +14,9 @@ struct ShortcutsTab: View {
     /// so recording one updates the card's badge immediately — a bare
     /// `KeyboardShortcuts.getShortcut` call in `body` publishes nothing.
     @State private var boundNames: Set<String> = Self.currentlyBoundNames()
+    /// Re-read when the app becomes active, so the warning clears after the
+    /// user changes the setting in System Settings and comes back.
+    @State private var globeKeyAction = GlobeKeyAction.current()
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var highlightedSection: ShortcutsTabSection?
@@ -65,6 +68,21 @@ struct ShortcutsTab: View {
         _ option: HotkeyManager.HotkeyOption
     ) -> (text: String, tone: SettingsSectionHeader.StatusTone) {
         option == .none ? ("None", .warning) : ("1 active", .neutral)
+    }
+
+    /// The warning shown when Fn is the hotkey but macOS also acts on the
+    /// Fn (🌐) key, or nil when there is no conflict. No warning while Sotto's
+    /// Fn tap blocks the system action.
+    static func globeKeyConflictMessage(
+        hotkey: HotkeyManager.HotkeyOption,
+        action: GlobeKeyAction,
+        systemActionBlocked: Bool
+    ) -> String? {
+        guard hotkey == .fn, action != .doNothing, !systemActionBlocked else { return nil }
+        let current = action.systemLabel.map { " It is now set to \"\($0)\"." } ?? ""
+        return "macOS also uses the Fn (🌐) key. It can open the emoji picker or switch input source, and then paste fails."
+            + current
+            + " In System Settings › Keyboard, set \"Press 🌐 key to\" to \"Do Nothing\"."
     }
 
     /// The raw names that hold a binding right now — the initial value of
@@ -136,6 +154,22 @@ struct ShortcutsTab: View {
                         }
                     }
                 }
+                if let message = Self.globeKeyConflictMessage(hotkey: hotkeyManager.selectedHotkey1, action: globeKeyAction, systemActionBlocked: hotkeyManager.isBlockingSystemFnAction) {
+                    SettingsRow(
+                        iconSystemName: "exclamationmark.triangle.fill",
+                        label: "Fn key conflict",
+                        subtitle: message,
+                        iconTint: Palette.warn
+                    ) {
+                        Button("Open Keyboard Settings") {
+                            NSWorkspace.shared.open(GlobeKeyAction.keyboardSettingsURL)
+                        }
+                        .controlSize(.small)
+                    }
+                }
+            }
+            .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+                globeKeyAction = GlobeKeyAction.current()
             }
 
         case .paste:

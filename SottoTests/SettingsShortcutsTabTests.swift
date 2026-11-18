@@ -110,4 +110,36 @@ final class SettingsShortcutsTabTests: XCTestCase {
         }
     }
 
+    // MARK: - Fn (Globe) key conflict
+
+    func test_globeKeyAction_mapsSystemValues() {
+        XCTAssertEqual(GlobeKeyAction(rawValue: NSNumber(value: 0)), .doNothing)
+        XCTAssertEqual(GlobeKeyAction(rawValue: NSNumber(value: 1)), .changeInputSource)
+        XCTAssertEqual(GlobeKeyAction(rawValue: NSNumber(value: 2)), .showEmojiAndSymbols)
+        XCTAssertEqual(GlobeKeyAction(rawValue: NSNumber(value: 3)), .startDictation)
+        XCTAssertEqual(GlobeKeyAction(rawValue: nil), .unknown)
+        XCTAssertEqual(GlobeKeyAction(rawValue: NSNumber(value: 9)), .unknown)
+    }
+
+    func test_globeKeyWarning_onlyForFnWithASystemAction() {
+        XCTAssertNil(ShortcutsTab.globeKeyConflictMessage(hotkey: .fn, action: .doNothing, systemActionBlocked: false))
+        XCTAssertNil(ShortcutsTab.globeKeyConflictMessage(hotkey: .rightCommand, action: .showEmojiAndSymbols, systemActionBlocked: false))
+
+        let emoji = ShortcutsTab.globeKeyConflictMessage(hotkey: .fn, action: .showEmojiAndSymbols, systemActionBlocked: false)
+        XCTAssertNotNil(emoji)
+        XCTAssertTrue(emoji?.contains("\"Show Emoji & Symbols\"") == true)
+        XCTAssertTrue(emoji?.contains("\"Do Nothing\"") == true)
+
+        // A missing key still warns: the macOS default is not "Do Nothing".
+        XCTAssertNotNil(ShortcutsTab.globeKeyConflictMessage(hotkey: .fn, action: .unknown, systemActionBlocked: false))
+
+        // While the Fn tap blocks the system action there is no conflict.
+        XCTAssertNil(ShortcutsTab.globeKeyConflictMessage(hotkey: .fn, action: .showEmojiAndSymbols, systemActionBlocked: true))
+    }
+
+    func test_fnKeyEventTap_takesOnlyFnModifierChanges() {
+        XCTAssertTrue(FnKeyEventTap.shouldTake(type: .flagsChanged, keyCode: 0x3F))
+        XCTAssertFalse(FnKeyEventTap.shouldTake(type: .flagsChanged, keyCode: 0x36), "right Command passes")
+        XCTAssertFalse(FnKeyEventTap.shouldTake(type: .keyDown, keyCode: 0x3F), "only modifier changes")
+    }
 }
