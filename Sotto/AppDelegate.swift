@@ -37,6 +37,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         guard !AppRuntimeMode.isHeadlessTest else { return }
+        DiagnosticLogStore.shared.start()
         guard PlatformSupport.launchOutcome() == .opensMenuBarItem else {
             reportUnsupportedMacOSVersion()
             return

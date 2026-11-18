@@ -90,6 +90,13 @@ class CursorPaster {
             appName: pasteAppName
         )
 
+        // Diagnostics for the shared log: these are the usual reasons a
+        // synthetic Cmd+V is dropped with no error.
+        logger.notice("paste: app=\(targetApp?.bundleIdentifier ?? "unknown", privacy: .public) axTrusted=\(AXIsProcessTrusted(), privacy: .public) secureInput=\(IsSecureEventInputEnabled(), privacy: .public) appleScript=\(UserDefaults.standard.bool(forKey: "useAppleScriptPaste"), privacy: .public) chars=\(text.count, privacy: .public)")
+        if IsSecureEventInputEnabled() {
+            logger.error("paste: secure input is on (a password field or an app such as Terminal holds it) — macOS may block the Cmd+V")
+        }
+
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
             if UserDefaults.standard.bool(forKey: "useAppleScriptPaste") {
                 pasteUsingAppleScript()

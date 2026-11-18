@@ -70,7 +70,7 @@ extension TranscriptionPipeline {
 
                 do {
                     let (enhancedText, enhancementDuration, promptName) = try await enhancementService.enhance(textForAI)
-                    logger.notice("📝 AI enhancement: \(enhancedText, privacy: .public)")
+                    logger.notice("📝 AI enhancement: \(enhancedText.count, privacy: .public) chars")
                     transcription.enhancedText = enhancedText
                     transcription.aiEnhancementModelName = enhancementService.lastEnhancementModelUsed
                     transcription.promptName = promptName

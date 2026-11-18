@@ -32,9 +32,9 @@ struct TranscriptionOutputFilter {
         )
 
         if filteredText != text {
-            logger.notice("📝 Output filter result: \(filteredText, privacy: .public)")
+            logger.notice("📝 Output filter result: \(filteredText.count, privacy: .public) chars")
         } else {
-            logger.notice("📝 Output filter result (unchanged): \(filteredText, privacy: .public)")
+            logger.notice("📝 Output filter result (unchanged): \(filteredText.count, privacy: .public) chars")
         }
 
         return filteredText

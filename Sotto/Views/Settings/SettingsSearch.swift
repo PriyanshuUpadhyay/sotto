@@ -158,6 +158,7 @@ extension AdvancedTab.AdvancedTabSection {
         switch self {
         case .privacy: return "Privacy"
         case .backup: return "Backup & Restore"
+        case .diagnostics: return "Diagnostics"
         }
     }
 
@@ -165,6 +166,7 @@ extension AdvancedTab.AdvancedTabSection {
         switch self {
         case .privacy: return ["auto-delete", "cleanup", "retention", "audio files", "transcripts"]
         case .backup: return ["export", "import", "restore"]
+        case .diagnostics: return ["logs", "export logs", "debug", "support", "bug report"]
         }
     }
 }

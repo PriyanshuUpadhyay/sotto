@@ -26,7 +26,7 @@ extension TranscriptionPipeline {
             text = try await serviceRegistry.transcribe(audioURL: audioURL, model: model)
         }
         trace.record(.asr, since: asrStart)
-        logger.notice("📝 Transcript: \(text, privacy: .public)")
+        logger.notice("📝 Transcript: \(text.count, privacy: .public) chars")
         trace.asrText = text
         trace.asrModel = model.displayName
         // Agreement-based TDT streaming: one batch decode restores dropped
@@ -52,7 +52,7 @@ extension TranscriptionPipeline {
         let filterStart = TranscriptionTrace.now()
         text = TranscriptionOutputFilter.filter(text)
         trace.record(.filter, since: filterStart)
-        logger.notice("📝 Output filter result: \(text, privacy: .public)")
+        logger.notice("📝 Output filter result: \(text.count, privacy: .public) chars")
         trace.afterFilter = text
         let transcriptionDuration = Date().timeIntervalSince(transcriptionStart)
         return (text, transcriptionDuration)
@@ -67,13 +67,13 @@ extension TranscriptionPipeline {
         var text = input
         if UserDefaults.standard.bool(forKey: "IsTextFormattingEnabled") {
             text = WhisperTextFormatter.format(text)
-            logger.notice("📝 Formatted transcript: \(text, privacy: .public)")
+            logger.notice("📝 Formatted transcript: \(text.count, privacy: .public) chars")
         }
 
         let wordReplaceStart = TranscriptionTrace.now()
         text = WordReplacementService.shared.applyReplacements(to: text, using: modelContext)
         trace.record(.wordReplacement, since: wordReplaceStart)
-        logger.notice("📝 WordReplacement: \(text, privacy: .public)")
+        logger.notice("📝 WordReplacement: \(text.count, privacy: .public) chars")
         trace.afterWordReplace = text
 
         // Acoustic confirmation: CTC spotter reports which vocab terms it
@@ -105,7 +105,7 @@ extension TranscriptionPipeline {
         text = phoneticResult.text
         trace.phonetic = phoneticResult.corrections
         trace.afterPhonetic = text
-        logger.notice("📝 PhoneticCorrect: \(text, privacy: .public)")
+        logger.notice("📝 PhoneticCorrect: \(text.count, privacy: .public) chars")
 
         return text
     }

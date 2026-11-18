@@ -1,4 +1,5 @@
 import SwiftUI
+import UniformTypeIdentifiers
 
 struct AdvancedTab: View {
     @Environment(\.modelContext) private var modelContext
@@ -30,6 +31,7 @@ struct AdvancedTab: View {
     enum AdvancedTabSection: CaseIterable, Hashable {
         case privacy
         case backup
+        case diagnostics
     }
 
     /// The exact, ordered list the body's `ForEach` renders from. It IS
@@ -146,6 +148,51 @@ struct AdvancedTab: View {
                     .foregroundColor(Palette.inkSecondary)
                     .fixedSize(horizontal: false, vertical: true)
                     .padding(.top, 4)
+            }
+
+        case .diagnostics:
+            SettingsCard(
+                iconSystemName: "stethoscope",
+                iconTint: Palette.neutral,
+                title: "Diagnostics",
+                subtitle: "Share logs to help us fix a problem."
+            ) {
+                SettingsRow(
+                    iconSystemName: "doc.text",
+                    label: "Export Logs",
+                    iconTint: Palette.neutral
+                ) {
+                    Button("Export Logs…") { Self.exportLogs() }
+                }
+
+                Text("Sotto keeps up to 5 MB of its own logs on this Mac. They show what Sotto did, such as each paste and its permissions. They do not contain what you dictated.")
+                    .font(.ui(11))
+                    .foregroundColor(Palette.inkSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.top, 4)
+            }
+        }
+    }
+
+    private static func exportLogs() {
+        let panel = NSSavePanel()
+        panel.allowedContentTypes = [.plainText]
+        panel.nameFieldStringValue = "Sotto-logs-\(Date().formatted(.iso8601.year().month().day())).txt"
+        panel.title = "Export Sotto Logs"
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        // Reading the system log store can take seconds, so keep it off the main thread.
+        DispatchQueue.global(qos: .userInitiated).async {
+            let result = Result { try DiagnosticLogStore.shared.exportText().write(to: url, atomically: true, encoding: .utf8) }
+            DispatchQueue.main.async {
+                switch result {
+                case .success:
+                    NSWorkspace.shared.activateFileViewerSelecting([url])
+                case .failure(let error):
+                    let alert = NSAlert()
+                    alert.messageText = "Could not export logs"
+                    alert.informativeText = error.localizedDescription
+                    alert.runModal()
+                }
             }
         }
     }

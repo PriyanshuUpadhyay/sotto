@@ -25,11 +25,11 @@ final class SettingsAdvancedTabTests: XCTestCase {
     func test_allRequiredSectionsPresent() {
         let cases = Set(AdvancedTab.AdvancedTabSection.allCases)
         let required: Set<AdvancedTab.AdvancedTabSection> = [
-            .privacy, .backup,
+            .privacy, .backup, .diagnostics,
         ]
         XCTAssertEqual(
             cases, required,
-            "AdvancedTab descriptor must be exactly the 2 sections; diff: \(cases.symmetricDifference(required))"
+            "AdvancedTab descriptor must be exactly the 3 sections; diff: \(cases.symmetricDifference(required))"
         )
     }
 

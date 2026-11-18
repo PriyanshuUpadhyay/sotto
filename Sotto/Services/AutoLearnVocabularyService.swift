@@ -291,14 +291,14 @@ final class AutoLearnVocabularyService {
 
         for word in uniqueWordsToAdd {
             guard !existingWords.contains(word.lowercased()) else {
-                logger.notice("⚠️ \"\(word, privacy: .public)\" already in Vocabulary — skipping")
+                logger.notice("⚠️ Word (\(word.count, privacy: .public) chars) already in Vocabulary — skipping")
                 continue
             }
 
             let newWord = VocabularyWord(word: word)
             context.insert(newWord)
             addedWords.append(newWord)
-            logger.notice("✅ Added \"\(word, privacy: .public)\" to Vocabulary")
+            logger.notice("✅ Added a word (\(word.count, privacy: .public) chars) to Vocabulary")
         }
 
         guard !addedWords.isEmpty else { return }
